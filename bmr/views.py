@@ -14,6 +14,9 @@ from .serializers import (
 from .forms import BMRCreateForm, BMRRequestForm
 from products.models import Product
 from workflow.services import WorkflowService
+from workflow.constants import (
+    PRODUCT_TYPES, TABLET_TYPES, is_tablet, is_tablet_type_2
+)
 
 @login_required
 def create_bmr_view(request):

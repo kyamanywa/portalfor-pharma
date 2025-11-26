@@ -1,23 +1,12 @@
 from django.db import models
+from workflow.constants import (
+    PRODUCT_TYPE_CHOICES, COATING_TYPE_CHOICES, TABLET_TYPE_CHOICES
+)
 
 class Product(models.Model):
     """Product master data for pharmaceutical products"""
     
-    PRODUCT_TYPE_CHOICES = [
-        ('ointment', 'Ointment'),
-        ('tablet', 'Tablet'),
-        ('capsule', 'Capsule'),
-    ]
-    
-    COATING_CHOICES = [
-        ('uncoated', 'Uncoated'),
-        ('coated', 'Coated'),
-    ]
-    
-    TABLET_TYPE_CHOICES = [
-        ('normal', 'Normal Tablet'),
-        ('tablet_2', 'Tablet Type 2'),
-    ]
+    # Use constants imported from workflow
     
     # Essential fields only
     product_name = models.CharField(max_length=200)
@@ -26,7 +15,7 @@ class Product(models.Model):
     # Tablet specific fields (only show when product_type is 'tablet')
     coating_type = models.CharField(
         max_length=20,
-        choices=COATING_CHOICES,
+        choices=COATING_TYPE_CHOICES,
         blank=True,
         help_text="Only applicable for tablets - whether the tablet is coated or not"
     )
@@ -77,17 +66,19 @@ class Product(models.Model):
         return f"{self.product_name} ({self.get_product_type_display()})"
     
     def save(self, *args, **kwargs):
+        from workflow.constants import is_tablet, is_capsule, is_ointment, PRODUCT_TYPES
+        
         # Clear tablet-specific fields if product is not a tablet
-        if self.product_type != 'tablet':
+        if self.product_type != PRODUCT_TYPES['TABLET']:
             self.coating_type = ''
             self.tablet_type = ''
         
         # Set batch_size_unit based on product type
-        if self.product_type == 'tablet':
+        if is_tablet(self.product_type):
             self.batch_size_unit = 'tablets'
-        elif self.product_type == 'capsule':
+        elif is_capsule(self.product_type):
             self.batch_size_unit = 'capsules'
-        elif self.product_type == 'ointment':
+        elif is_ointment(self.product_type):
             self.batch_size_unit = 'tubes'
         else:
             self.batch_size_unit = 'units'  # Default fallback
