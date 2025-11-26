@@ -16,6 +16,13 @@ from workflow.models import (
 from accounts.models import CustomUser
 from products.models import Product
 
+# Import constants
+from workflow.constants import (
+    PRODUCT_TYPES, TABLET_TYPES, PHASE_NAMES, PHASE_STATUSES,
+    is_tablet, is_capsule, is_ointment, is_tablet_type_2,
+    get_packing_phase_for_product
+)
+
 from .permissions import require_dashboard_permission, check_dashboard_permission
 
 @login_required
@@ -585,7 +592,7 @@ def qa_dashboard(request):
                 
                 if action == 'start':
                     # Start the Final QA review process
-                    phase_execution.status = 'in_progress'
+                    phase_execution.status = PHASE_STATUSES['IN_PROGRESS']
                     phase_execution.started_by = request.user
                     phase_execution.started_date = timezone.now()
                     phase_execution.operator_comments = f"Final QA review started by {request.user.get_full_name()}. Notes: {comments}"
@@ -595,7 +602,7 @@ def qa_dashboard(request):
                 
                 elif action == 'approve':
                     # Complete Final QA with approval
-                    phase_execution.status = 'completed'
+                    phase_execution.status = PHASE_STATUSES['COMPLETED']
                     phase_execution.completed_by = request.user
                     phase_execution.completed_date = timezone.now()
                     phase_execution.operator_comments += f"\nFinal QA Approved by {request.user.get_full_name()}. Comments: {comments}"
@@ -612,20 +619,11 @@ def qa_dashboard(request):
                     product_type = bmr.product.product_type
                     
                     # Determine which packing phase to rollback to based on product type
-                    if product_type == 'tablet':
-                        if hasattr(bmr.product, 'tablet_type') and bmr.product.tablet_type == 'tablet_2':
-                            rollback_phase = 'bulk_packing'
-                        else:
-                            rollback_phase = 'blister_packing'
-                    elif product_type == 'capsule':
-                        rollback_phase = 'blister_packing'
-                    elif product_type == 'ointment':
-                        rollback_phase = 'secondary_packaging'
-                    else:
-                        rollback_phase = 'secondary_packaging'  # default
+                    tablet_type = getattr(bmr.product, 'tablet_type', None) if is_tablet(product_type) else None
+                    rollback_phase = get_packing_phase_for_product(product_type, tablet_type)
                     
                     # Mark the final_qa phase as failed with reason
-                    phase_execution.status = 'failed'
+                    phase_execution.status = PHASE_STATUSES['FAILED']
                     phase_execution.completed_by = request.user
                     phase_execution.completed_date = timezone.now()
                     phase_execution.operator_comments = f"Final QA REJECTED BY {request.user.get_full_name()}: {comments}"
@@ -1117,7 +1115,7 @@ def operator_dashboard(request):
                     phase_name = phase_execution.phase.phase_name
                     
                     # For capsule filling, only require machine for filling phase
-                    if phase_name == 'filling' and phase_execution.bmr.product.product_type != 'Capsule':
+                    if phase_name == PHASE_NAMES['FILLING'] and not is_capsule(phase_execution.bmr.product.product_type):
                         machine_required = False
                     elif phase_name in machine_required_phases:
                         machine_required = True
@@ -1590,7 +1588,7 @@ def packaging_dashboard(request):
                     WorkflowService.trigger_next_phase(phase_execution.bmr, phase_execution.phase)
                     
                     # Determine correct message based on product type
-                    if phase_execution.bmr.product.product_type == 'tablet' and getattr(phase_execution.bmr.product, 'tablet_type', None) == 'tablet_2':
+                    if is_tablet(phase_execution.bmr.product.product_type) and is_tablet_type_2(getattr(phase_execution.bmr.product, 'tablet_type', None)):
                         messages.success(request, f'Packaging materials released for batch {phase_execution.bmr.batch_number}. Bulk packing is now available.')
                     else:
                         messages.success(request, f'Packaging materials released for batch {phase_execution.bmr.batch_number}. Packing phases are now available.')
@@ -1692,10 +1690,10 @@ def packaging_dashboard(request):
         try:
             bmr = BMR.objects.get(id=bmr_id)
             # For tablet type 2, make sure bulk packing comes before secondary packing
-            if bmr.product.product_type == 'tablet' and getattr(bmr.product, 'tablet_type', None) == 'tablet_2':
+            if is_tablet(bmr.product.product_type) and is_tablet_type_2(getattr(bmr.product, 'tablet_type', None)):
                 # Check if material release was just completed
-                if completed_phase == 'packaging_material_release':
-                    next_phase = BatchPhaseExecution.objects.filter(bmr=bmr, phase__phase_name='bulk_packing').first()
+                if completed_phase == PHASE_NAMES['PACKAGING_MATERIAL_RELEASE']:
+                    next_phase = BatchPhaseExecution.objects.filter(bmr=bmr, phase__phase_name=PHASE_NAMES['BULK_PACKING']).first()
             
             # Fallback to standard next phase logic if no specific phase found
             if not next_phase:
