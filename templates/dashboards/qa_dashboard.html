@@ -548,18 +548,6 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    {% if bmr_requests_pending %}
-                        <a href="{% url 'bmr:approve_bmr_request' bmr_requests_pending.0.id %}" class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>
-                            Approve Request & Create New BMR
-                        </a>
-                    {% else %}
-                        <button type="button" class="btn btn-secondary" disabled data-bs-toggle="tooltip" data-bs-placement="top" title="No pending BMR requests available">
-                            <i class="fas fa-plus me-2"></i>
-                            Create New BMR
-                            <span class="badge bg-warning ms-2">No Requests</span>
-                        </button>
-                    {% endif %}
                     <a href="{% url 'bmr:list' %}" class="btn btn-outline-primary">
                         <i class="fas fa-list me-2"></i>
                         View All BMRs ({{ total_bmrs }})

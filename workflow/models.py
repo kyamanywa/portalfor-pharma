@@ -4,6 +4,12 @@ from django.core import validators
 from django.core.exceptions import ValidationError
 from bmr.models import BMR
 
+# Import constants
+from .constants import (
+    PHASE_CHOICES, PRODUCT_TYPE_CHOICES, PHASE_STATUS_CHOICES,
+    BMR_STATUS_CHOICES, PHASE_NAMES
+)
+
 # Import the extended admin settings models
 from .models_admin_settings import (
     DashboardSettings, SystemAlertSettings, SessionManagementSettings, 
@@ -98,43 +104,8 @@ class Machine(models.Model):
 class ProductionPhase(models.Model):
     """Defines the production phases for different product types"""
     
-    PHASE_CHOICES = [
-        # Common phases
-        ('bmr_creation', 'BMR Creation'),
-        ('regulatory_approval', 'Regulatory Approval'),
-        ('material_dispensing', 'Material Dispensing'),
-        ('quality_control', 'Quality Control'),
-        ('post_compression_qc', 'Post-Compression QC'),
-        ('post_mixing_qc', 'Post-Mixing QC'),
-        ('post_blending_qc', 'Post-Blending QC'),
-        ('packaging_material_release', 'Packaging Material Release'),
-        ('secondary_packaging', 'Secondary Packaging'),
-        ('final_qa', 'Final QA'),
-        ('finished_goods_store', 'Finished Goods Store'),
-        
-        # Ointment specific phases
-        ('mixing', 'Mixing'),
-        ('tube_filling', 'Tube Filling'),
-        
-        # Tablet specific phases
-        ('granulation', 'Granulation'),
-        ('blending', 'Blending'),
-        ('compression', 'Compression'),
-        ('sorting', 'Sorting'),
-        ('coating', 'Coating'),
-        ('blister_packing', 'Blister Packing'),
-        ('bulk_packing', 'Bulk Packing'),
-        
-        # Capsule specific phases
-        ('drying', 'Drying'),
-        ('filling', 'Filling'),
-    ]
-    
-    PRODUCT_TYPE_CHOICES = [
-        ('ointment', 'Ointment'),
-        ('tablet', 'Tablet'),
-        ('capsule', 'Capsule'),
-    ]
+    PHASE_CHOICES = PHASE_CHOICES
+    PRODUCT_TYPE_CHOICES = PRODUCT_TYPE_CHOICES
     
     product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES)
     phase_name = models.CharField(max_length=30, choices=PHASE_CHOICES)
@@ -161,15 +132,7 @@ class ProductionPhase(models.Model):
 class BatchPhaseExecution(models.Model):
     """Tracks the execution of phases for each batch"""
     
-    STATUS_CHOICES = [
-        ('not_ready', 'Not Ready'),
-        ('pending', 'Pending'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
-        ('skipped', 'Skipped'),
-        ('rolled_back', 'Rolled Back'),
-    ]
+    STATUS_CHOICES = PHASE_STATUS_CHOICES
     
     bmr = models.ForeignKey(BMR, on_delete=models.CASCADE, related_name='phase_executions')
     phase = models.ForeignKey(ProductionPhase, on_delete=models.CASCADE)
@@ -237,9 +200,14 @@ class BatchPhaseExecution(models.Model):
     
     def requires_machine_selection(self):
         """Check if this phase requires machine selection"""
+        from .constants import PHASE_NAMES
         machine_required_phases = [
-            'granulation', 'blending', 'compression', 
-            'coating', 'blister_packing', 'filling'
+            PHASE_NAMES['GRANULATION'],
+            PHASE_NAMES['BLENDING'],
+            PHASE_NAMES['COMPRESSION'],
+            PHASE_NAMES['COATING'],
+            PHASE_NAMES['BLISTER_PACKING'],
+            PHASE_NAMES['FILLING'],
         ]
         return self.phase.phase_name in machine_required_phases
     
