@@ -2,6 +2,11 @@ import logging
 from django.utils import timezone
 from bmr.models import BMR
 from .models import ProductionPhase, BatchPhaseExecution, WorkflowTemplate, WorkflowTemplatePhase
+from .constants import (
+    PRODUCT_TYPES, TABLET_TYPES, PHASE_NAMES, PHASE_STATUSES,
+    is_tablet, is_capsule, is_ointment, is_tablet_type_2,
+    get_packing_phase_for_product, get_qc_phase_for_product
+)
 
 logger = logging.getLogger('workflow')
 
@@ -15,12 +20,12 @@ class WorkflowService:
             product_type = bmr.product.product_type
             
             # Handle tablet type differentiation
-            if product_type == 'tablet':
-                tablet_type = getattr(bmr.product, 'tablet_type', 'normal')
-                if tablet_type == 'tablet_2':
+            if is_tablet(product_type):
+                tablet_type = getattr(bmr.product, 'tablet_type', TABLET_TYPES['NORMAL'])
+                if is_tablet_type_2(tablet_type):
                     template_product_type = 'tablet_type_2'
                 else:
-                    template_product_type = 'tablet'
+                    template_product_type = PRODUCT_TYPES['TABLET']
             else:
                 template_product_type = product_type
             
@@ -41,7 +46,7 @@ class WorkflowService:
             filtered_phases = []
             for template_phase in template_phases:
                 # COATING LOGIC: Skip coating phase for uncoated tablets
-                if (product_type == 'tablet' and template_phase.phase_name == 'coating'):
+                if is_tablet(product_type) and template_phase.phase_name == PHASE_NAMES['COATING']:
                     product_is_coated = (
                         hasattr(bmr.product, 'coating_type') and bmr.product.coating_type == 'coated'
                     ) or (
@@ -55,13 +60,13 @@ class WorkflowService:
                         logger.info(f"Including coating phase for coated tablet: {bmr.product.product_name}")
                 
                 # PACKING LOGIC: Skip wrong packing phase for tablet types
-                if (product_type == 'tablet' and template_phase.phase_name in ['blister_packing', 'bulk_packing']):
-                    tablet_type = getattr(bmr.product, 'tablet_type', 'normal') or 'normal'
+                if is_tablet(product_type) and template_phase.phase_name in [PHASE_NAMES['BLISTER_PACKING'], PHASE_NAMES['BULK_PACKING']]:
+                    tablet_type = getattr(bmr.product, 'tablet_type', TABLET_TYPES['NORMAL']) or TABLET_TYPES['NORMAL']
                     
-                    if tablet_type == 'tablet_2' and template_phase.phase_name == 'blister_packing':
+                    if is_tablet_type_2(tablet_type) and template_phase.phase_name == PHASE_NAMES['BLISTER_PACKING']:
                         logger.info(f"Skipping blister_packing for tablet_2: {bmr.product.product_name}")
                         continue  # Skip blister packing for tablet_2
-                    elif tablet_type == 'normal' and template_phase.phase_name == 'bulk_packing':
+                    elif not is_tablet_type_2(tablet_type) and template_phase.phase_name == PHASE_NAMES['BULK_PACKING']:
                         logger.info(f"Skipping bulk_packing for normal tablet: {bmr.product.product_name}")
                         continue  # Skip bulk packing for normal tablets
                 
@@ -93,12 +98,12 @@ class WorkflowService:
                     phase.save()
                 
                 # Determine initial status
-                if template_phase.phase_name == 'bmr_creation':
-                    initial_status = 'completed'
-                elif template_phase.phase_name == 'regulatory_approval':
-                    initial_status = 'pending'
+                if template_phase.phase_name == PHASE_NAMES['BMR_CREATION']:
+                    initial_status = PHASE_STATUSES['COMPLETED']
+                elif template_phase.phase_name == PHASE_NAMES['REGULATORY_APPROVAL']:
+                    initial_status = PHASE_STATUSES['PENDING']
                 else:
-                    initial_status = 'not_ready'
+                    initial_status = PHASE_STATUSES['NOT_READY']
                 
                 # Create the batch phase execution
                 BatchPhaseExecution.objects.get_or_create(
