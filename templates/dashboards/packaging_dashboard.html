@@ -1,0 +1,489 @@
+{% extends 'base.html' %}
+
+{% block title %}Packaging Store Dashboard - Kampala Pharmaceutical Industries{% endblock %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+.countdown-timer {
+    min-width: 120px;
+}
+
+.countdown-display {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.countdown-timer.overrun {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+{% include 'notifications/phase_notification.html' %}
+
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-box-open me-2"></i>Packaging Store Dashboard
+                    </h2>
+                    <p class="text-muted mb-0">Packaging Material Release Management</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">Welcome, {{ user.get_full_name|default:user.username }}</small><br>
+                    <small class="text-success">{{ user.get_role_display }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ stats.pending_phases }}</h5>
+                            <p class="card-text">Pending Releases</p>
+                        </div>
+                        <i class="fas fa-clock fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ stats.in_progress_phases }}</h5>
+                            <p class="card-text">In Progress</p>
+                        </div>
+                        <i class="fas fa-play fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ stats.completed_today }}</h5>
+                            <p class="card-text">Released Today</p>
+                        </div>
+                        <i class="fas fa-check fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ stats.total_batches }}</h5>
+                            <p class="card-text">Total Batches</p>
+                        </div>
+                        <i class="fas fa-box fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Progress -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Release Progress</h5>
+                    <div class="progress mb-2" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ daily_progress }}%" 
+                             aria-valuenow="{{ daily_progress }}" 
+                             aria-valuemin="0" aria-valuemax="100">
+                            {{ daily_progress|floatformat:1 }}%
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ daily_progress|floatformat:1 }}% of today's packaging releases completed</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Packaging Material Release Queue -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>Packaging Material Release Queue
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if my_phases %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Batch #</th>
+                                        <th>Product</th>
+                                        <th>Phase</th>
+                                        <th>Batch Size</th>
+                                        <th>Packaging Units Needed</th>
+                                        <th>Status</th>
+                                        <th>Time Remaining</th>
+                                        <th>Priority</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for phase in my_phases %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ phase.bmr.batch_number }}</strong>
+                                        </td>
+                                        <td>{{ phase.bmr.product.product_name }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ phase.phase.phase_name|title }}</span>
+                                        </td>
+                                        <td>
+                                            <strong>{{ phase.bmr.batch_size|floatformat:0 }} {{ phase.bmr.batch_size_unit }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if phase.bmr.product.packaging_size_in_units %}
+                                                <span class="badge bg-info">
+                                                    {% widthratio phase.bmr.batch_size phase.bmr.product.packaging_size_in_units 1 %} packages
+                                                </span>
+                                                <br><small class="text-muted">
+                                                    {{ phase.bmr.product.packaging_size_in_units|floatformat:0 }} units each
+                                                </small>
+                                            {% else %}
+                                                <span class="text-muted">Not set</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if phase.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif phase.status == 'in_progress' %}
+                                                <span class="badge bg-info">In Progress</span>
+                                            {% else %}
+                                                <span class="badge bg-success">{{ phase.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if phase.status == 'in_progress' and phase.started_date %}
+                                                {% if phase.is_overrun %}
+                                                    <div class="countdown-timer overrun" 
+                                                         data-phase-id="{{ phase.id }}"
+                                                         data-remaining-seconds="0">
+                                                        <span class="text-danger">
+                                                            <i class="fas fa-exclamation-triangle"></i>
+                                                            OVERRUN: +{{ phase.remaining_hours|floatformat:1|slice:"1:" }}h
+                                                        </span>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="countdown-timer" 
+                                                         data-phase-id="{{ phase.id }}"
+                                                         data-remaining-seconds="{{ phase.remaining_seconds }}">
+                                                        <span class="countdown-display text-primary">
+                                                            <i class="fas fa-clock"></i>
+                                                            <span class="timer-text">{{ phase.remaining_hours|floatformat:1 }}h left</span>
+                                                        </span>
+                                                        <div class="progress mt-1" style="height: 4px;">
+                                                            <div class="progress-bar bg-info" 
+                                                                 style="width: {{ phase.progress_percent }}%"></div>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            {% elif phase.status == 'pending' %}
+                                                <span class="text-muted">
+                                                    <i class="fas fa-clock"></i> Not started
+                                                </span>
+                                            {% elif phase.status == 'completed' %}
+                                                <span class="text-success">
+                                                    <i class="fas fa-check-circle"></i> Completed
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">{{ phase.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if phase.bmr.created_date|timesince|slice:':1' == "0" %}
+                                                <span class="badge bg-danger">Urgent</span>
+                                            {% elif phase.bmr.created_date|timesince|slice:':1' == "1" %}
+                                                <span class="badge bg-warning">High</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Normal</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'bmr:detail' phase.bmr.pk %}" 
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                                {% if phase.status == 'pending' %}
+                                                <button class="btn btn-outline-success btn-sm"
+                                                        onclick="startRelease('{{ phase.id }}')">
+                                                    <i class="fas fa-play"></i> Start
+                                                </button>
+                                                {% elif phase.status == 'in_progress' %}
+                                                <button class="btn btn-outline-success btn-sm"
+                                                        onclick="completeRelease('{{ phase.id }}')">
+                                                    <i class="fas fa-check"></i> Release
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <p class="text-muted mb-0">No packaging material releases pending at the moment.</p>
+                            <small class="text-muted">Check back later for new release requests.</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- My History Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-history"></i> My History</span>
+                </div>
+                <div class="card-body">
+                    <div style="max-height: 180px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Batch</th>
+                                    <th>Phase</th>
+                                </tr>
+                            </thead>
+                            <tbody id="operator-history">
+                                {% for entry in operator_history %}
+                                <tr><td>{{ entry.date }}</td><td>{{ entry.batch }}</td><td>{{ entry.phase }}</td></tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center text-muted">No history found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+function startRelease(phaseId) {
+    if (confirm('Start packaging material release for this phase?')) {
+        const notes = prompt('Enter start notes (optional):');
+        if (notes !== null) {
+            // Check if CSRF token exists
+            const csrfTokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfTokenInput) {
+                alert('Security token not found. Please refresh the page.');
+                return;
+            }
+            
+            // Create a form and submit it
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "dashboards:packaging_dashboard" %}';
+            
+            // Add CSRF token
+            const csrfToken = csrfTokenInput.value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            
+            // Add phase_id
+            const phaseInput = document.createElement('input');
+            phaseInput.type = 'hidden';
+            phaseInput.name = 'phase_id';
+            phaseInput.value = phaseId;
+            form.appendChild(phaseInput);
+            
+            // Add action
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'start';
+            form.appendChild(actionInput);
+            
+            // Add notes
+            const notesInput = document.createElement('input');
+            notesInput.type = 'hidden';
+            notesInput.name = 'notes';
+            notesInput.value = notes || '';
+            form.appendChild(notesInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+}
+
+function completeRelease(phaseId) {
+    const comments = prompt('Enter release comments (optional):');
+    if (comments !== null) {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "dashboards:packaging_dashboard" %}';
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Add phase_id
+        const phaseInput = document.createElement('input');
+        phaseInput.type = 'hidden';
+        phaseInput.name = 'phase_id';
+        phaseInput.value = phaseId;
+        form.appendChild(phaseInput);
+        
+        // Add action
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'complete';
+        form.appendChild(actionInput);
+        
+        // Add notes
+        const notesInput = document.createElement('input');
+        notesInput.type = 'hidden';
+        notesInput.name = 'notes';
+        notesInput.value = comments || '';
+        form.appendChild(notesInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Countdown Timer Functionality
+function updateCountdownTimers() {
+    const timers = document.querySelectorAll('.countdown-timer:not(.overrun)');
+    
+    timers.forEach(timer => {
+        const remainingSeconds = parseInt(timer.dataset.remainingSeconds);
+        const timerText = timer.querySelector('.timer-text');
+        const progressBar = timer.querySelector('.progress-bar');
+        
+        if (remainingSeconds > 0) {
+            // Decrease remaining time by 1 second
+            const newRemainingSeconds = remainingSeconds - 1;
+            timer.dataset.remainingSeconds = newRemainingSeconds;
+            
+            // Convert to hours and minutes
+            const hours = Math.floor(newRemainingSeconds / 3600);
+            const minutes = Math.floor((newRemainingSeconds % 3600) / 60);
+            
+            if (hours > 0) {
+                timerText.textContent = `${hours}h ${minutes}m left`;
+            } else if (minutes > 0) {
+                timerText.textContent = `${minutes}m left`;
+            } else if (newRemainingSeconds > 0) {
+                timerText.textContent = `${newRemainingSeconds}s left`;
+            }
+            
+            // Update progress bar color based on time remaining
+            if (newRemainingSeconds < 1800) { // Less than 30 minutes
+                progressBar.className = 'progress-bar bg-danger';
+            } else if (newRemainingSeconds < 3600) { // Less than 1 hour
+                progressBar.className = 'progress-bar bg-warning';
+            } else {
+                progressBar.className = 'progress-bar bg-info';
+            }
+        } else {
+            // Time expired - convert to overrun display
+            timer.classList.add('overrun');
+            timer.innerHTML = `
+                <span class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    OVERRUN: Phase exceeded expected time
+                </span>
+            `;
+            
+            // Send notification to admin (only once per phase)
+            const phaseId = timer.dataset.phaseId;
+            if (phaseId && !timer.dataset.notificationSent) {
+                sendOverrunNotification(phaseId);
+                timer.dataset.notificationSent = 'true';
+            }
+        }
+    });
+}
+
+function sendOverrunNotification(phaseId) {
+    // Send notification to admin when phase timer expires
+    fetch('{% url "dashboards:phase_timer_expired" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            'phase_id': phaseId
+        })
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log('Timer expiration notification sent to admin for phase:', phaseId);
+        } else {
+            console.error('Failed to send timer notification:', response.status);
+        }
+    })
+    .catch(error => {
+        console.error('Error sending timer notification:', error);
+    });
+}
+
+// Start countdown timers when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Update timers every second
+    setInterval(updateCountdownTimers, 1000);
+});
+</script>
+{% endblock %}

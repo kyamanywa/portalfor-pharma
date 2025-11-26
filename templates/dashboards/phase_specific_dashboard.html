@@ -1,0 +1,511 @@
+{% extends 'dashboards/dashboard_base.html' %}
+{% load static %}
+{% load dashboard_filters %}
+
+{% block title %}{{ phase_display_name }} Dashboard - Kampala Pharmaceutical Industries{% endblock %}
+
+{% block extra_css %}
+<style>
+    .phase-timer {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        padding: 15px;
+        color: white;
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    
+    .phase-timer.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .phase-timer.expired {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    }
+    
+    .phase-timer.overrun {
+        background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    .countdown-display {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 10px 0;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .progress-ring {
+        width: 100px;
+        height: 100px;
+        margin: 0 auto;
+        position: relative;
+    }
+    
+    .progress-ring svg {
+        transform: rotate(-90deg);
+        width: 100%;
+        height: 100%;
+    }
+    
+    .progress-ring-circle {
+        stroke: currentColor;
+        stroke-width: 4;
+        fill: transparent;
+        opacity: 0.3;
+    }
+    
+    .progress-ring-progress {
+        stroke: #ffffff;
+        stroke-width: 6;
+        fill: transparent;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.5s ease;
+    }
+    
+    .phase-card {
+        border-left: 5px solid #007bff;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .phase-card.in-progress {
+        border-left-color: #28a745;
+    }
+    
+    .phase-card.warning {
+        border-left-color: #ffc107;
+    }
+    
+    .phase-card.expired {
+        border-left-color: #fd7e14;
+    }
+    
+    .phase-card.overrun {
+        border-left-color: #dc3545;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .status-normal { background-color: #d4edda; color: #155724; }
+    .status-warning { background-color: #fff3cd; color: #856404; }
+    .status-expired { background-color: #f8d7da; color: #721c24; }
+    .status-overrun { background-color: #dc3545; color: white; }
+    
+    .batch-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .quick-actions {
+        margin-top: 15px;
+    }
+    
+    .alert-panel {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 25px;
+        display: none;
+    }
+    
+    .alert-panel.show {
+        display: block;
+        animation: slideIn 0.5s ease;
+    }
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-cogs text-primary"></i> {{ phase_display_name }} Dashboard</h2>
+            <p class="text-muted">Real-time monitoring with countdown timers</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-info" onclick="refreshDashboard()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <a href="{% url 'dashboards:dashboard_home' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboards
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Panel for Overruns -->
+    <div id="overrunAlert" class="alert-panel">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4><i class="fas fa-exclamation-triangle"></i> Phase Time Overrun Alert!</h4>
+                <p id="alertMessage">One or more phases have exceeded their expected duration.</p>
+            </div>
+            <button type="button" class="btn btn-light btn-sm" onclick="requestExplanation()">
+                Request Explanation
+            </button>
+        </div>
+    </div>
+
+    <!-- Active Phases with Timers -->
+    <div class="row">
+        <div class="col-12">
+            <h4 class="mb-4">
+                <i class="fas fa-play-circle text-success"></i> 
+                Active {{ phase_display_name }} Phases 
+                <span class="badge bg-success">{{ active_phases|length }}</span>
+            </h4>
+        </div>
+        
+        {% if active_phases %}
+            {% for phase_data in active_phases %}
+            <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="card phase-card {{ phase_data.timer_status }}">
+                    <div class="card-header">
+                        <div class="batch-info">
+                            <div>
+                                <h6 class="mb-0">{{ phase_data.phase.bmr.batch_number }}</h6>
+                                <small class="text-muted">{{ phase_data.phase.bmr.product.name }}</small>
+                            </div>
+                            <span class="status-badge status-{{ phase_data.timer_status }}">
+                                {{ phase_data.timer_status|upper }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- Countdown Timer -->
+                        <div class="phase-timer {{ phase_data.timer_status }}">
+                            <div class="progress-ring">
+                                <svg>
+                                    <circle class="progress-ring-circle" cx="50" cy="50" r="42"></circle>
+                                    <circle class="progress-ring-progress" cx="50" cy="50" r="42"
+                                            stroke-dasharray="264" 
+                                            stroke-dashoffset="{{ phase_data.svg_stroke_offset }}"
+                                            id="progress-{{ phase_data.phase.id }}"></circle>
+                                </svg>
+                            </div>
+                            
+                            <div class="countdown-display" id="countdown-{{ phase_data.phase.id }}">
+                                {% if phase_data.remaining_seconds > 0 %}
+                                    Loading...
+                                {% else %}
+                                    OVERRUN
+                                {% endif %}
+                            </div>
+                            
+                            <div class="timer-info">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <small>Elapsed</small><br>
+                                        <strong>{{ phase_data.elapsed_hours|floatformat:1 }}h</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small>Expected</small><br>
+                                        <strong>{{ phase_data.expected_hours|floatformat:1 }}h</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small>Remaining</small><br>
+                                        <strong>{{ phase_data.remaining_hours|floatformat:1 }}h</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Phase Details -->
+                        <div class="phase-details">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Operator</small><br>
+                                    <strong>{{ phase_data.phase.started_by.get_full_name|default:"Not assigned" }}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Machine</small><br>
+                                    <strong>{{ phase_data.phase.machine_used.name|default:"Not selected" }}</strong>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Started</small><br>
+                                <strong>{{ phase_data.phase.started_date|timesince }} ago</strong>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="quick-actions">
+                            {% if phase_data.timer_status == 'overrun' %}
+                                <button class="btn btn-warning btn-sm" onclick="reportIssue({{ phase_data.phase.id }})">
+                                    <i class="fas fa-exclamation"></i> Report Issue
+                                </button>
+                            {% endif %}
+                            <button class="btn btn-outline-primary btn-sm" onclick="viewDetails({{ phase_data.phase.id }})">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    No active {{ phase_display_name|lower }} phases at this time.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pending and Completed Phases Tabs -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#pending">
+                        Pending Phases <span class="badge bg-warning">{{ pending_phases|length }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#completed">
+                        Recently Completed <span class="badge bg-success">{{ completed_phases|length }}</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="tab-content mt-3">
+                <!-- Pending Phases -->
+                <div id="pending" class="tab-pane active">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Batch Number</th>
+                                    <th>Product</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for phase in pending_phases %}
+                                <tr>
+                                    <td><strong>{{ phase.bmr.batch_number }}</strong></td>
+                                    <td>{{ phase.bmr.product.name }}</td>
+                                    <td>
+                                        <span class="badge bg-warning">{{ phase.get_status_display }}</span>
+                                    </td>
+                                    <td>{{ phase.created_date|timesince }} ago</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-success" onclick="startPhase({{ phase.id }})">
+                                            <i class="fas fa-play"></i> Start
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        No pending {{ phase_display_name|lower }} phases.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Completed Phases -->
+                <div id="completed" class="tab-pane">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Batch Number</th>
+                                    <th>Product</th>
+                                    <th>Duration</th>
+                                    <th>Completed</th>
+                                    <th>Operator</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for phase in completed_phases %}
+                                <tr>
+                                    <td><strong>{{ phase.bmr.batch_number }}</strong></td>
+                                    <td>{{ phase.bmr.product.name }}</td>
+                                    <td>
+                                        {% if phase.duration_hours %}
+                                            {{ phase.duration_hours|floatformat:1 }}h
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ phase.completed_date|timesince }} ago</td>
+                                    <td>{{ phase.completed_by.get_full_name|default:"Unknown" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        No recently completed {{ phase_display_name|lower }} phases.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Phase settings from backend
+const phaseSettings = {{ phase_settings_json|safe }};
+
+// Countdown timers storage
+const countdownTimers = {};
+
+// Initialize countdowns on page load
+document.addEventListener('DOMContentLoaded', function() {
+    {% for phase_data in active_phases %}
+        {% if phase_data.remaining_seconds > 0 %}
+            startCountdown({{ phase_data.phase.id }}, {{ phase_data.remaining_seconds }});
+        {% endif %}
+    {% endfor %}
+    
+    // Check for overruns and show alert
+    checkForOverruns();
+    
+    // Auto-refresh every 60 seconds
+    setInterval(refreshDashboard, 60000);
+});
+
+function startCountdown(phaseId, remainingSeconds) {
+    const countdownElement = document.getElementById(`countdown-${phaseId}`);
+    
+    countdownTimers[phaseId] = setInterval(function() {
+        remainingSeconds--;
+        
+        if (remainingSeconds <= 0) {
+            clearInterval(countdownTimers[phaseId]);
+            countdownElement.innerHTML = 'OVERRUN';
+            countdownElement.parentElement.classList.add('overrun');
+            
+            // Show overrun alert
+            showOverrunAlert(phaseId);
+            return;
+        }
+        
+        const hours = Math.floor(remainingSeconds / 3600);
+        const minutes = Math.floor((remainingSeconds % 3600) / 60);
+        const seconds = remainingSeconds % 60;
+        
+        countdownElement.innerHTML = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }, 1000);
+}
+
+function checkForOverruns() {
+    const overrunElements = document.querySelectorAll('.phase-timer.overrun');
+    if (overrunElements.length > 0) {
+        document.getElementById('overrunAlert').classList.add('show');
+        document.getElementById('alertMessage').textContent = 
+            `${overrunElements.length} phase(s) have exceeded their expected duration and require attention.`;
+    }
+}
+
+function showOverrunAlert(phaseId) {
+    // Send notification to admin dashboard
+    fetch('/dashboard/phase-overrun-notification/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            phase_id: phaseId,
+            phase_name: '{{ phase_name }}'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Overrun notification sent to admin');
+        }
+    })
+    .catch(error => {
+        console.error('Error sending overrun notification:', error);
+    });
+    
+    // Show local alert
+    checkForOverruns();
+}
+
+function refreshDashboard() {
+    location.reload();
+}
+
+function requestExplanation() {
+    // Implement explanation request functionality
+    const reason = prompt('Please provide a reason for the phase overrun:');
+    if (reason) {
+        fetch('/dashboard/request-explanation/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                phase_name: '{{ phase_name }}',
+                reason: reason
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Explanation request sent to operators.');
+                document.getElementById('overrunAlert').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error sending explanation request:', error);
+        });
+    }
+}
+
+function reportIssue(phaseId) {
+    const issue = prompt('Describe the issue affecting this phase:');
+    if (issue) {
+        alert(`Issue reported for phase ${phaseId}: ${issue}`);
+    }
+}
+
+function viewDetails(phaseId) {
+    // Redirect to detailed phase view
+    window.open(`/workflow/phase/${phaseId}/`, '_blank');
+}
+
+function startPhase(phaseId) {
+    if (confirm('Start this phase?')) {
+        // Implement phase start functionality
+        alert(`Starting phase ${phaseId} - Feature coming soon!`);
+    }
+}
+</script>
+{% endblock %}

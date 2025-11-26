@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+
+{% block title %}System Logs - Kampala Pharmaceutical Industries{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-file-alt me-2"></i>System Logs Monitor
+                    </h2>
+                    <p class="text-muted mb-0">Real-time system activity and error tracking</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">Welcome, {{ user.get_full_name|default:user.username }}</small><br>
+                    <small class="text-success">{{ user.get_role_display }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ log_stats.total_entries }}</h5>
+                            <p class="card-text">Total Log Entries</p>
+                        </div>
+                        <i class="fas fa-list fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ log_stats.level_counts.ERROR|add:log_stats.level_counts.CRITICAL }}</h5>
+                            <p class="card-text">Errors & Critical</p>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ log_stats.level_counts.WARNING }}</h5>
+                            <p class="card-text">Warnings</p>
+                        </div>
+                        <i class="fas fa-exclamation-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">{{ log_file_info.size_mb }} MB</h5>
+                            <p class="card-text">Log File Size</p>
+                        </div>
+                        <i class="fas fa-hdd fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>Log Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="level" class="form-label">Log Level</label>
+                            <select class="form-select" id="level" name="level">
+                                <option value="">All Levels</option>
+                                {% for level in log_levels %}
+                                    <option value="{{ level }}" {% if current_filters.level == level %}selected{% endif %}>
+                                        {{ level }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date" class="form-label">Time Period</label>
+                            <select class="form-select" id="date" name="date">
+                                <option value="today" {% if current_filters.date == 'today' %}selected{% endif %}>Today</option>
+                                <option value="yesterday" {% if current_filters.date == 'yesterday' %}selected{% endif %}>Yesterday</option>
+                                <option value="week" {% if current_filters.date == 'week' %}selected{% endif %}>Last 7 Days</option>
+                                <option value="month" {% if current_filters.date == 'month' %}selected{% endif %}>Last 30 Days</option>
+                                <option value="" {% if not current_filters.date %}selected{% endif %}>All Time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search Message</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ current_filters.search }}" placeholder="Search log messages...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Entries -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-ul me-2"></i>System Log Entries
+                    </h5>
+                    {% if logs.paginator.num_pages > 1 %}
+                    <span class="badge bg-light text-dark">
+                        Page {{ logs.number }} of {{ logs.paginator.num_pages }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if logs %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th width="15%">Timestamp</th>
+                                        <th width="8%">Level</th>
+                                        <th width="12%">Module</th>
+                                        <th width="8%">Process</th>
+                                        <th width="57%">Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in logs %}
+                                    <tr class="{% if entry.level == 'ERROR' or entry.level == 'CRITICAL' %}table-danger{% elif entry.level == 'WARNING' %}table-warning{% endif %}">
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ entry.timestamp|date:"M d, H:i:s" }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ entry.badge_class }}">
+                                                {{ entry.level }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ entry.module }}</small>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ entry.process_id }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="log-message" 
+                                                  data-bs-toggle="tooltip" 
+                                                  data-bs-placement="top" 
+                                                  title="{{ entry.message }}">
+                                                {{ entry.message|truncatechars:100 }}
+                                            </span>
+                                            {% if entry.message|length > 100 %}
+                                                <button class="btn btn-sm btn-outline-secondary ms-2" 
+                                                        onclick="showFullMessage('{{ entry.message|escapejs }}')">
+                                                    <i class="fas fa-expand-alt"></i>
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if logs.paginator.num_pages > 1 %}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="pagination-info text-muted">
+                                Showing {{ logs.start_index }} to {{ logs.end_index }} 
+                                of {{ logs.paginator.count }} log entries
+                            </div>
+                            <nav aria-label="Log Pagination">
+                                <ul class="pagination pagination-sm mb-0">
+                                    {% if logs.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ logs.previous_page_number }}{% if current_filters.level %}&level={{ current_filters.level }}{% endif %}{% if current_filters.date %}&date={{ current_filters.date }}{% endif %}{% if current_filters.search %}&search={{ current_filters.search }}{% endif %}">
+                                                Previous
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in logs.paginator.page_range %}
+                                        {% if num == logs.number %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}{% if current_filters.level %}&level={{ current_filters.level }}{% endif %}{% if current_filters.date %}&date={{ current_filters.date }}{% endif %}{% if current_filters.search %}&search={{ current_filters.search }}{% endif %}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if logs.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ logs.next_page_number }}{% if current_filters.level %}&level={{ current_filters.level }}{% endif %}{% if current_filters.date %}&date={{ current_filters.date }}{% endif %}{% if current_filters.search %}&search={{ current_filters.search }}{% endif %}">
+                                                Next
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Log Entries Found</h5>
+                            <p class="text-muted">Try adjusting your filters or check if the log file exists.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Errors Section -->
+    {% if log_stats.recent_errors %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bug me-2"></i>Recent Errors & Critical Issues
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for error in log_stats.recent_errors %}
+                    <div class="alert alert-{% if error.level == 'CRITICAL' %}danger{% else %}warning{% endif %} mb-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ error.level }}</strong> - {{ error.module }}
+                                <br>
+                                <small>{{ error.message|truncatechars:150 }}</small>
+                            </div>
+                            <small class="text-muted">{{ error.timestamp|timesince }} ago</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Full Message Modal -->
+<div class="modal fade" id="fullMessageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Full Log Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="fullMessageContent" class="bg-light p-3 rounded"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Show full message in modal
+function showFullMessage(message) {
+    document.getElementById('fullMessageContent').textContent = message;
+    new bootstrap.Modal(document.getElementById('fullMessageModal')).show();
+}
+
+// Auto-refresh every 30 seconds for real-time monitoring
+setInterval(function() {
+    // Only refresh if no search filters are applied
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.get('search') && !urlParams.get('level')) {
+        location.reload();
+    }
+}, 30000);
+</script>
+
+<style>
+.log-message {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.table-sm td {
+    padding: 0.5rem 0.25rem;
+}
+
+.pagination-sm .page-link {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.alert {
+    border-left: 4px solid;
+}
+
+.alert-danger {
+    border-left-color: #dc3545;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+</style>
+{% endblock %}

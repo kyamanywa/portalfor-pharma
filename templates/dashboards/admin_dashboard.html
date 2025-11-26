@@ -1,0 +1,2991 @@
+{% extends 'dashboards/dashboard_base.html' %}
+{% load static %}
+{% load dashboard_permissions %}
+{% load dashboard_permissions %}
+
+{% block title %}Admin Dashboard - Kampala Pharmaceutical Industries{% endblock %}
+
+{% csrf_token %}
+
+{% block extra_css %}
+<style>
+    /* ========== NAVBAR FIXED POSITIONING FIX ========== */
+    
+    /* Force navbar to stay fixed at top - cannot scroll away */
+    .navbar.fixed-top {
+        position: fixed !important;
+        top: 0 !important;
+        z-index: 1030 !important;
+        width: 100% !important;
+        left: 0 !important;
+    }
+    
+    /* Clean body styles for dashboard - eliminate scrollbar conflicts */
+    body {
+        padding-top: 56px !important;
+        margin: 0 !important;
+        overflow: hidden !important; /* Force single scroll system */
+        height: 100vh !important;
+    }
+    
+    /* ========== UNIFIED ADMIN DASHBOARD STYLES ========== */
+    
+    /* Admin Section Display Rules - Removed display: none to prevent conflicts */
+    .admin-section {
+        /* Removed: display: none; */
+    }
+    
+    /* Make active sections visible with important to override any conflicting styles */
+    .admin-section.active {
+        display: block !important;
+    }
+    
+    /* Content Section Default Styles */
+    .content-section {
+        padding: 15px;
+        margin-bottom: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        display: none; /* Default hidden */
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    /* Make active sections visible with important to override any conflicting styles */
+    .content-section.active {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    /* BMR Collapsible Styles */
+    .fa-chevron-down {
+        transition: transform 0.3s ease;
+    }
+    
+    .fa-rotate-180 {
+        transform: rotate(180deg);
+    }
+    
+    /* Main Layout - Single Scroll Dashboard */
+    .admin-dashboard {
+        position: relative;
+        background-color: #f8f9fa;
+        margin: 0;
+        padding: 0;
+        height: calc(100vh - 56px);
+        overflow: hidden;
+    }
+    
+    /* Fixed Sidebar - No independent scrolling */
+    .admin-sidebar {
+        width: 280px;
+        background-color: #0056b3;
+        color: white;
+        position: fixed;
+        height: calc(100vh - 56px);
+        top: 56px;
+        left: 0;
+        overflow: hidden; /* Remove sidebar scroll completely */
+        z-index: 99;
+        box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    /* Sidebar content with internal scroll only if absolutely needed */
+    .admin-sidebar .sidebar-content {
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: 20px;
+    }
+    
+    /* Main Content Area - Single controlled scroll */
+    .admin-content {
+        position: absolute;
+        left: 280px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        padding: 20px;
+        background-color: #f8f9fa;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    /* Content Sections */
+    .content-section {
+        display: none; /* Hide all sections by default */
+    }
+    
+    .content-section.active {
+        display: block; /* Show active section */
+    }
+    
+    /* Sidebar Header */
+    .sidebar-header {
+        padding: 20px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        background: rgba(0,0,0,0.1);
+    }
+    
+    .sidebar-header h4 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .sidebar-header .subtitle {
+        font-size: 0.85rem;
+        opacity: 0.8;
+        margin-top: 5px;
+    }
+    
+    /* Sidebar Navigation */
+    .sidebar-section {
+        padding: 15px 20px 5px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: rgba(255,255,255,0.7);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        margin-bottom: 10px;
+    }
+    
+    .sidebar-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 20px 0;
+    }
+    
+    .sidebar-menu li {
+        margin: 0;
+    }
+    
+    .sidebar-menu a {
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        color: rgba(255,255,255,0.9);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+    }
+    
+    .sidebar-menu a:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        border-left-color: rgba(255,255,255,0.5);
+        text-decoration: none;
+    }
+    
+    .sidebar-menu a.active {
+        background: rgba(255,255,255,0.15);
+        color: white;
+        border-left-color: #ffc107;
+        font-weight: 500;
+    }
+    
+    .sidebar-menu i {
+        width: 20px;
+        margin-right: 12px;
+        text-align: center;
+        font-size: 16px;
+    }
+    
+    /* Content Sections */
+    .content-section {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .content-section.active {
+        display: block;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Dashboard Cards */
+    .stats-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: none;
+        margin-bottom: 20px;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .stats-card .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 8px;
+    }
+    
+    .stats-card .metric-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        opacity: 0.8;
+    }
+    
+    .stats-card i {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        opacity: 0.8;
+    }
+    
+    /* Enhanced styles for clickable metric cards */
+    .clickable-metric {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .clickable-metric::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .clickable-metric:hover::before {
+        left: 100%;
+    }
+    
+    .clickable-metric:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+    }
+    
+    .clickable-metric:active {
+        transform: translateY(-5px) scale(1.01);
+        transition: all 0.1s ease;
+    }
+    
+    /* Add a subtle click indicator */
+    .clickable-metric::after {
+        content: '👆';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 12px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .clickable-metric:hover::after {
+        opacity: 0.6;
+    }
+    
+    /* Clickable QC Test Cards */
+    .clickable-card {
+        position: relative;
+        cursor: pointer !important;
+        user-select: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    .clickable-card:hover {
+        transform: translateY(-8px) scale(1.02) !important;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.2) !important;
+    }
+    
+    .clickable-card:active {
+        transform: translateY(-5px) scale(1.01) !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+    }
+    
+    .clickable-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        border-radius: 15px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+    
+    .clickable-card:hover::before {
+        opacity: 1;
+    }
+    
+    .clickable-card .metric-label small {
+        opacity: 0.7;
+        font-size: 0.75rem;
+        font-style: italic;
+    }
+    
+    /* Charts */
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        position: relative;
+        height: 400px;
+    }
+    
+    .chart-container h5 {
+        margin-bottom: 20px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .chart-container canvas {
+        max-height: 300px;
+    }
+    
+    /* Tables */
+    .table-container {
+        background: white;
+        border-radius: 15px;
+        padding: 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    
+    .table-container .table {
+        margin: 0;
+        border-radius: 15px;
+    }
+    
+    .table-container .table thead {
+        background-color: #0056b3;
+        color: white;
+    }
+    
+    .table-container .table thead th {
+        border: none;
+        padding: 15px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .table-container .table tbody td {
+        padding: 12px 15px;
+        border-top: 1px solid #eee;
+        vertical-align: middle;
+    }
+    
+    .table-container .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    /* Section Headers */
+    .section-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 10px;
+    }
+    
+    .section-subtitle {
+        color: #666;
+        margin-bottom: 30px;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .admin-sidebar {
+            transform: translateX(-100%);
+            position: fixed;
+            z-index: 1000;
+            height: calc(100vh - 56px);
+            top: 56px;
+        }
+        
+        .admin-sidebar.active {
+            transform: translateX(0);
+        }
+        
+        .admin-content {
+            margin-left: 0;
+            width: 100%;
+            height: calc(100vh - 56px);
+        }
+        
+        .admin-dashboard {
+            overflow: visible; /* Allow mobile scrolling */
+        }
+        
+        .mobile-toggle {
+            display: block;
+            position: fixed;
+            top: 70px;
+            left: 15px;
+            z-index: 1001;
+            background: #0056b3;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    }
+    
+    .mobile-toggle {
+        display: none;
+    }
+    
+    /* Badges and Status */
+    .badge {
+        font-size: 0.75rem;
+        padding: 5px 10px;
+        border-radius: 20px;
+    }
+    
+    /* Notification Badges */
+    .notification-badge, .overrun-badge {
+        background-color: #dc3545;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 8px;
+        min-width: 18px;
+        text-align: center;
+        display: inline-block;
+        animation: pulse 2s infinite;
+    }
+    
+    .notification-badge:empty, .overrun-badge:empty {
+        display: none;
+    }
+    
+    .notification-badge {
+        background-color: #ff6b6b;
+    }
+    
+    .overrun-badge {
+        background-color: #ff9f43;
+    }
+    
+    /* Progress bars */
+    .progress {
+        height: 8px;
+        border-radius: 10px;
+        background-color: #e9ecef;
+    }
+    
+    .progress-bar {
+        border-radius: 10px;
+    }
+    
+    /* Action buttons */
+    .btn-action {
+        padding: 5px 12px;
+        font-size: 0.8rem;
+        border-radius: 20px;
+        margin: 2px;
+    }
+    
+    /* Export buttons */
+    .export-btn {
+        margin: 5px;
+        border-radius: 25px;
+        padding: 8px 20px;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <!-- Mobile Toggle Button -->
+    <button class="mobile-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Fixed Sidebar -->
+    <nav class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-content">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <h4>Admin Control Center</h4>
+                <div class="subtitle">Pharmaceutical Operations</div>
+            </div>
+            
+            <!-- Dashboard Overview Section -->
+            <div class="sidebar-section">Overview</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="#" data-section="dashboard-overview" class="section-link active" id="dashboard-overview-link">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard Overview
+                </a>
+            </li>
+            <li>
+                <a href="#" data-section="analytics-section" class="section-link" id="analytics-section-link">
+                    <i class="fas fa-chart-line"></i> Analytics & Metrics
+                </a>
+            </li>
+        </ul>
+        
+        <!-- Production Management Section -->
+        {% has_dashboard_permission user 'bmr_tracking' as can_access_bmr_tracking %}
+        {% has_dashboard_permission user 'live_tracking' as can_access_live_tracking %}
+        {% has_dashboard_permission user 'analytics_metrics' as can_access_analytics %}
+        {% has_dashboard_permission user 'machine_management' as can_access_machine_mgmt %}
+        {% has_dashboard_permission user 'quality_control' as can_access_quality_control %}
+        {% has_dashboard_permission user 'inventory' as can_access_inventory %}
+        
+        {% if can_access_bmr_tracking or can_access_live_tracking or can_access_analytics or can_access_machine_mgmt or can_access_quality_control or can_access_inventory %}
+        <div class="sidebar-section">Production Management</div>
+        <ul class="sidebar-menu">
+            {% if can_access_bmr_tracking %}
+            <li>
+                <a href="#" data-section="bmr-tracking" class="section-link" id="bmr-tracking-link">
+                    <i class="fas fa-clipboard-list"></i> BMR Timeline Tracking
+                </a>
+            </li>
+            {% endif %}
+            {% if can_access_live_tracking %}
+            <li>
+                <a href="#" data-section="live-tracking" class="section-link" id="live-tracking-link">
+                    <i class="fas fa-broadcast-tower"></i> Live BMR Tracking
+                </a>
+            </li>
+            {% endif %}
+            <li>
+                <a href="#" data-section="active-phases" class="section-link" id="active-phases-link">
+                    <i class="fas fa-play-circle"></i> Active Phases Monitor
+                </a>
+            </li>
+            <li>
+                <a href="#" data-section="work-in-progress" class="section-link" id="work-in-progress-link">
+                    <i class="fas fa-industry"></i> Work in Progress
+                </a>
+            </li>
+            {% if can_access_machine_mgmt %}
+            <li>
+                <a href="/dashboard/machine-management/" id="machine-mgmt-link">
+                    <i class="fas fa-cogs"></i> Machine Management
+                </a>
+            </li>
+            {% endif %}
+            {% if can_access_quality_control %}
+            <li>
+                <a href="/dashboard/quality-control/" id="quality-control-link">
+                    <i class="fas fa-microscope"></i> Quality Control
+                </a>
+            </li>
+            {% endif %}
+            {% if can_access_inventory %}
+            <li>
+                <a href="/dashboard/inventory/" id="inventory-link">
+                    <i class="fas fa-boxes"></i> Inventory & FGS
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        {% endif %}
+        
+        <!-- Quarantine Tracking Section -->
+        {% has_dashboard_permission user 'quarantine_tracking' as can_access_quarantine %}
+        
+        {% if can_access_quarantine %}
+        <div class="sidebar-section">Quarantine Tracking</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="/quarantine/" id="recent-quarantines-link">
+                    <i class="fas fa-vials"></i> Recent Quarantines
+                </a>
+            </li>
+        </ul>
+        {% endif %}
+        
+        <!-- Notifications & Alerts Section -->
+        {% has_dashboard_permission user 'phase_notifications' as can_access_notifications %}
+        
+        {% if can_access_notifications %}
+        <div class="sidebar-section">Notifications & Alerts</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{% url 'dashboards:phase_notifications' %}">
+                    <i class="fas fa-clock"></i> Phase Timing Alerts
+                </a>
+            </li>
+        </ul>
+        {% endif %}
+        
+        <!-- System Administration Section -->
+        {% has_dashboard_permission user 'user_management' as can_access_user_mgmt %}
+        {% has_dashboard_permission user 'system_health' as can_access_system_health %}
+        {% has_dashboard_permission user 'system_logs' as can_access_system_logs %}
+        
+        {% if can_access_user_mgmt or can_access_system_health or can_access_system_logs %}
+        <div class="sidebar-section">System Administration</div>
+        <ul class="sidebar-menu">
+            {% if can_access_user_mgmt %}
+            <li>
+                <a href="/dashboard/user-management/" id="user-mgmt-link">
+                    <i class="fas fa-users"></i> User Management
+                </a>
+            </li>
+            {% endif %}
+            {% if can_access_system_health %}
+            <li>
+                <a href="/dashboard/system-health/" id="system-health-link">
+                    <i class="fas fa-heartbeat"></i> System Health
+                </a>
+            </li>
+            {% endif %}
+            {% if can_access_system_logs %}
+            <li>
+                <a href="{% url 'dashboards:system_logs' %}" id="system-logs-link">
+                    <i class="fas fa-file-alt"></i> System Logs
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        {% endif %}
+        </div> <!-- End .sidebar-content -->
+    </nav>
+    
+    <!-- Main Content Area -->
+    <main class="admin-content">
+        <!-- Dashboard Overview Section -->
+        <div class="content-section active" id="dashboard-overview">
+            <div class="mb-4">
+                <h1 class="section-title">Dashboard Overview</h1>
+                <p class="section-subtitle">Kampala Pharmaceutical Industries - Operations Overview</p>
+            </div>
+            
+            <!-- Key Metrics Cards -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white clickable-metric" data-target="bmr-tracking" style="cursor: pointer;">
+                        <i class="fas fa-clipboard-list"></i>
+                        <div class="metric-value">{{ total_bmrs|default:0 }}</div>
+                        <div class="metric-label">Total BMRs</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark clickable-metric" data-target="active-phases" data-filter="active" style="cursor: pointer;">
+                        <i class="fas fa-play-circle"></i>
+                        <div class="metric-value">{{ active_batches|default:0 }}</div>
+                        <div class="metric-label">Active Batches</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white clickable-metric" data-target="work-in-progress" data-filter="completed" style="cursor: pointer;">
+                        <i class="fas fa-check-circle"></i>
+                        <div class="metric-value">{{ completed_batches|default:0 }}</div>
+                        <div class="metric-label">Completed Batches</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-danger text-white clickable-metric" data-target="work-in-progress" data-filter="rejected" style="cursor: pointer;">
+                        <i class="fas fa-times-circle"></i>
+                        <div class="metric-value">{{ rejected_batches|default:0 }}</div>
+                        <div class="metric-label">Rejected Batches</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="row mb-4">
+                <div class="col-lg-6 mb-4">
+                    <div class="chart-container">
+                        <h5>Product Distribution</h5>
+                        <canvas id="productChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4">
+                    <div class="chart-container">
+                        <h5>Phase Status Overview</h5>
+                        <canvas id="phaseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent BMRs Table -->
+            <div class="table-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Batch Number</th>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Created Date</th>
+                            <th>Cycle Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bmr in recent_bmrs %}
+                        <tr>
+                            <td><strong>{{ bmr.batch_number }}</strong></td>
+                            <td>{{ bmr.product.product_name }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if bmr.status == 'completed' %}bg-success
+                                    {% elif bmr.status == 'approved' %}bg-primary
+                                    {% elif bmr.status == 'rejected' %}bg-danger
+                                    {% else %}bg-warning{% endif %}">
+                                    {{ bmr.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: {{ bmr.progress_percentage|default:0 }}%"></div>
+                                </div>
+                            </td>
+                            <td>{{ bmr.created_date|date:"M d, Y" }}</td>
+                            <td>{{ bmr.cycle_time_days|default:"N/A" }} days</td>
+                            <td>
+                                <a href="{% url 'bmr:detail' bmr.id %}" class="btn btn-sm btn-outline-primary btn-action">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No BMRs found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Analytics & Metrics Section -->
+        <div class="content-section" id="analytics-section">
+            <div class="mb-4">
+                <h1 class="section-title">Analytics & Metrics</h1>
+                <p class="section-subtitle">Detailed analytics and performance metrics</p>
+            </div>
+            
+            <!-- Month Selection Controls -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Monthly Production Analytics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label for="month" class="form-label">Select Month:</label>
+                                    <select class="form-select" name="month" id="month">
+                                        <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
+                                        <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
+                                        <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
+                                        <option value="4" {% if selected_month == 4 %}selected{% endif %}>April</option>
+                                        <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
+                                        <option value="6" {% if selected_month == 6 %}selected{% endif %}>June</option>
+                                        <option value="7" {% if selected_month == 7 %}selected{% endif %}>July</option>
+                                        <option value="8" {% if selected_month == 8 %}selected{% endif %}>August</option>
+                                        <option value="9" {% if selected_month == 9 %}selected{% endif %}>September</option>
+                                        <option value="10" {% if selected_month == 10 %}selected{% endif %}>October</option>
+                                        <option value="11" {% if selected_month == 11 %}selected{% endif %}>November</option>
+                                        <option value="12" {% if selected_month == 12 %}selected{% endif %}>December</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="year" class="form-label">Select Year:</label>
+                                    <select class="form-select" name="year" id="year">
+                                        <option value="2023" {% if selected_year == 2023 %}selected{% endif %}>2023</option>
+                                        <option value="2024" {% if selected_year == 2024 %}selected{% endif %}>2024</option>
+                                        <option value="2025" {% if selected_year == 2025 %}selected{% endif %}>2025</option>
+                                        <option value="2026" {% if selected_year == 2026 %}selected{% endif %}>2026</option>
+                                        <option value="2027" {% if selected_year == 2027 %}selected{% endif %}>2027</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-primary" id="viewAnalyticsBtn">
+                                        <i class="fas fa-search"></i> View Analytics
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-success" onclick="exportToExcel()">
+                                        <i class="fas fa-file-excel"></i> Export to Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Production Overview -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white">
+                        <div class="metric-value" id="total-batches-metric">{{ selected_month_analytics.total_batches_completed|default:0 }}</div>
+                        <div class="metric-label">Batches Completed</div>
+                        <small class="analytics-month-year">{{ selected_month_analytics.month_name }} {{ selected_month_analytics.year }}</small>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white">
+                        <div class="metric-value" id="production-efficiency-metric">{{ selected_month_analytics.production_efficiency|default:0 }}%</div>
+                        <div class="metric-label">Production Efficiency</div>
+                        <small>Completed vs Started</small>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-info text-white">
+                        <div class="metric-value" id="avg-cycle-time-metric">{{ selected_month_analytics.avg_cycle_time_days|default:0 }} days</div>
+                        <div class="metric-label">Avg Cycle Time</div>
+                        <small>BMR to FGS</small>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark">
+                        <div class="metric-value">
+                            {% for product_type, data in current_month_totals.items %}
+                                {% if forloop.first %}{{ data.units|floatformat:0 }}{% endif %}
+                            {% empty %}0{% endfor %}
+                        </div>
+                        <div class="metric-label">Total Units (Current Month)</div>
+                        <small>All product types</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Type Breakdown for Selected Month -->
+            <div class="row mb-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="fas fa-chart-pie"></i> Production by Product Type - {{ selected_month_analytics.month_name }} {{ selected_month_analytics.year }}</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="monthlyProductionChart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="fas fa-list"></i> Production Summary</h6>
+                        </div>
+                        <div class="card-body">
+                            {% if selected_month_analytics.product_breakdown %}
+                                {% for product_type, data in selected_month_analytics.product_breakdown.items %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded product-type-card" 
+                                         style="cursor: pointer; transition: all 0.3s ease;" 
+                                         data-product="{{ product_type }}"
+                                         data-batches="{{ data.batches }}"
+                                         data-total-units="{{ data.total_units|floatformat:0 }}"
+                                         onmouseover="this.style.backgroundColor='#e3f2fd'; this.style.transform='translateX(5px)';"
+                                         onmouseout="this.style.backgroundColor=''; this.style.transform='';">
+                                        <div>
+                                            <strong>{{ product_type|title }}s</strong><br>
+                                            <small class="text-muted batch-count">{{ data.batches }} batch{{ data.batches|pluralize:"es" }}</small>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="h6 mb-0 unit-count">{{ data.total_units|floatformat:0 }}</div>
+                                            <small class="text-muted">units</small>
+                                        </div>
+                                        <div class="ms-2">
+                                            <i class="fas fa-chevron-right text-muted"></i>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted text-center">No production data for selected month</p>
+                            {% endif %}
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> Click on a product type to see detailed breakdown
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Production Metrics -->
+            <div class="row mb-4">
+                <div class="col-lg-6 mb-4">
+                    <div class="chart-container">
+                        <h5>Weekly Production Trend</h5>
+                        <canvas id="weeklyTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4">
+                    <div class="chart-container">
+                        <h5>Quality Control Pass Rates</h5>
+                        <canvas id="qcPassRateChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Production for Selected Month -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="fas fa-chart-line"></i> Daily Production - {{ selected_month_analytics.month_name }} {{ selected_month_analytics.year }}</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="dailyProductionChart" width="400" height="150"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Performance Metrics -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white">
+                        <div class="metric-value">{{ machine_utilization|default:92 }}%</div>
+                        <div class="metric-label">Machine Utilization</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-info text-white">
+                        <div class="metric-value">{{ avg_production_time|default:5.2 }}</div>
+                        <div class="metric-label">Avg Cycle Time (Days)</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark">
+                        <div class="metric-value">{{ breakdowns_today|default:2 }}</div>
+                        <div class="metric-label">Breakdowns (Today)</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white">
+                        <div class="metric-value">{{ active_users_count|default:87 }}</div>
+                        <div class="metric-label">Active Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BMR Timeline Tracking Section -->
+        <div class="content-section" id="bmr-tracking">
+            <div class="mb-4">
+                <h1 class="section-title">BMR Timeline Tracking</h1>
+                <p class="section-subtitle">Complete production workflow monitoring from QA to FGS</p>
+                
+                <!-- Export Tools -->
+                <div class="mb-3">
+                    <a href="{% url 'reports:export_timeline_csv' %}" class="btn btn-success export-btn">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </a>
+                    <a href="{% url 'reports:export_timeline_excel' %}" class="btn btn-primary export-btn">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Timeline Statistics -->
+            <div class="row mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white">
+                        <div class="metric-value">{{ completed_count|default:0 }}</div>
+                        <div class="metric-label">Completed Timelines</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark">
+                        <div class="metric-value">{{ in_progress_count|default:0 }}</div>
+                        <div class="metric-label">In Progress</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-info text-white">
+                        <div class="metric-value">{{ avg_production_time|default:"N/A" }}</div>
+                        <div class="metric-label">Avg Production Time (Days)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timeline Table -->
+            <div class="table-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Batch Number</th>
+                            <th>Product Name</th>
+                            <th>Type</th>
+                            <th>Created</th>
+                            <th>Current Phase</th>
+                            <th>Cycle Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for timeline in timeline_data %}
+                        <tr>
+                            <td><strong>{{ timeline.bmr.batch_number }}</strong></td>
+                            <td>{{ timeline.bmr.product.product_name }}</td>
+                            <td>{{ timeline.bmr.product.product_type|title }}</td>
+                            <td>{{ timeline.bmr.created_date|date:"M d, Y" }}</td>
+                            <td>
+                                {% if timeline.current_phase %}
+                                    <span class="badge bg-info">{{ timeline.current_phase.phase.get_phase_name_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ timeline.total_time_days|default:"In Progress" }} {% if timeline.total_time_days %}days{% endif %}</td>
+                            <td>
+                                {% if timeline.is_completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning">In Progress</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info btn-action" onclick="viewTimeline('{{ timeline.bmr.id }}')">
+                                    <i class="fas fa-timeline"></i> Timeline
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No timeline data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Active Phases Section -->
+        <div class="content-section" id="active-phases">
+            <div class="mb-4">
+                <h1 class="section-title">Active Phases Monitor</h1>
+                <p class="section-subtitle">Real-time monitoring of ongoing production phases</p>
+            </div>
+
+            <div class="table-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Batch Number</th>
+                            <th>Product</th>
+                            <th>Current Phase</th>
+                            <th>Operator</th>
+                            <th>Started</th>
+                            <th>Duration</th>
+                            <th>Machine</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for phase in active_phases %}
+                        <tr>
+                            <td><strong>{{ phase.bmr.batch_number }}</strong></td>
+                            <td>{{ phase.bmr.product.product_name }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ phase.phase.get_phase_name_display }}</span>
+                            </td>
+                            <td>{{ phase.started_by.get_full_name|default:"N/A" }}</td>
+                            <td>{{ phase.started_date|date:"M d, H:i" }}</td>
+                            <td>{{ phase.duration_hours|default:0 }}h</td>
+                            <td>{{ phase.machine_used.name|default:"N/A" }}</td>
+                            <td>
+                                <a href="{% url 'bmr:detail' phase.bmr.id %}" class="btn btn-sm btn-outline-primary btn-action">
+                                    <i class="fas fa-eye"></i> View BMR
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No active phases at the moment</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Work in Progress Section -->
+        <div class="content-section" id="work-in-progress">
+            <div class="mb-4">
+                <h1 class="section-title">Work in Progress</h1>
+                <p class="section-subtitle">Current products in production with status and details</p>
+            </div>
+
+            <!-- Date Range Filter -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Filter Options</h5>
+                </div>
+                <div class="card-body">
+                    <form id="wip-filter-form" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="wip-start-date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="wip-start-date" name="start_date">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="wip-end-date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="wip-end-date" name="end_date">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-filter"></i> Apply Filter
+                            </button>
+                            <a href="#" class="btn btn-success" id="export-wip-excel">
+                                <i class="fas fa-file-excel"></i> Export to Excel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Batch Number</th>
+                            <th>Batch Size</th>
+                            <th>Packaging Size</th>
+                            <th>Current Status</th>
+                            <th>Started Date</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bmr in work_in_progress_bmrs %}
+                        <tr>
+                            <td><strong>{{ bmr.product.product_name }}</strong></td>
+                            <td>{{ bmr.batch_number }}</td>
+                            <td>
+                                {% if bmr.actual_batch_size %}
+                                    {{ bmr.actual_batch_size }} {{ bmr.actual_batch_size_unit }}
+                                {% else %}
+                                    {{ bmr.product.standard_batch_size }} {{ bmr.product.batch_size_unit }}
+                                {% endif %}
+                            </td>
+                            <td>{{ bmr.product.packaging_size_in_units }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ bmr.current_phase_name }}</span>
+                            </td>
+                            <td>{{ bmr.actual_start_date|date:"M d, Y" }}</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ bmr.progress_percentage }}%;" 
+                                         aria-valuenow="{{ bmr.progress_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                        {{ bmr.progress_percentage }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No work in progress at the moment</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Live BMR Tracking Section -->
+        <div class="content-section" id="live-tracking">
+            <div class="mb-4">
+                <h1 class="section-title">Live BMR Tracking</h1>
+                <p class="section-subtitle">Real-time phase-by-phase BMR tracking and production time</p>
+                
+                <!-- Control Buttons -->
+                <div class="mb-3">
+                    <button id="expandAllBMRs" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-expand-alt"></i> Expand All BMRs
+                    </button>
+                    <button id="collapseAllBMRs" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-compress-alt"></i> Collapse All BMRs
+                    </button>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-info text-white">
+                        <div class="metric-value">{{ timeline_data|length|default:0 }}</div>
+                        <div class="metric-label">Active BMRs</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white">
+                        <div class="metric-value">{{ avg_production_time|default:"N/A" }}</div>
+                        <div class="metric-label">Avg Production Time (Days)</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark">
+                        <div class="metric-value">{{ phases_completed_today|default:0 }}</div>
+                        <div class="metric-label">Phases Completed Today</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white">
+                        <div class="metric-value">{{ active_phases|length|default:0 }}</div>
+                        <div class="metric-label">Active Phases</div>
+                    </div>
+                </div>
+            </div>
+            
+            {% for timeline in timeline_data %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#bmrCollapse{{ timeline.bmr.id }}" aria-expanded="false">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">BMR {{ timeline.bmr.batch_number }} - {{ timeline.bmr.product.product_name }}</h5>
+                            <small>Created: {{ timeline.bmr.created_date|date:"Y-m-d H:i" }} | Product Type: {{ timeline.bmr.product.product_type|title }}</small>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+                <div class="collapse" id="bmrCollapse{{ timeline.bmr.id }}">
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <strong>Total Production Time:</strong>
+                            {% if timeline.phase_timeline and timeline.phase_timeline|length > 0 %}
+                                {% with first=timeline.phase_timeline.0 last=timeline.phase_timeline|last %}
+                                    {% if last.completed_date and first.started_date %}
+                                        {{ last.completed_date|timesince:first.started_date }} ago
+                                    {% else %}
+                                        In Progress (Started {{ first.started_date|timesince }} ago)
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Phase Name</th>
+                                    <th>Status</th>
+                                    <th>Started</th>
+                                    <th>Ended</th>
+                                    <th>Duration (Hours)</th>
+                                    <th>Operator</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for phase in timeline.phase_timeline %}
+                                <tr>
+                                    <td>{{ phase.phase_name }}</td>
+                                    <td>
+                                        {% if phase.status == "Completed" %}
+                                            <span class="badge bg-success">{{ phase.status }}</span>
+                                        {% elif phase.status == "In Progress" %}
+                                            <span class="badge bg-warning">{{ phase.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ phase.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if phase.started_date %}
+                                            {{ phase.started_date|date:"Y-m-d H:i" }}
+                                            <br><small class="text-muted">{{ phase.started_date|timesince }} ago</small>
+                                        {% else %}--{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if phase.completed_date %}
+                                            {{ phase.completed_date|date:"Y-m-d H:i" }}
+                                            <br><small class="text-muted">{{ phase.completed_date|timesince }} ago</small>
+                                        {% else %}--{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if phase.duration_hours %}
+                                            {{ phase.duration_hours }} hours
+                                            <br><small class="text-muted">({{ phase.duration_hours|floatformat:1|default:0 }} hrs)</small>
+                                        {% elif phase.started_date and phase.status == "In Progress" %}
+                                            {{ phase.started_date|timesince }} and counting
+                                        {% else %}--{% endif %}
+                                    </td>
+                                    <td>{{ phase.started_by|default:"--" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="alert alert-info">No BMRs found for live tracking.</div>
+            {% endfor %}
+        </div>
+        
+        <!-- Machine Management Section -->
+        <div class="content-section" id="machine-mgmt">
+            <div class="mb-4">
+                <h1 class="section-title">Machine Management</h1>
+                <p class="section-subtitle">Monitor equipment status, breakdowns, and utilization</p>
+            </div>
+            
+            <!-- Machine Statistics -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white">
+                        <div class="metric-value">{{ total_machines|default:0 }}</div>
+                        <div class="metric-label">Total Machines</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white">
+                        <div class="metric-value">{{ active_machines|default:0 }}</div>
+                        <div class="metric-label">Active Machines</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-danger text-white">
+                        <div class="metric-value">{{ breakdowns_today|default:0 }}</div>
+                        <div class="metric-label">Breakdowns Today</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark">
+                        <div class="metric-value">{{ changeovers_today|default:0 }}</div>
+                        <div class="metric-label">Changeovers Today</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Machine Details Table -->
+            <div class="table-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Machine Name</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Usage Count</th>
+                            <th>Breakdowns</th>
+                            <th>Changeovers</th>
+                            <th>Breakdown Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for machine_id, stats in machine_stats.items %}
+                        <tr>
+                            <td><strong>{{ stats.machine.name }}</strong></td>
+                            <td>{{ stats.machine.machine_type|title }}</td>
+                            <td>
+                                {% if stats.machine.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ stats.usage_count }}</td>
+                            <td>{{ stats.breakdown_count }}</td>
+                            <td>{{ stats.changeover_count }}</td>
+                            <td>{{ stats.breakdown_rate }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Quality Control Section -->
+        <div class="content-section" id="quality-control">
+            <div class="mb-4">
+                <h1 class="section-title">Quality Control Dashboard</h1>
+                <p class="section-subtitle">Monitor QC test results and quality metrics - Click cards for detailed data</p>
+            </div>
+
+            <!-- QC Stats - Clickable Cards -->
+            <div class="row mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white clickable-card" 
+                         data-bs-toggle="modal" data-bs-target="#passedTestsModal" 
+                         style="cursor: pointer; transition: transform 0.2s;"
+                         onmouseover="this.style.transform='scale(1.05)'" 
+                         onmouseout="this.style.transform='scale(1)'">
+                        <div class="metric-value">{{ qc_stats.passed_tests|default:0 }}</div>
+                        <div class="metric-label">
+                            <i class="fas fa-check-circle"></i> Passed Tests
+                            <small class="d-block mt-1">Click for details</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-danger text-white clickable-card" 
+                         data-bs-toggle="modal" data-bs-target="#failedTestsModal" 
+                         style="cursor: pointer; transition: transform 0.2s;"
+                         onmouseover="this.style.transform='scale(1.05)'" 
+                         onmouseout="this.style.transform='scale(1)'">
+                        <div class="metric-value">{{ qc_stats.failed_tests|default:0 }}</div>
+                        <div class="metric-label">
+                            <i class="fas fa-times-circle"></i> Failed Tests
+                            <small class="d-block mt-1">Click for details</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark clickable-card" 
+                         data-bs-toggle="modal" data-bs-target="#pendingTestsModal" 
+                         style="cursor: pointer; transition: transform 0.2s;"
+                         onmouseover="this.style.transform='scale(1.05)'" 
+                         onmouseout="this.style.transform='scale(1)'">
+                        <div class="metric-value">{{ qc_stats.pending_tests|default:0 }}</div>
+                        <div class="metric-label">
+                            <i class="fas fa-clock"></i> Pending Tests
+                            <small class="d-block mt-1">Click for details</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QC Test Details Summary -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-microscope"></i> Recent QC Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6 class="text-success">Latest Passed Tests</h6>
+                                    {% for test in qc_test_details.passed_tests_data|slice:":3" %}
+                                        <div class="border-start border-success border-3 ps-3 mb-2">
+                                            <strong>{{ test.bmr.batch_number }}</strong><br>
+                                            <small class="text-muted">{{ test.phase.phase_name|title }} - {{ test.completed_date|date:"M d, H:i" }}</small>
+                                        </div>
+                                    {% empty %}
+                                        <p class="text-muted">No passed tests yet</p>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-danger">Latest Failed Tests</h6>
+                                    {% for test in qc_test_details.failed_tests_data|slice:":3" %}
+                                        <div class="border-start border-danger border-3 ps-3 mb-2">
+                                            <strong>{{ test.bmr.batch_number }}</strong><br>
+                                            <small class="text-muted">{{ test.phase.phase_name|title }} - {{ test.completed_date|date:"M d, H:i" }}</small>
+                                        </div>
+                                    {% empty %}
+                                        <p class="text-muted">No failed tests</p>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-warning">Pending Tests</h6>
+                                    {% for test in qc_test_details.pending_tests_data|slice:":3" %}
+                                        <div class="border-start border-warning border-3 ps-3 mb-2">
+                                            <strong>{{ test.bmr.batch_number }}</strong><br>
+                                            <small class="text-muted">{{ test.phase.phase_name|title }} - {{ test.started_date|date:"M d, H:i" }}</small>
+                                        </div>
+                                    {% empty %}
+                                        <p class="text-muted">No pending tests</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Inventory & FGS Section -->
+        <div class="content-section" id="inventory">
+            <div class="mb-4">
+                <h1 class="section-title">Inventory & Finished Goods Storage</h1>
+                <p class="section-subtitle">Monitor raw materials and finished goods inventory</p>
+            </div>
+
+            <!-- Inventory Stats -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white">
+                        <div class="metric-value">{{ fgs_stats.total_in_store|default:"156" }}</div>
+                        <div class="metric-label">Items in FGS</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white">
+                        <div class="metric-value">{{ fgs_stats.available_for_sale|default:"89" }}</div>
+                        <div class="metric-label">Available for Sale</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark">
+                        <div class="metric-value">{{ fgs_stats.pending_storage|default:"12" }}</div>
+                        <div class="metric-label">Pending Storage</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-info text-white">
+                        <div class="metric-value">{{ fgs_stats.recent_releases|default:"5" }}</div>
+                        <div class="metric-label">Recent Releases</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- User Management Section -->
+        <div class="content-section" id="user-mgmt">
+            <div class="mb-4">
+                <h1 class="section-title">User Management</h1>
+                <p class="section-subtitle">Manage system users and access control</p>
+            </div>
+            
+            <!-- User Stats -->
+            <div class="row mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-primary text-white">
+                        <div class="metric-value">{{ total_users|default:0 }}</div>
+                        <div class="metric-label">Total Users</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white">
+                        <div class="metric-value">{{ active_users_count|default:0 }}</div>
+                        <div class="metric-label">Active Users</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="stats-card bg-info text-white">
+                        <div class="metric-value">{{ productivity_metrics.total_operators|default:0 }}</div>
+                        <div class="metric-label">Operators</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Recent Users</h5>
+                <a href="/admin/accounts/customuser/" class="btn btn-primary">
+                    <i class="fas fa-users-cog"></i> Manage Users
+                </a>
+            </div>
+            
+            <!-- Recent Users Table -->
+            <div class="table-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Last Login</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in recent_users %}
+                        <tr>
+                            <td><strong>{{ user.get_full_name }}</strong></td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.get_role_display }}</td>
+                            <td>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</td>
+                            <td>
+                                {% if user.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No users found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- System Health Section -->
+        <div class="content-section" id="system-health">
+            <div class="mb-4">
+                <h1 class="section-title">System Health</h1>
+                <p class="section-subtitle">Monitor system performance and alerts</p>
+            </div>
+            
+            <!-- System Health Stats -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-warning text-dark">
+                        <div class="metric-value">{{ pending_approvals|default:0 }}</div>
+                        <div class="metric-label">Pending Approvals</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-danger text-white">
+                        <div class="metric-value">{{ failed_phases|default:0 }}</div>
+                        <div class="metric-label">Failed Phases (Today)</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-info text-white">
+                        <div class="metric-value">{{ production_stats.quality_hold|default:0 }}</div>
+                        <div class="metric-label">Quality Hold</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="stats-card bg-success text-white">
+                        <div class="metric-value">{{ production_stats.in_fgs|default:0 }}</div>
+                        <div class="metric-label">In FGS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ========== UNIFIED ADMIN DASHBOARD JAVASCRIPT ==========
+
+// Function to scroll to specific sections when metric cards are clicked
+function scrollToSection(sectionId, filter = null) {
+    const targetElement = document.getElementById(sectionId);
+    if (targetElement) {
+        // Smooth scroll to the target section
+        targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+        });
+        
+        // Add highlight animation to show the user where they scrolled
+        targetElement.style.transition = 'background-color 0.3s ease';
+        targetElement.style.backgroundColor = '#f8f9fa';
+        setTimeout(() => {
+            targetElement.style.backgroundColor = '';
+        }, 2000);
+        
+        // If there's a filter, actually hide/show content based on filter
+        if (filter) {
+            filterContent(targetElement, filter);
+        }
+    }
+}
+
+// Function to filter content based on status
+function filterContent(targetElement, filter) {
+    // Find all BMR/batch cards in the target section
+    const cards = targetElement.querySelectorAll('.card, .bmr-card, .batch-card, tr');
+    let visibleCount = 0;
+    
+    cards.forEach(card => {
+        const cardText = card.textContent.toLowerCase();
+        let shouldShow = false;
+        
+        switch(filter) {
+            case 'completed':
+                shouldShow = cardText.includes('completed') || cardText.includes('success') || cardText.includes('approved');
+                break;
+            case 'rejected':
+                shouldShow = cardText.includes('rejected') || cardText.includes('failed') || cardText.includes('error');
+                break;
+            case 'active':
+                shouldShow = cardText.includes('in progress') || cardText.includes('active') || cardText.includes('pending');
+                break;
+            default:
+                shouldShow = true;
+        }
+        
+        if (shouldShow) {
+            card.style.display = '';
+            visibleCount++;
+            // Add highlight to filtered items
+            card.style.transition = 'all 0.3s ease';
+            card.style.backgroundColor = '#f8f9fa';
+            card.style.border = '2px solid #007bff';
+            setTimeout(() => {
+                card.style.backgroundColor = '';
+                card.style.border = '';
+            }, 3000);
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Add a filter indicator
+    addFilterIndicator(targetElement, filter, visibleCount);
+}
+
+// Function to add filter indicator
+function addFilterIndicator(targetElement, filter, count) {
+    // Remove existing filter indicator
+    const existingIndicator = targetElement.querySelector('.filter-indicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+    
+    // Create new filter indicator
+    const indicator = document.createElement('div');
+    indicator.className = 'filter-indicator alert alert-info';
+    indicator.innerHTML = `
+        <i class="fas fa-filter"></i> 
+        Showing ${count} ${filter} items
+        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="clearFilter('${targetElement.id}')">
+            <i class="fas fa-times"></i> Clear Filter
+        </button>
+    `;
+    
+    // Insert at the beginning of the section
+    targetElement.insertBefore(indicator, targetElement.firstChild);
+}
+
+// Function to clear filters
+function clearFilter(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section) {
+        // Show all hidden items
+        const cards = section.querySelectorAll('.card, .bmr-card, .batch-card, tr');
+        cards.forEach(card => {
+            card.style.display = '';
+            card.style.backgroundColor = '';
+            card.style.border = '';
+        });
+        
+        // Remove filter indicator
+        const indicator = section.querySelector('.filter-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+}
+
+// Helper function to destroy all charts
+function destroyAllCharts() {
+    // Get all canvas elements
+    const canvases = document.querySelectorAll('canvas');
+    
+    // Destroy any charts associated with these canvases
+    canvases.forEach(canvas => {
+        const chart = Chart.getChart(canvas);
+        if (chart) {
+            chart.destroy();
+        }
+    });
+    
+    // Scroll to top of content area
+    const contentArea = document.querySelector('.admin-content');
+    if (contentArea) {
+        contentArea.scrollTop = 0;
+    }
+}
+
+// Navigation Function
+// Section Toggling Function - Don't call directly, use event listeners
+function showSection(sectionId, clickedElement) {
+    // Get all sections and links
+    const allSections = document.querySelectorAll('.content-section');
+    const allLinks = document.querySelectorAll('.section-link');
+    const targetSection = document.getElementById(sectionId);
+    
+    if (!targetSection) {
+        alert(`Error: Section "${sectionId}" not found. Please contact system administrator.`);
+        return;
+    }
+    
+    // Destroy any existing charts to prevent conflicts
+    destroyAllCharts();
+    
+    // Hide all content sections first
+    allSections.forEach(section => {
+        section.style.display = 'none';
+        section.classList.remove('active');
+    });
+    
+    // Remove active class from all sidebar links
+    allLinks.forEach(link => {
+        link.classList.remove('active');
+    });
+    
+    // Show selected section - use !important to override any CSS
+    targetSection.style.setProperty('display', 'block', 'important');
+    targetSection.classList.add('active');
+    
+    // Add active class to clicked link
+    if (clickedElement) {
+        clickedElement.classList.add('active');
+    }
+    
+    // Re-initialize charts if showing specific sections
+    if (sectionId === 'dashboard-overview') {
+        setTimeout(initCharts, 100);
+    } else if (sectionId === 'analytics-section') {
+        setTimeout(initAnalyticsCharts, 100);
+    }
+}
+
+// Mobile sidebar toggle
+function toggleSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    sidebar.classList.toggle('active');
+}
+
+// Chart Initialization
+function initCharts() {
+    // Product Distribution Chart
+    const productCtx = document.getElementById('productChart');
+    if (productCtx) {
+        // Check if a chart instance already exists and destroy it
+        const existingChart = Chart.getChart(productCtx);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+        
+        new Chart(productCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Tablets', 'Capsules', 'Ointments'],
+                datasets: [{
+                    data: [{{ tablet_count|default:0 }}, {{ capsule_count|default:0 }}, {{ ointment_count|default:0 }}],
+                    backgroundColor: ['#007bff', '#28a745', '#ffc107'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    // Phase Status Chart
+    const phaseCtx = document.getElementById('phaseChart');
+    if (phaseCtx) {
+        // Check if a chart instance already exists and destroy it
+        const existingPhaseChart = Chart.getChart(phaseCtx);
+        if (existingPhaseChart) {
+            existingPhaseChart.destroy();
+        }
+        
+        new Chart(phaseCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Mixing', 'Granulation', 'Compression', 'Packing'],
+                datasets: [{
+                    label: 'Completed',
+                    data: [{{ mixing_completed|default:0 }}, {{ granulation_completed|default:0 }}, {{ compression_completed|default:0 }}, {{ packing_completed|default:0 }}],
+                    backgroundColor: '#28a745',
+                    maxBarThickness: 50
+                }, {
+                    label: 'In Progress',
+                    data: [{{ mixing_inprogress|default:0 }}, {{ granulation_inprogress|default:0 }}, {{ compression_inprogress|default:0 }}, {{ packing_inprogress|default:0 }}],
+                    backgroundColor: '#fa709a',
+                    maxBarThickness: 50
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 20,
+                        ticks: {
+                            stepSize: 2
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Analytics Charts
+function initAnalyticsCharts() {
+    // Weekly Production Trend Chart
+    const weeklyTrendCtx = document.getElementById('weeklyTrendChart');
+    if (weeklyTrendCtx) {
+        // Check if a chart instance already exists and destroy it
+        const existingTrendChart = Chart.getChart(weeklyTrendCtx);
+        if (existingTrendChart) {
+            existingTrendChart.destroy();
+        }
+        
+        new Chart(weeklyTrendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Production Volume',
+                    data: [
+                        {% if selected_month_analytics.weekly_production %}
+                            {{ selected_month_analytics.weekly_production.0|default:0 }},
+                            {{ selected_month_analytics.weekly_production.1|default:0 }},
+                            {{ selected_month_analytics.weekly_production.2|default:0 }},
+                            {{ selected_month_analytics.weekly_production.3|default:0 }}
+                        {% else %}
+                            0, 0, 0, 0
+                        {% endif %}
+                    ],
+                    borderColor: '#0056b3',
+                    backgroundColor: 'rgba(0,86,179,0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // QC Pass Rate Chart
+    const qcPassRateCtx = document.getElementById('qcPassRateChart');
+    if (qcPassRateCtx) {
+        // Check if a chart instance already exists and destroy it
+        const existingQCChart = Chart.getChart(qcPassRateCtx);
+        if (existingQCChart) {
+            existingQCChart.destroy();
+        }
+        
+        new Chart(qcPassRateCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Passed', 'Failed', 'Pending'],
+                datasets: [{
+                    data: [{{ qc_stats.passed_tests|default:85 }}, {{ qc_stats.failed_tests|default:8 }}, {{ qc_stats.pending_tests|default:7 }}],
+                    backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Monthly Production Chart (Product Type Breakdown)
+    const monthlyProductionCtx = document.getElementById('monthlyProductionChart');
+    if (monthlyProductionCtx) {
+        const existingMonthlyChart = Chart.getChart(monthlyProductionCtx);
+        if (existingMonthlyChart) {
+            existingMonthlyChart.destroy();
+        }
+        
+        // Prepare data from Django context
+        const productLabels = [];
+        const productData = [];
+        const productColors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8'];
+        
+        {% if selected_month_analytics.product_breakdown %}
+            {% for product_type, data in selected_month_analytics.product_breakdown.items %}
+                productLabels.push('{{ product_type|title }}s');
+                productData.push({{ data.batches|default:0 }});
+            {% endfor %}
+        {% endif %}
+        
+        new Chart(monthlyProductionCtx, {
+            type: 'pie',
+            data: {
+                labels: productLabels,
+                datasets: [{
+                    data: productData,
+                    backgroundColor: productColors.slice(0, productData.length),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} batches (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Daily Production Chart for Selected Month
+    const dailyProductionCtx = document.getElementById('dailyProductionChart');
+    if (dailyProductionCtx) {
+        const existingDailyChart = Chart.getChart(dailyProductionCtx);
+        if (existingDailyChart) {
+            existingDailyChart.destroy();
+        }
+        
+        // Prepare daily data from Django context
+        const dailyLabels = [];
+        const dailyData = [];
+        
+        {% for daily_item in selected_month_analytics.daily_production %}
+            dailyLabels.push('{{ daily_item.day }}');
+            dailyData.push({{ daily_item.count|default:0 }});
+        {% endfor %}
+        
+        new Chart(dailyProductionCtx, {
+            type: 'bar',
+            data: {
+                labels: dailyLabels,
+                datasets: [{
+                    label: 'Batches Completed',
+                    data: dailyData,
+                    backgroundColor: 'rgba(0, 123, 255, 0.6)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Day of Month'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Batches'
+                        },
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return `Day ${context[0].label} - {{ selected_month_analytics.month_name }} {{ selected_month_analytics.year }}`;
+                            },
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                return `${value} batch${value !== 1 ? 'es' : ''} completed`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Utility Functions
+function viewTimeline(bmrId) {
+    window.open(`/reports/timeline/${bmrId}/`, '_blank');
+}
+
+function filterBMRTable() {
+    // BMR table filtering logic would go here
+}
+
+function exportToExcel() {
+    // Get selected month and year values
+    const month = document.getElementById('month').value;
+    const year = document.getElementById('year').value;
+    
+    // Create export URL with parameters
+    const exportUrl = `{% url 'dashboards:export_monthly_production_excel' %}?month=${month}&year=${year}`;
+    
+    // Show loading indicator
+    const exportBtn = document.querySelector('button[onclick="exportToExcel()"]');
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Excel...';
+    exportBtn.disabled = true;
+    
+    // Create temporary link to trigger download
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = `KPI_Production_Report_${getMonthName(month)}_${year}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Reset button after a short delay
+    setTimeout(() => {
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+    }, 2000);
+}
+
+function getMonthName(monthNumber) {
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[monthNumber - 1];
+}
+
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Use event delegation for better reliability
+    document.addEventListener('click', function(e) {
+        // Check if the clicked element is a section link
+        const sectionLink = e.target.closest('.section-link');
+        if (sectionLink) {
+            e.preventDefault();
+            const sectionId = sectionLink.getAttribute('data-section');
+            
+            if (sectionId) {
+                showSection(sectionId, sectionLink);
+                
+                // Update URL with section parameter
+                const url = new URL(window.location);
+                url.searchParams.set('section', sectionId);
+                window.history.pushState({}, '', url);
+            }
+            return false;
+        }
+        
+        // Check if the clicked element is a clickable metric card
+        const metricCard = e.target.closest('.clickable-metric');
+        if (metricCard) {
+            e.preventDefault();
+            const targetSection = metricCard.getAttribute('data-target');
+            const filter = metricCard.getAttribute('data-filter');
+            
+            if (targetSection) {
+                console.log('Metric card clicked:', targetSection, filter);
+                scrollToSection(targetSection, filter);
+            }
+            return false;
+        }
+    });
+    
+    // Check URL for section parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const sectionParam = urlParams.get('section');
+    
+    if (sectionParam === 'analytics-section') {
+        // Force show analytics section
+        const analyticsLink = document.getElementById('analytics-section-link');
+        if (analyticsLink) {
+            showSection('analytics-section', analyticsLink);
+            // Charts will be initialized by showSection function
+        }
+    } else if (sectionParam) {
+        // Handle other sections
+        const sectionLink = document.querySelector(`[data-section="${sectionParam}"]`);
+        if (sectionLink) {
+            showSection(sectionParam, sectionLink);
+        } else {
+            showSection('dashboard-overview', document.getElementById('dashboard-overview-link'));
+        }
+    } else {
+        // Show dashboard-overview section by default
+        showSection('dashboard-overview', document.getElementById('dashboard-overview-link'));
+    }
+    
+    // Toggle individual BMR cards when header is clicked
+    const bmrHeaders = document.querySelectorAll('.card-header[data-bs-toggle="collapse"]');
+    bmrHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const chevron = this.querySelector('.fa-chevron-down');
+            chevron.classList.toggle('fa-rotate-180');
+        });
+    });
+    
+    // Expand All BMRs
+    document.getElementById('expandAllBMRs')?.addEventListener('click', function() {
+        const collapses = document.querySelectorAll('.collapse[id^="bmrCollapse"]');
+        collapses.forEach(collapse => {
+            const bsCollapse = new bootstrap.Collapse(collapse, { toggle: false });
+            bsCollapse.show();
+            
+            // Rotate all chevrons
+            const chevron = collapse.previousElementSibling.querySelector('.fa-chevron-down');
+            chevron.classList.add('fa-rotate-180');
+        });
+    });
+    
+    // Collapse All BMRs
+    document.getElementById('collapseAllBMRs')?.addEventListener('click', function() {
+        const collapses = document.querySelectorAll('.collapse[id^="bmrCollapse"]');
+        collapses.forEach(collapse => {
+            const bsCollapse = new bootstrap.Collapse(collapse, { toggle: false });
+            bsCollapse.hide();
+            
+            // Reset all chevrons
+            const chevron = collapse.previousElementSibling.querySelector('.fa-chevron-down');
+            chevron.classList.remove('fa-rotate-180');
+        });
+    });
+    
+    // Work in Progress Export functionality
+    document.getElementById('export-wip-excel')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Get filter values
+        const startDate = document.getElementById('wip-start-date').value;
+        const endDate = document.getElementById('wip-end-date').value;
+        
+        // Build export URL with filters
+        let exportUrl = '/dashboard/export-wip/?format=excel';
+        if (startDate) {
+            exportUrl += '&start_date=' + encodeURIComponent(startDate);
+        }
+        if (endDate) {
+            exportUrl += '&end_date=' + encodeURIComponent(endDate);
+        }
+        
+        // Redirect to export URL
+        window.location.href = exportUrl;
+    });
+    
+    // Apply filter on form submission
+    document.getElementById('wip-filter-form')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get filter values
+        const startDate = document.getElementById('wip-start-date').value;
+        const endDate = document.getElementById('wip-end-date').value;
+        
+        // Build filter URL
+        let filterUrl = '/dashboard/admin-overview/?section=work-in-progress';
+        if (startDate) {
+            filterUrl += '&start_date=' + encodeURIComponent(startDate);
+        }
+        if (endDate) {
+            filterUrl += '&end_date=' + encodeURIComponent(endDate);
+        }
+        
+        // Redirect to filtered view
+        window.location.href = filterUrl;
+    });
+});
+
+// ========== ANALYTICS SECTION HANDLERS ==========
+
+// Handle View Analytics button click
+document.addEventListener('DOMContentLoaded', function() {
+    const viewAnalyticsBtn = document.getElementById('viewAnalyticsBtn');
+    if (viewAnalyticsBtn) {
+        viewAnalyticsBtn.addEventListener('click', function() {
+            const month = document.getElementById('month').value;
+            const year = document.getElementById('year').value;
+            
+            // Create URL with month, year, and section parameters
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('month', month);
+            currentUrl.searchParams.set('year', year);
+            currentUrl.searchParams.set('section', 'analytics-section');
+            
+            // Navigate to reload with new parameters - Django will handle the data
+            window.location.href = currentUrl.toString();
+        });
+    }
+});
+
+// ========== PRODUCT DETAILS MODAL FUNCTIONS ==========
+
+// Add click event listeners to product type cards
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners to all product type cards
+    function attachProductCardListeners() {
+        const productCards = document.querySelectorAll('.product-type-card');
+        
+        productCards.forEach(card => {
+            card.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const productType = this.getAttribute('data-product');
+                const batches = parseInt(this.getAttribute('data-batches'));
+                const totalUnits = parseInt(this.getAttribute('data-total-units'));
+                
+                showProductDetails(productType, batches, totalUnits);
+            });
+            
+            // Add visual feedback for clickability
+            card.style.cursor = 'pointer';
+        });
+    }
+    
+    // Initial attachment
+    attachProductCardListeners();
+    
+    // Re-attach listeners when month/year changes (since content is dynamically loaded)
+    const monthSelect = document.getElementById('month');
+    const yearSelect = document.getElementById('year');
+    
+    if (monthSelect && yearSelect) {
+        function reattachListeners() {
+            setTimeout(() => {
+                attachProductCardListeners();
+            }, 500); // Give time for content to load
+        }
+        
+        monthSelect.addEventListener('change', reattachListeners);
+        yearSelect.addEventListener('change', reattachListeners);
+    }
+});
+
+function showProductDetails(productType, batches, totalUnits) {
+    try {
+        // Get selected month and year
+        const monthElement = document.getElementById('month');
+        const yearElement = document.getElementById('year');
+        
+        if (!monthElement || !yearElement) {
+            alert('Error: Month or year selection not available.');
+            return;
+        }
+        
+        // Use the same month/year as the cards (from page context)
+        const selectedMonth = {{ selected_month }};
+        const selectedYear = {{ selected_year }};
+        
+        if (!selectedMonth || !selectedYear) {
+            alert('Please select a month and year first.');
+            return;
+        }
+        
+        // Set modal title
+        const titleElement = document.getElementById('productTypeTitle');
+        if (titleElement) {
+            titleElement.textContent = productType.charAt(0).toUpperCase() + productType.slice(1);
+        }
+        
+        // Show modal
+        const modalElement = document.getElementById('productDetailsModal');
+        if (modalElement) {
+            // Check if Bootstrap is available
+            if (typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            } else {
+                console.error('Bootstrap not loaded');
+                alert('Error: Unable to open modal. Please refresh the page.');
+                return;
+            }
+        } else {
+            console.error('Modal element not found');
+            alert('Error: Modal not available.');
+            return;
+        }
+        
+        // Reset modal state
+        showLoadingState();
+        
+        // Fetch detailed product data
+        fetchProductDetails(productType, selectedMonth, selectedYear);
+        
+    } catch (error) {
+        console.error('Error in showProductDetails:', error);
+        alert('Error opening product details: ' + error.message);
+    }
+}
+
+function showLoadingState() {
+    document.getElementById('productDetailsLoading').classList.remove('d-none');
+    document.getElementById('productDetailsError').classList.add('d-none');
+    document.getElementById('productDetailsContent').classList.add('d-none');
+}
+
+function showErrorState(message) {
+    document.getElementById('productDetailsLoading').classList.add('d-none');
+    document.getElementById('productDetailsError').classList.remove('d-none');
+    document.getElementById('productDetailsContent').classList.add('d-none');
+    document.getElementById('errorMessage').textContent = message;
+}
+
+function showContentState() {
+    document.getElementById('productDetailsLoading').classList.add('d-none');
+    document.getElementById('productDetailsError').classList.add('d-none');
+    document.getElementById('productDetailsContent').classList.remove('d-none');
+}
+
+function fetchProductDetails(productType, month, year) {
+    const url = `/dashboard/api/detailed-product-breakdown/?product_type=${productType}&month=${month}&year=${year}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            populateProductDetails(data);
+            showContentState();
+        })
+        .catch(error => {
+            console.error('Error fetching product details:', error);
+            showErrorState(error.message || 'Failed to load product details');
+        });
+}
+
+function populateProductDetails(data) {
+    // Update summary cards
+    document.getElementById('totalProducts').textContent = data.summary.total_products;
+    document.getElementById('totalBatches').textContent = data.summary.total_batches;
+    document.getElementById('totalUnits').textContent = Math.round(data.summary.total_units);
+    
+    // Populate products table
+    const tableBody = document.getElementById('productsTableBody');
+    tableBody.innerHTML = '';
+    
+    if (Object.keys(data.products).length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                    No products found for ${data.month_name} ${data.year}
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    Object.entries(data.products).forEach(([productName, productData]) => {
+        const latestBatch = productData.batches[productData.batches.length - 1];
+        
+        const row = document.createElement('tr');
+        row.style.cursor = 'pointer';
+        row.onclick = () => showBatchDetails(productName, productData);
+        row.innerHTML = `
+            <td>
+                <strong>${productName}</strong>
+                <br><small class="text-muted">Click to see batches</small>
+            </td>
+            <td>${productData.product_code}</td>
+            <td>
+                <span class="badge bg-primary">${productData.total_batches}</span>
+            </td>
+            <td>${Math.round(productData.total_units)}</td>
+            <td>${Math.round(productData.avg_batch_size)}</td>
+            <td>
+                <small class="text-muted">
+                    ${latestBatch.batch_number || 'N/A'}<br>
+                    ${latestBatch.production_date}
+                </small>
+            </td>
+        `;
+        
+        // Add hover effects
+        row.addEventListener('mouseenter', () => {
+            row.style.backgroundColor = '#f8f9fa';
+        });
+        row.addEventListener('mouseleave', () => {
+            row.style.backgroundColor = '';
+        });
+        
+        tableBody.appendChild(row);
+    });
+}
+
+function showBatchDetails(productName, productData) {
+    const container = document.getElementById('batchDetailsContainer');
+    
+    let batchesHtml = `
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-boxes"></i> ${productName} - Batch Details
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Batch Number</th>
+                                <th>Batch Size</th>
+                                <th>Production Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+    
+    productData.batches.forEach(batch => {
+        const statusBadge = batch.status === 'completed' ? 
+            '<span class="badge bg-success">Completed</span>' : 
+            `<span class="badge bg-warning">${batch.status}</span>`;
+            
+        batchesHtml += `
+            <tr>
+                <td><strong>${batch.batch_number || 'N/A'}</strong></td>
+                <td>${Math.round(batch.batch_size)}</td>
+                <td>${batch.production_date}</td>
+                <td>${statusBadge}</td>
+            </tr>
+        `;
+    });
+    
+    batchesHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = batchesHtml;
+}
+
+// Export functionality for product details
+document.addEventListener('DOMContentLoaded', function() {
+    const exportButton = document.getElementById('exportProductDetails');
+    if (exportButton) {
+        exportButton.addEventListener('click', function() {
+            console.log('Export button clicked');
+            
+            const selectedMonth = document.getElementById('month').value;
+            const selectedYear = document.getElementById('year').value;
+            const productTypeElement = document.getElementById('productTypeTitle');
+            const productType = productTypeElement ? productTypeElement.textContent.toLowerCase() : '';
+            
+            console.log('Export data - Month:', selectedMonth, 'Year:', selectedYear, 'Product Type:', productType);
+            
+            if (selectedMonth && selectedYear && productType) {
+                // Show loading state
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing Export...';
+                this.disabled = true;
+                
+                // Create export URL with product type filter
+                const exportUrl = `/dashboard/export/monthly-production-excel/?month=${selectedMonth}&year=${selectedYear}&product_type=${productType}`;
+                console.log('Export URL:', exportUrl);
+                
+                try {
+                    // Use a more reliable download method
+                    // Create a temporary link element
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = exportUrl;
+                    downloadLink.download = `KPI_${productType}_Production_${selectedMonth}_${selectedYear}.xlsx`;
+                    downloadLink.style.display = 'none';
+                    
+                    // Add to DOM, click, and remove
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    
+                    console.log('Export link clicked successfully');
+                    
+                } catch (error) {
+                    console.error('Export failed:', error);
+                    // Fallback: try window.location
+                    try {
+                        window.location.href = exportUrl;
+                    } catch (fallbackError) {
+                        console.error('Fallback export also failed:', fallbackError);
+                        alert('Export failed. Please try refreshing the page and try again.');
+                    }
+                }
+
+                
+                // Reset button after a delay
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }, 2000);
+                
+            } else {
+                // Show error message in button
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>No Data';
+                this.disabled = true;
+                
+                // Reset button after delay
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }, 2000);
+            }
+        });
+    }
+});
+
+</script>
+<!-- QC Test Detail Modals -->
+<!-- Passed Tests Modal -->
+<div class="modal fade" id="passedTestsModal" tabindex="-1" aria-labelledby="passedTestsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="passedTestsModalLabel">
+                    <i class="fas fa-check-circle"></i> Passed QC Tests ({{ qc_stats.passed_tests }} total)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% if qc_test_details.passed_tests_data %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-success">
+                                <tr>
+                                    <th>Batch Number</th>
+                                    <th>Product</th>
+                                    <th>Test Type</th>
+                                    <th>Started By</th>
+                                    <th>Completed By</th>
+                                    <th>Started Date</th>
+                                    <th>Completed Date</th>
+                                    <th>Duration</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for test in qc_test_details.passed_tests_data %}
+                                <tr>
+                                    <td><strong>{{ test.bmr.batch_number }}</strong></td>
+                                    <td>{{ test.bmr.product.product_name }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ test.phase.phase_name|title }}</span>
+                                    </td>
+                                    <td>{{ test.started_by.get_full_name|default:"N/A" }}</td>
+                                    <td>{{ test.completed_by.get_full_name|default:"N/A" }}</td>
+                                    <td>{{ test.started_date|date:"M d, Y H:i"|default:"N/A" }}</td>
+                                    <td>{{ test.completed_date|date:"M d, Y H:i"|default:"N/A" }}</td>
+                                    <td>
+                                        {% if test.started_date and test.completed_date %}
+                                            {% load dashboard_filters %}
+                                            {{ test.started_date|duration:test.completed_date }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'bmr:detail' test.bmr.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <i class="fas fa-eye"></i> View BMR
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Passed Tests Yet</h5>
+                        <p class="text-muted">QC tests that pass will appear here.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" onclick="alert('Export functionality coming soon!')">
+                    <i class="fas fa-download"></i> Export Passed Tests
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Failed Tests Modal -->
+<div class="modal fade" id="failedTestsModal" tabindex="-1" aria-labelledby="failedTestsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="failedTestsModalLabel">
+                    <i class="fas fa-times-circle"></i> Failed QC Tests ({{ qc_stats.failed_tests }} total)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% if qc_test_details.failed_tests_data %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Quality Alert:</strong> These tests require immediate attention and possible batch review.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-danger">
+                                <tr>
+                                    <th>Batch Number</th>
+                                    <th>Product</th>
+                                    <th>Test Type</th>
+                                    <th>Started By</th>
+                                    <th>Failed Date</th>
+                                    <th>Failure Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for test in qc_test_details.failed_tests_data %}
+                                <tr class="table-danger">
+                                    <td><strong>{{ test.bmr.batch_number }}</strong></td>
+                                    <td>{{ test.bmr.product.product_name }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">{{ test.phase.phase_name|title }}</span>
+                                    </td>
+                                    <td>{{ test.started_by.get_full_name|default:"N/A" }}</td>
+                                    <td>{{ test.completed_date|date:"M d, Y H:i"|default:"N/A" }}</td>
+                                    <td>{{ test.failure_reason|default:"Review required" }}</td>
+                                    <td>
+                                        <a href="{% url 'bmr:detail' test.bmr.id %}" class="btn btn-sm btn-outline-danger" target="_blank">
+                                            <i class="fas fa-eye"></i> Review BMR
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5 class="text-success">No Failed Tests</h5>
+                        <p class="text-muted">All QC tests are passing. Great job!</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" disabled title="Quality review functionality will be available in future updates">
+                    <i class="fas fa-exclamation-triangle"></i> Initiate Quality Review
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Tests Modal -->
+<div class="modal fade" id="pendingTestsModal" tabindex="-1" aria-labelledby="pendingTestsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="pendingTestsModalLabel">
+                    <i class="fas fa-clock"></i> Pending QC Tests ({{ qc_stats.pending_tests }} total)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% if qc_test_details.pending_tests_data %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-clock"></i>
+                        <strong>Action Required:</strong> These tests are currently in progress or awaiting completion.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-warning">
+                                <tr>
+                                    <th>Batch Number</th>
+                                    <th>Product</th>
+                                    <th>Test Type</th>
+                                    <th>Started By</th>
+                                    <th>Started Date</th>
+                                    <th>Duration (hrs)</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for test in qc_test_details.pending_tests_data %}
+                                <tr class="table-warning">
+                                    <td><strong>{{ test.bmr.batch_number }}</strong></td>
+                                    <td>{{ test.bmr.product.product_name }}</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">{{ test.phase.phase_name|title }}</span>
+                                    </td>
+                                    <td>{{ test.started_by.get_full_name|default:"N/A" }}</td>
+                                    <td>{{ test.started_date|date:"M d, Y H:i"|default:"N/A" }}</td>
+                                    <td>
+                                        {% if test.started_date %}
+                                            {% load dashboard_filters %}
+                                            {{ test.started_date|duration_from_now }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if test.started_date %}
+                                            {% load dashboard_filters %}
+                                            {% if test.started_date|duration_from_now_hours > 24 %}
+                                                <span class="badge bg-danger">High</span>
+                                            {% elif test.started_date|duration_from_now_hours > 8 %}
+                                                <span class="badge bg-warning">Medium</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Normal</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'bmr:detail' test.bmr.id %}" class="btn btn-sm btn-outline-warning" target="_blank">
+                                            <i class="fas fa-eye"></i> Monitor Test
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clipboard-check fa-3x text-success mb-3"></i>
+                        <h5 class="text-success">No Pending Tests</h5>
+                        <p class="text-muted">All QC tests are completed. Great work!</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" disabled title="Test monitoring dashboard will be available in future updates">
+                    <i class="fas fa-chart-line"></i> Monitor All Tests
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Details Modal -->
+<div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="productDetailsModalLabel">
+                    <i class="fas fa-boxes"></i> <span id="productTypeTitle"></span> Production Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading state -->
+                <div id="productDetailsLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading product details...</p>
+                </div>
+                
+                <!-- Error state -->
+                <div id="productDetailsError" class="text-center py-4 d-none">
+                    <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
+                    <h6>Unable to load product details</h6>
+                    <p class="text-muted" id="errorMessage">Please try again later.</p>
+                </div>
+                
+                <!-- Content -->
+                <div id="productDetailsContent" class="d-none">
+                    <!-- Summary Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0" id="totalProducts">0</h3>
+                                    <small>Different Products</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0" id="totalBatches">0</h3>
+                                    <small>Total Batches</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0" id="totalUnits">0</h3>
+                                    <small>Total Units</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Products Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>Product Code</th>
+                                    <th>Batches</th>
+                                    <th>Total Units</th>
+                                    <th>Avg Batch Size</th>
+                                    <th>Latest Batch</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody">
+                                <!-- Dynamic content will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Batch Details Section -->
+                    <div class="mt-4">
+                        <h6>
+                            <i class="fas fa-list-ul"></i> Batch Details 
+                            <small class="text-muted">(Click on a product to see batch details)</small>
+                        </h6>
+                        <div id="batchDetailsContainer" class="mt-3">
+                            <p class="text-muted text-center">Select a product to view batch details</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="exportProductDetails">
+                    <i class="fas fa-download"></i> Export to Excel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

@@ -1,0 +1,67 @@
+/* Enhanced styling for SystemTimingSettings admin */
+
+.field-setting_value input {
+    width: 120px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-weight: bold;
+    color: #2b5797;
+}
+
+.field-unit {
+    font-style: italic;
+    color: #666;
+}
+
+.field-description_short {
+    max-width: 300px;
+    font-size: 0.9em;
+}
+
+/* Setting category styling */
+.timing-category-duration {
+    border-left: 4px solid #28a745;
+}
+
+.timing-category-threshold {
+    border-left: 4px solid #ffc107;
+}
+
+.timing-category-system {
+    border-left: 4px solid #17a2b8;
+}
+
+/* Action button styling */
+.actions select option[value="reset_to_defaults"] {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.actions select option[value="validate_settings"] {
+    color: #28a745;
+    font-weight: bold;
+}
+
+/* Fieldset improvements */
+.aligned .form-row .field-setting_value {
+    margin-right: 20px;
+}
+
+/* Help text styling */
+.help {
+    font-style: italic;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* Validation status indicators */
+.setting-valid {
+    color: #28a745;
+}
+
+.setting-warning {
+    color: #ffc107;
+}
+
+.setting-error {
+    color: #dc3545;
+}

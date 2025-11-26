@@ -1,0 +1,116 @@
+{% load static %}
+<!-- Admin Settings JavaScript Variables -->
+<script type="text/javascript">
+    // Global settings variables available to all dashboard scripts
+    window.DASHBOARD_SETTINGS = {
+        autoRefresh: {{ dashboard_settings.auto_refresh|yesno:"true,false" }},
+        refreshInterval: {{ dashboard_settings.refresh_interval }}, // milliseconds
+        adminRefreshInterval: {{ dashboard_settings.admin_refresh_interval }},
+        phaseCountdownInterval: {{ dashboard_settings.phase_countdown_interval }},
+        showPhaseTimers: {{ dashboard_settings.show_phase_timers|yesno:"true,false" }},
+        enableRealTimeUpdates: {{ dashboard_settings.enable_real_time_updates|yesno:"true,false" }},
+        showAdvancedFilters: {{ dashboard_settings.show_advanced_filters|yesno:"true,false" }},
+        defaultPageSize: {{ dashboard_settings.default_page_size }},
+        mobileBreakpoint: {{ dashboard_settings.mobile_responsive_breakpoint }},
+        mobileHideSidebar: {{ dashboard_settings.mobile_hide_sidebar|yesno:"true,false" }}
+    };
+
+    window.ALERT_SETTINGS = {
+        showOverrunNotifications: {{ alert_settings.show_overrun_notifications|yesno:"true,false" }},
+        autoDismissSeconds: {{ alert_settings.auto_dismiss_seconds }},
+        maxNotificationsDisplay: {{ alert_settings.max_notifications_display }},
+        soundEnabled: {{ alert_settings.sound_enabled|yesno:"true,false" }}
+    };
+
+    window.SESSION_SETTINGS = {
+        timeoutHours: {{ session_settings.timeout_hours }},
+        warningMinutes: {{ session_settings.warning_minutes }},
+        extendOnActivity: {{ session_settings.extend_on_activity|yesno:"true,false" }}
+    };
+
+    window.PRODUCTION_LIMITS = {
+        maxConcurrentBatches: {{ production_limits.max_concurrent_batches }},
+        maxPageSize: {{ production_limits.max_page_size }},
+        maxFileUploadSizeMb: {{ production_limits.max_file_upload_size_mb }}
+    };
+
+    // Helper functions
+    window.getRefreshInterval = function(dashboardType) {
+        switch(dashboardType) {
+            case 'admin':
+                return DASHBOARD_SETTINGS.adminRefreshInterval;
+            case 'phase':
+                return DASHBOARD_SETTINGS.phaseCountdownInterval;
+            default:
+                return DASHBOARD_SETTINGS.refreshInterval;
+        }
+    };
+
+    window.shouldAutoRefresh = function() {
+        return DASHBOARD_SETTINGS.autoRefresh;
+    };
+
+    window.isMobileView = function() {
+        return window.innerWidth < DASHBOARD_SETTINGS.mobileBreakpoint;
+    };
+
+    // Universal auto-refresh function
+    window.setupAutoRefresh = function(dashboardType, refreshCallback) {
+        if (!window.shouldAutoRefresh()) {
+            return null;
+        }
+
+        var interval = window.getRefreshInterval(dashboardType);
+        return setInterval(refreshCallback, interval);
+    };
+
+    // Universal notification handler
+    window.showNotification = function(message, type, autoHide) {
+        // Implementation would depend on your notification system
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        
+        if (autoHide !== false && ALERT_SETTINGS.autoDismissSeconds > 0) {
+            setTimeout(function() {
+                // Auto-hide notification after configured time
+            }, ALERT_SETTINGS.autoDismissSeconds);
+        }
+    };
+
+    // Session timeout warning
+    window.setupSessionWarning = function() {
+        if (!SESSION_SETTINGS.warningMinutes || SESSION_SETTINGS.warningMinutes <= 0) {
+            return;
+        }
+
+        var warningMs = SESSION_SETTINGS.warningMinutes * 60 * 1000;
+        var timeoutMs = SESSION_SETTINGS.timeoutHours * 60 * 60 * 1000;
+        
+        setTimeout(function() {
+            if (confirm('Your session will expire in ' + SESSION_SETTINGS.warningMinutes + ' minutes. Do you want to extend it?')) {
+                // Extend session logic here
+                window.location.reload();
+            }
+        }, timeoutMs - warningMs);
+    };
+
+    // Initialize common dashboard features
+    document.addEventListener('DOMContentLoaded', function() {
+        // Setup session warning
+        window.setupSessionWarning();
+
+        // Handle mobile responsiveness
+        if (window.isMobileView() && DASHBOARD_SETTINGS.mobileHideSidebar) {
+            // Hide sidebar on mobile if configured
+            var sidebar = document.querySelector('.sidebar, .nav-sidebar');
+            if (sidebar) {
+                sidebar.style.display = 'none';
+            }
+        }
+
+        // Setup real-time updates if enabled
+        if (DASHBOARD_SETTINGS.enableRealTimeUpdates) {
+            // Initialize WebSocket or polling for real-time updates
+            console.log('Real-time updates enabled');
+        }
+    });
+</script>

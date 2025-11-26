@@ -1,0 +1,12 @@
+{% if has_permission %}
+<div class="col-md-6 mb-3">
+    <div class="card border-{{ color }}">
+        <div class="card-body text-center">
+            <i class="{{ icon }} fa-2x text-{{ color }} mb-2"></i>
+            <h6>{{ title }}</h6>
+            <p class="small text-muted">{{ description }}</p>
+            <a href="{% url url %}" class="btn btn-{{ color }} btn-sm">{{ title }}</a>
+        </div>
+    </div>
+</div>
+{% endif %}

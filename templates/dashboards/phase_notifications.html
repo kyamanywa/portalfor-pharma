@@ -1,0 +1,299 @@
+{% extends 'dashboards/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Phase Timing Alerts - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-card {
+        border-left: 4px solid #dc3545;
+        margin-bottom: 15px;
+    }
+    
+    .notification-card.warning {
+        border-left-color: #ffc107;
+    }
+    
+    .notification-card.info {
+        border-left-color: #17a2b8;
+    }
+    
+    .overrun-badge {
+        background: linear-gradient(45deg, #dc3545, #fd7e14);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .phase-status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .status-in-progress {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-overrun {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .alert-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-bell text-warning"></i> Phase Timing Alerts</h2>
+            <p class="text-muted">Monitor phase overruns and timing notifications</p>
+        </div>
+        <div>
+            <a href="{% url 'dashboards:admin_dashboard' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Summary -->
+    <div class="alert-summary">
+        <div class="row">
+            <div class="col-md-3">
+                <h4>{{ total_notifications }}</h4>
+                <p class="mb-0">Total Active Alerts</p>
+            </div>
+            <div class="col-md-3">
+                <h4>{{ overrun_notifications|length }}</h4>
+                <p class="mb-0">Phase Overruns</p>
+            </div>
+            <div class="col-md-3">
+                <h4>{{ time_notifications|length }}</h4>
+                <p class="mb-0">Time Alerts</p>
+            </div>
+            <div class="col-md-3">
+                <h4>{{ overrunning_phases|length }}</h4>
+                <p class="mb-0">Currently Overrunning</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Currently Overrunning Phases -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Currently Overrunning Phases</h5>
+                </div>
+                <div class="card-body">
+                    {% if overrunning_phases %}
+                        {% for item in overrunning_phases %}
+                        <div class="notification-card card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title">
+                                            {{ item.phase.bmr.batch_number }} - {{ item.phase.phase.get_phase_name_display }}
+                                        </h6>
+                                        <p class="text-muted small mb-2">
+                                            Product: {{ item.phase.bmr.product.name }}
+                                        </p>
+                                        <div class="mt-2">
+                                            <span class="badge bg-warning">
+                                                Duration: {{ item.duration_hours|floatformat:1 }}h
+                                            </span>
+                                            <span class="badge bg-info">
+                                                Expected: {{ item.expected_hours|floatformat:1 }}h
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="overrun-badge">
+                                            +{{ item.overrun_percent|floatformat:0 }}% Over
+                                        </span>
+                                        <br>
+                                        <small class="text-muted">
+                                            Started: {{ item.phase.started_date|timesince }} ago
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> No phases currently overrunning their expected duration.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase Overrun Notifications -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-clock"></i> Phase Overrun Notifications</h5>
+                </div>
+                <div class="card-body">
+                    {% if overrun_notifications %}
+                        {% for notification in overrun_notifications %}
+                        <div class="notification-card card {% if notification.status == 'pending' %}warning{% else %}info{% endif %}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title">
+                                            {{ notification.phase_execution.bmr.batch_number }}
+                                        </h6>
+                                        <p class="text-muted small">
+                                            {{ notification.phase_execution.phase.get_phase_name_display }}
+                                        </p>
+                                        <div class="mt-2">
+                                            <span class="phase-status {% if notification.status == 'pending' %}status-overrun{% else %}status-in-progress{% endif %}">
+                                                {{ notification.get_status_display }}
+                                            </span>
+                                        </div>
+                                        {% if notification.operator_response %}
+                                        <small class="text-muted d-block mt-2">
+                                            <strong>Response:</strong> {{ notification.operator_response|truncatewords:15 }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted">
+                                            Expected: {{ notification.expected_duration }}h<br>
+                                            Actual: {{ notification.actual_duration }}h<br>
+                                            {{ notification.created_at|timesince }} ago
+                                        </small>
+                                    </div>
+                                </div>
+                                {% if notification.status == 'pending' %}
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-primary" onclick="reviewNotification({{ notification.id }})">
+                                        Review & Respond
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No phase overrun notifications at this time.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time-based Notifications -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-stopwatch"></i> Time-based Overrun Notifications</h5>
+                </div>
+                <div class="card-body">
+                    {% if time_notifications %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Batch</th>
+                                        <th>Phase</th>
+                                        <th>Threshold Exceeded</th>
+                                        <th>Message</th>
+                                        <th>Notification Time</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for notification in time_notifications %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ notification.phase_execution.bmr.batch_number }}</strong>
+                                        </td>
+                                        <td>{{ notification.phase_execution.phase.get_phase_name_display }}</td>
+                                        <td>
+                                            <span class="badge bg-warning">
+                                                {{ notification.threshold_exceeded_percent }}%
+                                            </span>
+                                        </td>
+                                        <td>{{ notification.message|truncatewords:10 }}</td>
+                                        <td>
+                                            <small>{{ notification.notification_time|timesince }} ago</small>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-success" onclick="acknowledgeNotification({{ notification.id }})">
+                                                Acknowledge
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> No unacknowledged time-based notifications.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function reviewNotification(notificationId) {
+    // Implement notification review functionality
+    alert(`Review notification ${notificationId} - Feature coming soon!`);
+}
+
+function acknowledgeNotification(notificationId) {
+    // Implement notification acknowledgment
+    if (confirm('Acknowledge this notification?')) {
+        // AJAX call to acknowledge notification
+        fetch(`/dashboard/api/notifications/${notificationId}/mark-read/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error acknowledging notification: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error acknowledging notification: ' + error.message);
+        });
+    }
+}
+
+// Auto-refresh every 30 seconds
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}
