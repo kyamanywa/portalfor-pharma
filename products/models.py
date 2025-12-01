@@ -1,6 +1,7 @@
 from django.db import models
 from workflow.constants import (
-    PRODUCT_TYPE_CHOICES, COATING_TYPE_CHOICES, TABLET_TYPE_CHOICES
+    PRODUCT_TYPE_CHOICES, COATING_TYPE_CHOICES, TABLET_TYPE_CHOICES,
+    get_product_type_choices, get_coating_type_choices, get_tablet_type_choices
 )
 
 class Product(models.Model):
@@ -10,7 +11,7 @@ class Product(models.Model):
     
     # Essential fields only
     product_name = models.CharField(max_length=200)
-    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES)
+    product_type = models.CharField(max_length=20, choices=get_product_type_choices)  # Note: callable, not called
     
     # Tablet specific fields (only show when product_type is 'tablet')
     coating_type = models.CharField(

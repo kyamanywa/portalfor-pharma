@@ -228,3 +228,64 @@ def get_qc_phase_for_product(product_type):
     elif is_ointment(product_type):
         return PHASE_NAMES['POST_MIXING_QC']
     return None
+
+
+# ============ DYNAMIC CHOICE FUNCTIONS ============
+# These combine hardcoded base choices with database-driven ProductTypeConfiguration
+
+def get_product_type_choices():
+    """
+    Get all product type choices dynamically from:
+    1. Base hardcoded choices (tablet, capsule, ointment)
+    2. Custom ProductTypeConfiguration entries from database
+    
+    Returns list of tuples: [(code, display_name), ...]
+    """
+    try:
+        from workflow.models import ProductTypeConfiguration
+        
+        # Start with base hardcoded choices
+        choices = list(PRODUCT_TYPE_CHOICES)
+        
+        # Add all active ProductTypeConfiguration entries
+        custom_types = ProductTypeConfiguration.objects.filter(is_active=True).values_list(
+            'product_type_key', 'product_type_display'
+        )
+        
+        # Add custom types to choices (avoiding duplicates)
+        existing_keys = {choice[0] for choice in choices}
+        for key, display in custom_types:
+            if key not in existing_keys:
+                choices.append((key, display))
+        
+        return choices
+    except Exception as e:
+        # If database not ready or error, return base choices
+        return list(PRODUCT_TYPE_CHOICES)
+
+
+def get_tablet_type_choices():
+    """
+    Get tablet type choices.
+    Currently returns hardcoded choices (Normal, Type 2)
+    Can be extended for custom tablet types if needed.
+    """
+    return list(TABLET_TYPE_CHOICES)
+
+
+def get_coating_type_choices():
+    """
+    Get coating type choices.
+    Currently returns hardcoded choices (Coated, Uncoated)
+    """
+    return list(COATING_TYPE_CHOICES)
+
+
+def get_phase_choices():
+    """
+    Get all production phase choices.
+    Currently returns hardcoded choices.
+    Can be extended for custom phases if needed.
+    """
+    return list(PHASE_CHOICES)
+

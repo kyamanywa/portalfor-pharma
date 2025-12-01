@@ -9,11 +9,51 @@ from django.contrib import messages
 from .models import (
     ProductionPhase, BatchPhaseExecution, Machine, 
     PhaseTimingSetting, PhaseOverrunNotification, PhaseTimeOverrunNotification,
-    WorkflowTemplate, WorkflowTemplatePhase, ProductMachineTimingSetting, SystemTimingSettings
+    WorkflowTemplate, WorkflowTemplatePhase, ProductMachineTimingSetting, SystemTimingSettings,
+    ProductTypeConfiguration
 )
+from .constants import get_product_type_choices, get_phase_choices
 
 # Import the enhanced admin settings
 from .admin_settings import *
+
+@admin.register(ProductTypeConfiguration)
+class ProductTypeConfigurationAdmin(admin.ModelAdmin):
+    """Admin interface for dynamically adding new product types"""
+    
+    list_display = ['product_type_display', 'product_type_key', 'is_active', 'default_packing_phase', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['product_type_key', 'product_type_display', 'description']
+    ordering = ['product_type_display']
+    readonly_fields = ['created_at', 'updated_at', 'created_by']
+    
+    fieldsets = (
+        ('Product Type Information', {
+            'fields': ('product_type_key', 'product_type_display', 'description'),
+            'description': 'Define a new product type. Once created, you can add phases to this product.'
+        }),
+        ('Configuration', {
+            'fields': ('default_packing_phase', 'is_active'),
+            'description': 'Configure default packing phase and availability'
+        }),
+        ('Audit Trail', {
+            'fields': ('created_at', 'updated_at', 'created_by'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Automatically set created_by when creating"""
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Make product_type_key read-only after creation"""
+        readonly = list(self.readonly_fields)
+        if obj:  # If editing existing object
+            readonly.append('product_type_key')
+        return readonly
 
 @admin.register(Machine)
 class MachineAdmin(admin.ModelAdmin):
@@ -45,6 +85,13 @@ class ProductionPhaseAdminForm(forms.ModelForm):
             'requires_approval': 'Phases requiring QA/QC approval before proceeding.',
             'can_rollback_to': 'Phase to rollback to if this phase fails QC.',
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Dynamically set product_type choices from database + hardcoded
+        self.fields['product_type'].choices = get_product_type_choices()
+        # Dynamically set phase_name choices
+        self.fields['phase_name'].choices = get_phase_choices()
     
     def clean(self):
         cleaned_data = super().clean()

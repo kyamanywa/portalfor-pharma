@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django import forms
 from .models import Product, ProductIngredient, ProductSpecification
+from workflow.constants import (
+    get_product_type_choices, get_coating_type_choices, get_tablet_type_choices
+)
 
 class ProductAdminForm(forms.ModelForm):
     class Meta:
@@ -14,13 +17,18 @@ class ProductAdminForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Dynamically set product_type choices from database + hardcoded
+        self.fields['product_type'].choices = get_product_type_choices()
+        
+        # Dynamically set tablet type and coating type choices
+        self.fields['coating_type'].choices = [('', '---------')] + get_coating_type_choices()
+        self.fields['tablet_type'].choices = [('', '---------')] + get_tablet_type_choices()
+        
         # Add help text
         self.fields['coating_type'].help_text = "Select coating type for tablets only"
         self.fields['tablet_type'].help_text = "Select tablet type for tablets only"
-        
-        # Add empty option for tablet-specific fields
-        self.fields['coating_type'].choices = [('', '---------')] + list(self.fields['coating_type'].choices)
-        self.fields['tablet_type'].choices = [('', '---------')] + list(self.fields['tablet_type'].choices)
+
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):

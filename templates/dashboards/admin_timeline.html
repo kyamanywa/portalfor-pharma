@@ -428,10 +428,9 @@
                                     <div class="filter-item">
                                         <select class="filter-select" id="filterProductType" onchange="filterTable()">
                                             <option value="">All Product Types</option>
-                                            <option value="tablet">Tablet</option>
-                                            <option value="tablet2">Tablet (Bulk)</option>
-                                            <option value="capsule">Capsule</option>
-                                            <option value="ointment">Ointment</option>
+                                            {% for key, display in product_types %}
+                                                <option value="{{ key }}">{{ display }}</option>
+                                            {% endfor %}
                                         </select>
                                     </div>
                                     <div class="filter-item">

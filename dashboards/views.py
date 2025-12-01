@@ -13,6 +13,7 @@ from workflow.models import BatchPhaseExecution, SystemTimingSettings
 from workflow.models import (
     get_dashboard_setting, get_alert_setting, get_session_setting, get_production_limit
 )
+from workflow.constants import get_product_type_choices
 from accounts.models import CustomUser
 from products.models import Product
 
@@ -102,6 +103,7 @@ def admin_timeline_view(request):
         'timeline_data': page_obj.object_list,
         'dashboard_title': 'BMR Timeline Tracking',
         'total_bmrs': len(timeline_data),
+        'product_types': get_product_type_choices(),  # Add dynamic product types
     }
 
     return render(request, 'dashboards/admin_timeline.html', context)

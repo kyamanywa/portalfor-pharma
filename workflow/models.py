@@ -7,7 +7,7 @@ from bmr.models import BMR
 # Import constants
 from .constants import (
     PHASE_CHOICES, PRODUCT_TYPE_CHOICES, PHASE_STATUS_CHOICES,
-    BMR_STATUS_CHOICES, PHASE_NAMES
+    BMR_STATUS_CHOICES, PHASE_NAMES, get_product_type_choices, get_phase_choices
 )
 
 # Import the extended admin settings models
@@ -107,8 +107,8 @@ class ProductionPhase(models.Model):
     PHASE_CHOICES = PHASE_CHOICES
     PRODUCT_TYPE_CHOICES = PRODUCT_TYPE_CHOICES
     
-    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES)
-    phase_name = models.CharField(max_length=30, choices=PHASE_CHOICES)
+    product_type = models.CharField(max_length=20, choices=get_product_type_choices)  # Note: callable
+    phase_name = models.CharField(max_length=30, choices=get_phase_choices)  # Note: callable
     phase_order = models.IntegerField()
     description = models.TextField(blank=True, help_text="Description of this phase")
     is_mandatory = models.BooleanField(default=True)
@@ -676,6 +676,65 @@ class PhaseTimeOverrunNotification(models.Model):
 
 # ============ WORKFLOW TEMPLATE MODELS ============
 
+class ProductTypeConfiguration(models.Model):
+    """Dynamically manage product types without coding"""
+    
+    # Core configuration
+    product_type_key = models.CharField(
+        max_length=50, 
+        unique=True,
+        help_text="System identifier for this product type (e.g., 'tablet_type_3'). Use lowercase, no spaces."
+    )
+    product_type_display = models.CharField(
+        max_length=100,
+        help_text="Display name for this product type (e.g., 'Tablet Type 3')"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Description of this product type and its production characteristics"
+    )
+    
+    # Status
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Inactive product types won't be available for new BMRs"
+    )
+    
+    # Packing phase configuration
+    default_packing_phase = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Default packing phase for this product (e.g., 'blister_packing', 'bulk_packing', 'tube_filling')"
+    )
+    
+    # Audit trail
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_product_types'
+    )
+    
+    class Meta:
+        verbose_name = 'Product Type Configuration'
+        verbose_name_plural = 'Product Type Configurations'
+        ordering = ['product_type_key']
+    
+    def __str__(self):
+        return f"{self.product_type_display} ({self.product_type_key})"
+    
+    @classmethod
+    def get_all_product_types(cls):
+        """Get all active product type choices for use in form fields"""
+        return [
+            (pt.product_type_key, pt.product_type_display) 
+            for pt in cls.objects.filter(is_active=True).order_by('product_type_display')
+        ]
+
+
 class WorkflowTemplate(models.Model):
     """Template for managing standard workflows for different product types"""
     
@@ -686,7 +745,7 @@ class WorkflowTemplate(models.Model):
     ]
     
     name = models.CharField(max_length=100, help_text="Template name (e.g., 'Standard Tablet Workflow')")
-    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES)
+    product_type = models.CharField(max_length=20, choices=get_product_type_choices)  # Note: callable
     description = models.TextField(blank=True, help_text="Description of when to use this template")
     is_active = models.BooleanField(default=True, help_text="Active templates are available for new BMRs")
     is_default = models.BooleanField(default=False, help_text="Default template for this product type")
