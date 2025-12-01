@@ -298,21 +298,35 @@ def admin_dashboard(request):
             else:
                 bmr.current_phase_name = 'Completed' if bmr.status == 'completed' else 'Queued'
         
-        # CHART DATA - Restore for dashboard charts
-        # Chart data - Product Type Distribution
-        product_types = Product.objects.values('product_type').annotate(count=Count('product_type'))
-        tablet_count = 0
-        capsule_count = 0
-        ointment_count = 0
-        
-        for item in product_types:
-            product_type = item['product_type'].lower() if item['product_type'] else ''
-            if 'tablet' in product_type:
-                tablet_count += item['count']
-            elif 'capsule' in product_type:
-                capsule_count += item['count']
-            elif 'ointment' in product_type or 'cream' in product_type:
-                ointment_count += item['count']
+        # CHART DATA - Product Type Distribution (dynamic from ProductTypeConfiguration)
+        from workflow.models import ProductTypeConfiguration
+
+        product_distribution = []
+        try:
+            # Prefer configured product types (admin-managed)
+            configs = ProductTypeConfiguration.objects.filter(is_active=True).order_by('product_type_display')
+            if configs.exists():
+                for cfg in configs:
+                    count = Product.objects.filter(product_type=cfg.product_type_key).count()
+                    product_distribution.append({
+                        'key': cfg.product_type_key,
+                        'label': cfg.product_type_display,
+                        'count': count,
+                    })
+            else:
+                # Fallback: derive from existing Product records
+                product_types = Product.objects.values('product_type').annotate(count=Count('product_type'))
+                for item in product_types:
+                    key = item['product_type'] or 'unknown'
+                    product_distribution.append({'key': key, 'label': key.title(), 'count': item['count']})
+        except Exception:
+            # Safe fallback if model or DB not available for any reason
+            product_distribution = []
+
+        # Backwards-compatible aggregate counts (kept for templates that still reference them)
+        tablet_count = sum(p['count'] for p in product_distribution if 'tablet' in p['key'] or 'tablet' in p['label'].lower())
+        capsule_count = sum(p['count'] for p in product_distribution if 'capsule' in p['key'] or 'capsule' in p['label'].lower())
+        ointment_count = sum(p['count'] for p in product_distribution if 'ointment' in p['key'] or 'ointment' in p['label'].lower() or 'cream' in p['label'].lower())
         
         # Phase completion data for chart
         common_phases = ['mixing', 'drying', 'granulation', 'compression', 'packing']
@@ -442,6 +456,7 @@ def admin_dashboard(request):
             'tablet_count': tablet_count,
             'capsule_count': capsule_count,
             'ointment_count': ointment_count,
+            'product_distribution': product_distribution,
             
             # Phase chart data
             'mixing_completed': phase_data.get('mixing_completed', 0),

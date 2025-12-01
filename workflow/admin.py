@@ -21,7 +21,7 @@ from .admin_settings import *
 class ProductTypeConfigurationAdmin(admin.ModelAdmin):
     """Admin interface for dynamically adding new product types"""
     
-    list_display = ['product_type_display', 'product_type_key', 'is_active', 'default_packing_phase', 'created_at']
+    list_display = ['product_type_display', 'product_type_key', 'is_active', 'default_packing_phase', 'get_behavior_tags', 'created_at']
     list_filter = ['is_active', 'created_at']
     search_fields = ['product_type_key', 'product_type_display', 'description']
     ordering = ['product_type_display']
@@ -33,7 +33,7 @@ class ProductTypeConfigurationAdmin(admin.ModelAdmin):
             'description': 'Define a new product type. Once created, you can add phases to this product.'
         }),
         ('Configuration', {
-            'fields': ('default_packing_phase', 'is_active'),
+            'fields': ('default_packing_phase', 'is_active', 'behavior_tags'),
             'description': 'Configure default packing phase and availability'
         }),
         ('Audit Trail', {
@@ -54,6 +54,65 @@ class ProductTypeConfigurationAdmin(admin.ModelAdmin):
         if obj:  # If editing existing object
             readonly.append('product_type_key')
         return readonly
+
+    def get_behavior_tags(self, obj):
+        if not obj or not getattr(obj, 'behavior_tags', None):
+            return '-'
+        # Show tags as comma-separated
+        try:
+            return ', '.join(obj.behavior_tags)
+        except Exception:
+            return str(obj.behavior_tags)
+    get_behavior_tags.short_description = 'Behaviors'
+
+
+# Add a simple admin form that exposes common behavior checkboxes and syncs to JSON tags
+class ProductTypeConfigurationForm(forms.ModelForm):
+    tablet_like = forms.BooleanField(required=False, label='Tablet-like behavior')
+    requires_coating = forms.BooleanField(required=False, label='Requires coating')
+    uses_bulk_packing = forms.BooleanField(required=False, label='Uses bulk packing')
+
+    class Meta:
+        model = ProductTypeConfiguration
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        tags = []
+        if self.instance and getattr(self.instance, 'behavior_tags', None):
+            try:
+                tags = list(self.instance.behavior_tags)
+            except Exception:
+                tags = []
+
+        self.fields['tablet_like'].initial = 'tablet-like' in tags
+        self.fields['requires_coating'].initial = 'requires_coating' in tags or 'may_coat' in tags
+        self.fields['uses_bulk_packing'].initial = 'uses_bulk_packing' in tags or 'bulk-packing' in tags
+
+    def clean(self):
+        cleaned = super().clean()
+        # Ensure product_type_key is lowercase and no spaces
+        key = cleaned.get('product_type_key')
+        if key:
+            cleaned['product_type_key'] = key.strip().lower().replace(' ', '_')
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        tags = []
+        if self.cleaned_data.get('tablet_like'):
+            tags.append('tablet-like')
+        if self.cleaned_data.get('requires_coating'):
+            tags.append('requires_coating')
+        if self.cleaned_data.get('uses_bulk_packing'):
+            tags.append('uses_bulk_packing')
+        obj.behavior_tags = tags
+        if commit:
+            obj.save()
+        return obj
+
+# Attach the form to admin
+ProductTypeConfigurationAdmin.form = ProductTypeConfigurationForm
 
 @admin.register(Machine)
 class MachineAdmin(admin.ModelAdmin):

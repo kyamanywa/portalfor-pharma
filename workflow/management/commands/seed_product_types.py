@@ -8,15 +8,9 @@ class Command(BaseCommand):
     help = 'Seed initial product types into ProductTypeConfiguration table'
 
     def handle(self, *args, **options):
-        # Get or create a system user for audit trail
-        system_user, _ = User.objects.get_or_create(
-            username='system',
-            defaults={
-                'email': 'system@pharma.local',
-                'is_staff': True,
-                'is_superuser': False,
-            }
-        )
+        # Do not create a system user here to avoid identity constraints in different deployments.
+        # Leave created_by as None when seeding base product types.
+        system_user = None
 
         # Define base product types
         product_types = [
@@ -52,7 +46,7 @@ class Command(BaseCommand):
                     'description': pt['description'],
                     'default_packing_phase': pt['default_packing_phase'],
                     'is_active': pt['is_active'],
-                    'created_by': system_user,
+                    'created_by': None,
                 }
             )
             if created:

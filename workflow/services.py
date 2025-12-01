@@ -4,8 +4,12 @@ from bmr.models import BMR
 from .models import ProductionPhase, BatchPhaseExecution, WorkflowTemplate, WorkflowTemplatePhase
 from .constants import (
     PRODUCT_TYPES, TABLET_TYPES, PHASE_NAMES, PHASE_STATUSES,
-    is_tablet, is_capsule, is_ointment, is_tablet_type_2,
-    get_packing_phase_for_product, get_qc_phase_for_product
+    is_tablet_type_2, get_qc_phase_for_product
+)
+from .utils import (
+    product_has_tag, product_requires_coating, product_is_tablet_like,
+    product_is_capsule_like, product_is_ointment_like,
+    get_packing_phase_for_product as util_get_packing_phase_for_product
 )
 
 logger = logging.getLogger('workflow')
@@ -19,8 +23,8 @@ class WorkflowService:
             # Determine which template to use based on product type and tablet type
             product_type = bmr.product.product_type
             
-            # Handle tablet type differentiation
-            if is_tablet(product_type):
+            # Handle tablet type differentiation (use DB-driven product tags when available)
+            if product_is_tablet_like(bmr.product):
                 tablet_type = getattr(bmr.product, 'tablet_type', TABLET_TYPES['NORMAL'])
                 if is_tablet_type_2(tablet_type):
                     template_product_type = 'tablet_type_2'
@@ -46,23 +50,16 @@ class WorkflowService:
             filtered_phases = []
             for template_phase in template_phases:
                 # COATING LOGIC: Skip coating phase for uncoated tablets
-                if is_tablet(product_type) and template_phase.phase_name == PHASE_NAMES['COATING']:
-                    product_is_coated = (
-                        hasattr(bmr.product, 'coating_type') and bmr.product.coating_type == 'coated'
-                    ) or (
-                        hasattr(bmr.product, 'is_coated') and bmr.product.is_coated
-                    )
-                    
-                    if not product_is_coated:
+                if product_is_tablet_like(bmr.product) and template_phase.phase_name == PHASE_NAMES['COATING']:
+                    if not product_requires_coating(bmr.product):
                         logger.info(f"Skipping coating phase for uncoated tablet: {bmr.product.product_name}")
                         continue  # Skip this phase
                     else:
                         logger.info(f"Including coating phase for coated tablet: {bmr.product.product_name}")
                 
                 # PACKING LOGIC: Skip wrong packing phase for tablet types
-                if is_tablet(product_type) and template_phase.phase_name in [PHASE_NAMES['BLISTER_PACKING'], PHASE_NAMES['BULK_PACKING']]:
+                if product_is_tablet_like(bmr.product) and template_phase.phase_name in [PHASE_NAMES['BLISTER_PACKING'], PHASE_NAMES['BULK_PACKING']]:
                     tablet_type = getattr(bmr.product, 'tablet_type', TABLET_TYPES['NORMAL']) or TABLET_TYPES['NORMAL']
-                    
                     if is_tablet_type_2(tablet_type) and template_phase.phase_name == PHASE_NAMES['BLISTER_PACKING']:
                         logger.info(f"Skipping blister_packing for tablet_2: {bmr.product.product_name}")
                         continue  # Skip blister packing for tablet_2
@@ -426,43 +423,21 @@ class WorkflowService:
                 logger.info(f"Phase {current_execution.phase.phase_name} completed for BMR {bmr.batch_number}, sending to quarantine")
                 return cls._send_to_quarantine(bmr, current_execution)
             
-            # SPECIAL HANDLING: packaging_material_release needs product-specific logic
+            # SPECIAL HANDLING: packaging_material_release uses configurable packing phase
             if current_execution.phase.phase_name == 'packaging_material_release':
-                product_type = bmr.product.product_type
-                
-                if product_type == 'tablet':
-                    tablet_type = getattr(bmr.product, 'tablet_type', 'normal')
-                    
-                    if tablet_type == 'tablet_2':
-                        # For tablet_2, activate bulk_packing
-                        next_phase_name = 'bulk_packing'
-                    else:
-                        # For normal tablets, activate blister_packing
-                        next_phase_name = 'blister_packing'
-                        
-                elif product_type == 'capsule':
-                    # Capsules use blister_packing
-                    next_phase_name = 'blister_packing'
-                    
-                elif product_type == 'ointment':
-                    # Ointments/creams go to secondary_packaging
-                    next_phase_name = 'secondary_packaging'
-                    
-                else:
-                    # Default: use standard sequential logic
-                    next_phase_name = None
-                
+                next_phase_name = util_get_packing_phase_for_product(bmr.product)
+
                 if next_phase_name:
                     next_phase = BatchPhaseExecution.objects.filter(
                         bmr=bmr,
                         phase__phase_name=next_phase_name,
                         status='not_ready'
                     ).first()
-                    
+
                     if next_phase:
                         next_phase.status = 'pending'
                         next_phase.save()
-                        logger.info(f"Activated {next_phase_name} phase for {product_type}: {bmr.batch_number}")
+                        logger.info(f"Activated {next_phase_name} phase for {bmr.product.product_type}: {bmr.batch_number}")
                         return True
             
             # SPECIAL HANDLING: packing phases -> secondary_packaging transitions
@@ -528,22 +503,22 @@ class WorkflowService:
             product_type = bmr.product.product_type.lower() if bmr.product.product_type else ''
             failed_phase_name = failed_phase.phase_name
             
-            # Define QC rollback mapping based on product type
-            if 'cream' in product_type or 'ointment' in product_type:
+            # Define QC rollback mapping based on product behavior tags or legacy type
+            if product_is_ointment_like(bmr.product):
                 # Creams/Ointments go back to mixing, never blending
                 qc_rollback_mapping = {
                     'post_compression_qc': 'mixing',  # Should not happen for creams
                     'post_mixing_qc': 'mixing',
                     'post_blending_qc': 'mixing',  # Creams should not go to blending!
                 }
-            elif 'tablet' in product_type:
+            elif product_is_tablet_like(bmr.product):
                 # Tablets follow normal flow
                 qc_rollback_mapping = {
                     'post_compression_qc': 'granulation',  # Roll back to granulation for tablets
                     'post_mixing_qc': 'mixing',
                     'post_blending_qc': 'blending',
                 }
-            elif 'capsule' in product_type:
+            elif product_is_capsule_like(bmr.product):
                 # Capsules follow their flow
                 qc_rollback_mapping = {
                     'post_compression_qc': 'filling',  # Should not happen for capsules

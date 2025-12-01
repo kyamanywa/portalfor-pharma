@@ -213,25 +213,43 @@ def get_product_type_production_totals(selected_month=None, selected_year=None):
         created_date__lt=end_date
     ).select_related('product')
     
-    product_totals = {
-        'tablets': {'batches': 0, 'units': 0},
-        'capsules': {'batches': 0, 'units': 0},
-        'ointments': {'batches': 0, 'units': 0}
-    }
-    
-    for bmr in completed_bmrs:
-        product_type = bmr.product.product_type.lower()
-        batch_size = bmr.actual_batch_size or bmr.product.standard_batch_size
-        
-        if 'tablet' in product_type:
-            product_totals['tablets']['batches'] += 1
-            product_totals['tablets']['units'] += float(batch_size)
-        elif 'capsule' in product_type:
-            product_totals['capsules']['batches'] += 1
-            product_totals['capsules']['units'] += float(batch_size)
-        elif 'ointment' in product_type or 'cream' in product_type:
-            product_totals['ointments']['batches'] += 1
-            product_totals['ointments']['units'] += float(batch_size)
+    # Build dynamic product type buckets from ProductTypeConfiguration (admin managed)
+    from workflow.models import ProductTypeConfiguration
+
+    product_totals = {}
+    configs = ProductTypeConfiguration.objects.filter(is_active=True).order_by('product_type_display')
+    if configs.exists():
+        for cfg in configs:
+            product_totals[cfg.product_type_key] = {'batches': 0, 'units': 0, 'label': cfg.product_type_display}
+
+        for bmr in completed_bmrs:
+            key = (bmr.product.product_type or '').lower()
+            batch_size = bmr.actual_batch_size or getattr(bmr.product, 'standard_batch_size', 0)
+            if key in product_totals:
+                product_totals[key]['batches'] += 1
+                try:
+                    product_totals[key]['units'] += float(batch_size)
+                except Exception:
+                    pass
+    else:
+        # Fallback to previous behaviour: group by common keywords
+        product_totals = {
+            'tablets': {'batches': 0, 'units': 0},
+            'capsules': {'batches': 0, 'units': 0},
+            'ointments': {'batches': 0, 'units': 0}
+        }
+        for bmr in completed_bmrs:
+            product_type = (bmr.product.product_type or '').lower()
+            batch_size = bmr.actual_batch_size or getattr(bmr.product, 'standard_batch_size', 0)
+            if 'tablet' in product_type:
+                product_totals['tablets']['batches'] += 1
+                product_totals['tablets']['units'] += float(batch_size)
+            elif 'capsule' in product_type:
+                product_totals['capsules']['batches'] += 1
+                product_totals['capsules']['units'] += float(batch_size)
+            elif 'ointment' in product_type or 'cream' in product_type:
+                product_totals['ointments']['batches'] += 1
+                product_totals['ointments']['units'] += float(batch_size)
     
     return product_totals
 

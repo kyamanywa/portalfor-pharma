@@ -33,7 +33,7 @@ class BMR(models.Model):
     bmr_number = models.CharField(max_length=20, unique=True)
     batch_number = models.CharField(
         max_length=10, 
-        unique=True,
+        unique=False,
         validators=[validate_batch_number],
         help_text="Enter batch number in format XXXYYYY (e.g., 3332025)"
     )
@@ -98,6 +98,9 @@ class BMR(models.Model):
         ordering = ['-created_date']
         verbose_name = 'Batch Manufacturing Record'
         verbose_name_plural = 'Batch Manufacturing Records'
+        constraints = [
+            models.UniqueConstraint(fields=['product', 'batch_number'], name='unique_product_batch_number')
+        ]
     
     def __str__(self):
         return f"BMR-{self.bmr_number} | Batch: {self.batch_number} | {self.product.product_name}"

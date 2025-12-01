@@ -1849,14 +1849,31 @@ function initCharts() {
         
         new Chart(productCtx, {
             type: 'doughnut',
-            data: {
-                labels: ['Tablets', 'Capsules', 'Ointments'],
-                datasets: [{
-                    data: [{{ tablet_count|default:0 }}, {{ capsule_count|default:0 }}, {{ ointment_count|default:0 }}],
-                    backgroundColor: ['#007bff', '#28a745', '#ffc107'],
-                    borderWidth: 0
-                }]
-            },
+            data: (function(){
+                // Build labels and data arrays from server-provided `product_distribution`
+                const labels = [];
+                const data = [];
+                const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1', '#20c997'];
+                {% if product_distribution %}
+                    {% for p in product_distribution %}
+                        labels.push('{{ p.label|escapejs }}');
+                        data.push({{ p.count|default:0 }});
+                    {% endfor %}
+                {% else %}
+                    // Fallback to legacy counts
+                    labels.push('Tablets', 'Capsules', 'Ointments');
+                    data.push({{ tablet_count|default:0 }}, {{ capsule_count|default:0 }}, {{ ointment_count|default:0 }});
+                {% endif %}
+
+                return {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, Math.max(3, data.length)),
+                        borderWidth: 0
+                    }]
+                };
+            })(),
             options: {
                 responsive: true,
                 maintainAspectRatio: false,

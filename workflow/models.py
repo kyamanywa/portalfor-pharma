@@ -706,6 +706,21 @@ class ProductTypeConfiguration(models.Model):
         blank=True,
         help_text="Default packing phase for this product (e.g., 'blister_packing', 'bulk_packing', 'tube_filling')"
     )
+    # Flexible behavior tags to map runtime behaviors (industry-standard approach)
+    # Examples: ['tablet-like', 'requires_coating', 'uses_bulk_packing']
+    try:
+        # Django 3.1+ has JSONField in django.db.models
+        from django.db.models import JSONField
+        behavior_field = JSONField
+    except Exception:
+        # Fallback to TextField storing JSON string (older Django)
+        from django.db.models import TextField as behavior_field
+
+    behavior_tags = behavior_field(
+        default=list,
+        blank=True,
+        help_text="Flexible tags describing product behavior (JSON list). Use admin checkboxes for common tags."
+    )
     
     # Audit trail
     created_at = models.DateTimeField(auto_now_add=True)
