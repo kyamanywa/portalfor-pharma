@@ -20,8 +20,7 @@ from products.models import Product
 # Import constants
 from workflow.constants import (
     PRODUCT_TYPES, TABLET_TYPES, PHASE_NAMES, PHASE_STATUSES,
-    is_tablet, is_capsule, is_ointment, is_tablet_type_2,
-    get_packing_phase_for_product
+    is_tablet, is_capsule, is_ointment, is_tablet_type_2
 )
 
 from .permissions import require_dashboard_permission, check_dashboard_permission
@@ -639,13 +638,10 @@ def qa_dashboard(request):
                     rollback_target_phase = production_phase.qa_can_rollback_to
                     
                     if not rollback_target_phase:
-                        # Fallback to old hardcoded logic if not configured
-                        product_type = bmr.product.product_type
-                        tablet_type = getattr(bmr.product, 'tablet_type', None) if is_tablet(product_type) else None
-                        rollback_phase = get_packing_phase_for_product(product_type, tablet_type)
-                        messages.warning(request, 'No QA rollback configured in template. Using default packing phase.')
-                    else:
-                        rollback_phase = rollback_target_phase.phase_name
+                        messages.error(request, 'ERROR: No QA rollback phase configured in workflow template. Contact administrator.')
+                        return redirect('dashboards:qa_dashboard')
+                    
+                    rollback_phase = rollback_target_phase.phase_name
                     
                     # Mark the final_qa phase as failed with reason
                     phase_execution.status = PHASE_STATUSES['FAILED']
