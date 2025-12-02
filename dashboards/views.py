@@ -631,13 +631,21 @@ def qa_dashboard(request):
                     messages.success(request, f'Final QA approved for batch {phase_execution.bmr.batch_number}. Batch is ready for finished goods storage.')
                     
                 elif action == 'reject':
-                    # Complete Final QA with rejection - use automatic rollback service
+                    # Complete Final QA with rejection - use template rollback configuration
                     bmr = phase_execution.bmr
-                    product_type = bmr.product.product_type
                     
-                    # Determine which packing phase to rollback to based on product type
-                    tablet_type = getattr(bmr.product, 'tablet_type', None) if is_tablet(product_type) else None
-                    rollback_phase = get_packing_phase_for_product(product_type, tablet_type)
+                    # Get rollback target from ProductionPhase QA rollback configuration
+                    production_phase = phase_execution.phase
+                    rollback_target_phase = production_phase.qa_can_rollback_to
+                    
+                    if not rollback_target_phase:
+                        # Fallback to old hardcoded logic if not configured
+                        product_type = bmr.product.product_type
+                        tablet_type = getattr(bmr.product, 'tablet_type', None) if is_tablet(product_type) else None
+                        rollback_phase = get_packing_phase_for_product(product_type, tablet_type)
+                        messages.warning(request, 'No QA rollback configured in template. Using default packing phase.')
+                    else:
+                        rollback_phase = rollback_target_phase.phase_name
                     
                     # Mark the final_qa phase as failed with reason
                     phase_execution.status = PHASE_STATUSES['FAILED']
