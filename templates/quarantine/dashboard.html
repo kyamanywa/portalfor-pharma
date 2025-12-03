@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}Quarantine Dashboard{% endblock %}
-
+cd C:\Users\Administrator\Desktop\portalfor-pharma-maincopy \\tsclient\C\Users\regan\Desktop\portalfor-pharma-main\bmr\forms.py C:\Users\Administrator\Desktop\portalfor-pharma-main\bmr\forms.py
 {% block content %}
 <div class="container-fluid px-4">
     <h1 class="mt-4">Quarantine Dashboard</h1>
@@ -177,16 +177,16 @@
                                     </a>
                                     
                                     {% if batch.can_request_sample %}
-                                    <button class="btn btn-outline-primary btn-sm" 
-                                            onclick="requestSample({{ batch.id }})"
+                                    <button class="btn btn-outline-primary btn-sm request-sample-btn" 
+                                            data-batch-id="{{ batch.id }}"
                                             title="Request Sample">
                                         <i class="fas fa-vial"></i> Request Sample
                                     </button>
                                     {% endif %}
                                     
                                     {% if batch.can_proceed_to_next_phase %}
-                                    <button class="btn btn-success btn-sm" 
-                                            onclick="proceedToNextPhase({{ batch.id }})"
+                                    <button class="btn btn-success btn-sm proceed-phase-btn" 
+                                            data-batch-id="{{ batch.id }}"
                                             title="Proceed to Next Phase">
                                         <i class="fas fa-arrow-right"></i> Next Phase
                                     </button>
@@ -413,6 +413,27 @@
 
 <!-- JavaScript for Actions -->
 <script>
+// Use event delegation for dynamically loaded buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // Request Sample button handler
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.request-sample-btn')) {
+            const button = e.target.closest('.request-sample-btn');
+            const quarantineId = button.getAttribute('data-batch-id');
+            requestSample(quarantineId);
+        }
+    });
+    
+    // Proceed to Next Phase button handler
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.proceed-phase-btn')) {
+            const button = e.target.closest('.proceed-phase-btn');
+            const quarantineId = button.getAttribute('data-batch-id');
+            proceedToNextPhase(quarantineId);
+        }
+    });
+});
+
 function requestSample(quarantineId) {
     if (confirm('Are you sure you want to request a sample for this batch?')) {
         fetch(`/quarantine/request-sample/${quarantineId}/`, {

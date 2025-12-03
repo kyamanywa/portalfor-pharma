@@ -6,6 +6,9 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 from .models import BMR, BMRMaterial, BMRRequest
 from .serializers import (
     BMRCreateSerializer, BMRDetailSerializer, BMRListSerializer,
@@ -464,11 +467,11 @@ def complete_phase_view(request, bmr_id, phase_name):
 
 @login_required
 def reject_phase_view(request, bmr_id, phase_name):
-    """Reject a phase (mainly for regulatory and QC)"""
+    """Reject a phase (mainly for regulatory, QC, and QA)"""
     bmr = get_object_or_404(BMR, id=bmr_id)
     
-    # Only regulatory and QC can reject
-    if request.user.role not in ['regulatory', 'qc']:
+    # Only regulatory, QC, and QA can reject
+    if request.user.role not in ['regulatory', 'qc', 'qa']:
         messages.error(request, 'You do not have permission to reject phases.')
         return redirect('bmr:detail', bmr_id)
     
@@ -478,101 +481,63 @@ def reject_phase_view(request, bmr_id, phase_name):
         messages.error(request, 'Rejection reason is required.')
         return redirect('bmr:detail', bmr_id)
     
-    # Handle QC failure with rollback for different QC phases
-    if request.user.role == 'qc' and phase_name in ['post_compression_qc', 'post_mixing_qc', 'post_blending_qc']:
+    # Handle QC/QA failure with rollback using template configuration
+    if request.user.role in ['qc', 'qa']:
         try:
-            # Mark the QC phase as failed with comments
-            from workflow.models import BatchPhaseExecution
+            # Mark the phase as failed with comments
+            from workflow.models import BatchPhaseExecution, ProductionPhase
             execution = BatchPhaseExecution.objects.get(
                 bmr=bmr,
                 phase__phase_name=phase_name,
                 status='in_progress'
             )
+            
+            # Get rollback target from ProductionPhase template configuration
+            # Use QA rollback for QA role, QC rollback for QC role
+            production_phase = execution.phase
+            if request.user.role == 'qa':
+                rollback_target_phase = production_phase.qa_can_rollback_to
+                failure_type = "QA"
+                logger.debug(f"QA rejection - phase={production_phase.phase_name}, qa_rollback_to={rollback_target_phase.phase_name if rollback_target_phase else None}")
+            else:
+                rollback_target_phase = production_phase.can_rollback_to
+                failure_type = "QC"
+                logger.debug(f"QC rejection - phase={production_phase.phase_name}, qc_rollback_to={rollback_target_phase.phase_name if rollback_target_phase else None}")
+            
+            if not rollback_target_phase:
+                messages.error(
+                    request, 
+                    f'No {failure_type} rollback configuration found for {phase_name}. Please configure in Django admin.'
+                )
+                return redirect('bmr:detail', bmr_id)
+            
+            # Mark current phase as failed
             execution.status = 'failed'
             execution.completed_by = request.user
             execution.completed_date = timezone.now()
-            
-            # Determine rollback phase based on QC type
-            rollback_mapping = {
-                'post_compression_qc': 'granulation',  # Rollback to granulation for tablets
-                'post_mixing_qc': 'mixing',
-                'post_blending_qc': 'blending'
-            }
-            rollback_phase = rollback_mapping[phase_name]
-            
-            execution.operator_comments = f"QC FAILED - ROLLBACK TO {rollback_phase.upper()}: {comments}"
+            rollback_phase_name = rollback_target_phase.phase_name
+            execution.operator_comments = f"{phase_name.upper()} {failure_type} FAILED - ROLLBACK TO {rollback_phase_name.upper()}: {comments}"
             execution.save()
             
-            # Trigger rollback to appropriate phase
-            rollback_success = WorkflowService.handle_qc_failure_rollback(bmr, phase_name, rollback_phase)
+            # Trigger rollback to configured phase
+            rollback_success = WorkflowService.handle_qc_failure_rollback(bmr, phase_name, rollback_phase_name)
             
             if rollback_success:
                 messages.warning(
                     request,
                     f'{phase_name.replace("_", " ").title()} failed for BMR {bmr.batch_number}. '
-                    f'Batch has been rolled back to {rollback_phase.replace("_", " ")} phase. Reason: {comments}'
+                    f'Batch has been rolled back to {rollback_phase_name.replace("_", " ")} phase. Reason: {comments}'
                 )
             else:
-                messages.error(request, 'Failed to process QC rollback. Please contact system administrator.')
+                messages.error(request, 'Failed to process rollback. Please contact system administrator.')
             
+        except BatchPhaseExecution.DoesNotExist:
+            messages.error(request, f'Phase {phase_name} is not currently in progress.')
         except Exception as e:
-            messages.error(request, f'Failed to process QC failure: {e}')
-    
-    # Handle Final QA failure with rollback to respective packing phase
-    elif phase_name == 'final_qa' and request.user.role == 'qa':
-        try:
-            # Determine rollback phase based on product type and packing
-            product_type = bmr.product.product_type
-            
-            # Get the last completed packing phase to rollback to
-            from workflow.models import BatchPhaseExecution
-            packing_phases = ['blister_packing', 'bulk_packing', 'secondary_packaging']
-            last_packing_phase = None
-            
-            for packing_phase in reversed(packing_phases):  # Check in reverse order
-                try:
-                    packing_execution = BatchPhaseExecution.objects.get(
-                        bmr=bmr,
-                        phase__phase_name=packing_phase,
-                        status='completed'
-                    )
-                    last_packing_phase = packing_phase
-                    break
-                except BatchPhaseExecution.DoesNotExist:
-                    continue
-            
-            if last_packing_phase:
-                # Mark Final QA as failed
-                execution = BatchPhaseExecution.objects.get(
-                    bmr=bmr,
-                    phase__phase_name=phase_name,
-                    status='in_progress'
-                )
-                execution.status = 'failed'
-                execution.completed_by = request.user
-                execution.completed_date = timezone.now()
-                execution.operator_comments = f"FINAL QA FAILED - ROLLBACK TO {last_packing_phase.upper()}: {comments}"
-                execution.save()
-                
-                # Trigger rollback to last packing phase
-                rollback_success = WorkflowService.handle_qc_failure_rollback(bmr, phase_name, last_packing_phase)
-                
-                if rollback_success:
-                    messages.warning(
-                        request,
-                        f'Final QA failed for BMR {bmr.batch_number}. '
-                        f'Batch has been rolled back to {last_packing_phase.replace("_", " ")} phase. Reason: {comments}'
-                    )
-                else:
-                    messages.error(request, 'Failed to process Final QA rollback. Please contact system administrator.')
-            else:
-                messages.error(request, 'Cannot determine packing phase for rollback.')
-                
-        except Exception as e:
-            messages.error(request, f'Failed to process Final QA failure: {e}')
+            messages.error(request, f'Failed to process phase failure: {e}')
     
     else:
-        # Handle other phase rejections (original logic)
+        # Handle other phase rejections without rollback (e.g., regulatory approval)
         try:
             from workflow.models import BatchPhaseExecution
             execution = BatchPhaseExecution.objects.get(
@@ -607,6 +572,8 @@ def reject_phase_view(request, bmr_id, phase_name):
         return redirect('dashboards:regulatory_dashboard')
     elif request.user.role == 'qc':
         return redirect('dashboards:qc_dashboard')
+    elif request.user.role == 'qa':
+        return redirect('dashboards:qa_dashboard')
     else:
         return redirect('bmr:detail', bmr_id)
 
