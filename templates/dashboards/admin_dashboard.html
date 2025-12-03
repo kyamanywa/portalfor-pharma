@@ -2214,12 +2214,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const metricCard = e.target.closest('.clickable-metric');
         if (metricCard) {
             e.preventDefault();
-            const targetSection = metricCard.getAttribute('data-target');
             const filter = metricCard.getAttribute('data-filter');
             
-            if (targetSection) {
-                console.log('Metric card clicked:', targetSection, filter);
-                scrollToSection(targetSection, filter);
+            // Navigate to BMR list page with appropriate filter
+            if (filter === 'active') {
+                // Active Batches - show BMRs in draft, approved, or in_production status
+                window.location.href = "{% url 'bmr:list' %}?status=draft,approved,in_production";
+            } else if (filter === 'completed') {
+                // Completed Batches
+                window.location.href = "{% url 'bmr:list' %}?status=completed";
+            } else if (filter === 'rejected') {
+                // Rejected Batches
+                window.location.href = "{% url 'bmr:list' %}?status=rejected";
+            } else {
+                // Total BMRs - show all
+                window.location.href = "{% url 'bmr:list' %}";
             }
             return false;
         }

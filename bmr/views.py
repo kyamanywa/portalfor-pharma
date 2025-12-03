@@ -134,8 +134,15 @@ def bmr_list_view(request):
     """List view for BMRs with role-based filtering"""
     bmrs = BMR.objects.select_related('product', 'created_by', 'approved_by').all().order_by('-created_date')
     
-    # Filter based on user role
-    if request.user.is_staff or request.user.role == 'qa':
+    # Check for status filter from URL parameters
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        # Handle multiple statuses separated by comma
+        statuses = [s.strip() for s in status_filter.split(',')]
+        bmrs = bmrs.filter(status__in=statuses)
+    
+    # Filter based on user role (only if no status filter is provided from URL)
+    elif request.user.is_staff or request.user.role == 'qa':
         # Admin and QA can see all BMRs
         pass
     elif request.user.role == 'regulatory':
@@ -150,7 +157,8 @@ def bmr_list_view(request):
     
     return render(request, 'bmr/bmr_list.html', {
         'bmrs': bmrs,
-        'title': 'BMR List'
+        'title': 'BMR List',
+        'status_filter': status_filter
     })
 
 @login_required
