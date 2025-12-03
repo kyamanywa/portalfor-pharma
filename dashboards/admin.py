@@ -8,7 +8,7 @@ class DashboardPermissionAdminForm(forms.ModelForm):
     """Custom form for DashboardPermission admin with proper JSONField handling"""
     
     allowed_roles_text = forms.CharField(
-        widget=forms.Textarea(attrs={'rows': 3, 'cols': 60}),
+        widget=forms.Textarea(attrs={'rows': 3, 'cols': 60, 'placeholder': '["qa", "admin", "production_manager"]'}),
         help_text='Enter roles as a JSON list. Example: ["qa", "admin", "production_manager"] or [] for no roles',
         required=False,
         label='Allowed Roles (JSON)'
@@ -16,7 +16,7 @@ class DashboardPermissionAdminForm(forms.ModelForm):
     
     class Meta:
         model = DashboardPermission
-        fields = '__all__'
+        exclude = ['allowed_roles']  # Exclude the actual JSONField, use allowed_roles_text instead
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
