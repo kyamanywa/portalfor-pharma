@@ -63,6 +63,12 @@ class DashboardPermissionAdminForm(forms.ModelForm):
         if commit:
             self.instance.save()
         return self.instance
+    
+    def save_m2m(self):
+        """Save many-to-many relationships (required for Django Admin)"""
+        # This method is called by Django Admin after save()
+        # It handles the allowed_users and blocked_users many-to-many fields
+        pass
 
 @admin.register(DashboardMetrics)
 class DashboardMetricsAdmin(admin.ModelAdmin):
