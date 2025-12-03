@@ -188,6 +188,13 @@ def admin_dashboard(request):
     try:
         from django.db.models import Count
         from products.models import Product
+        from .permissions import check_dashboard_permission
+        
+        # Check dashboard access permissions for sidebar display
+        can_access_system_health = check_dashboard_permission(request.user, 'system_health')
+        can_access_system_logs = check_dashboard_permission(request.user, 'system_logs')
+        can_access_user_management = check_dashboard_permission(request.user, 'user_management')
+        can_access_machine_management = check_dashboard_permission(request.user, 'machine_management')
         
         # Get basic statistics only
         total_bmrs = BMR.objects.count()
@@ -503,6 +510,12 @@ def admin_dashboard(request):
                 'in_fgs': BMR.objects.filter(status='in_fgs').count()
             },
             'recent_users': CustomUser.objects.filter(is_active=True).order_by('-last_login')[:5],
+            
+            # Dashboard access permissions for sidebar
+            'can_access_system_health': can_access_system_health,
+            'can_access_system_logs': can_access_system_logs,
+            'can_access_user_management': can_access_user_management,
+            'can_access_machine_management': can_access_machine_management,
         }
         
         # Debug: Print context keys
