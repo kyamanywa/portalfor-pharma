@@ -190,11 +190,40 @@ def admin_dashboard(request):
         from products.models import Product
         from .permissions import check_dashboard_permission
         
-        # Check dashboard access permissions for sidebar display
+        # Check dashboard access permissions for ALL sidebar sections
+        
+        # Overview Section (always shown - it's the main dashboard)
+        show_overview_section = True
+        
+        # Production Management Section
+        can_access_bmr_tracking = True  # Core functionality, always accessible
+        can_access_live_tracking = True  # Core functionality, always accessible
+        can_access_machine_management = check_dashboard_permission(request.user, 'machine_management')
+        can_access_quality_control = check_dashboard_permission(request.user, 'quality_control')
+        can_access_inventory = check_dashboard_permission(request.user, 'inventory')
+        
+        show_production_section = True  # Always show since it has core features
+        
+        # Quarantine Tracking Section
+        can_access_quarantine = True  # Core QA functionality, typically always accessible
+        show_quarantine_section = can_access_quarantine
+        
+        # Notifications & Alerts Section
+        can_access_notifications = check_dashboard_permission(request.user, 'phase_notifications')
+        show_notifications_section = can_access_notifications
+        
+        # System Administration Section
         can_access_system_health = check_dashboard_permission(request.user, 'system_health')
         can_access_system_logs = check_dashboard_permission(request.user, 'system_logs')
         can_access_user_management = check_dashboard_permission(request.user, 'user_management')
-        can_access_machine_management = check_dashboard_permission(request.user, 'machine_management')
+        
+        # Show "System Administration" section only if user can access at least one of these
+        show_system_admin_section = (
+            can_access_user_management or 
+            can_access_system_health or 
+            can_access_system_logs or
+            can_access_machine_management
+        )
         
         # Get basic statistics only
         total_bmrs = BMR.objects.count()
@@ -511,11 +540,31 @@ def admin_dashboard(request):
             },
             'recent_users': CustomUser.objects.filter(is_active=True).order_by('-last_login')[:5],
             
-            # Dashboard access permissions for sidebar
+            # Dashboard access permissions for ALL sidebar sections
+            # Overview Section
+            'show_overview_section': show_overview_section,
+            
+            # Production Management Section
+            'show_production_section': show_production_section,
+            'can_access_bmr_tracking': can_access_bmr_tracking,
+            'can_access_live_tracking': can_access_live_tracking,
+            'can_access_machine_management': can_access_machine_management,
+            'can_access_quality_control': can_access_quality_control,
+            'can_access_inventory': can_access_inventory,
+            
+            # Quarantine Section
+            'show_quarantine_section': show_quarantine_section,
+            'can_access_quarantine': can_access_quarantine,
+            
+            # Notifications Section
+            'show_notifications_section': show_notifications_section,
+            'can_access_notifications': can_access_notifications,
+            
+            # System Administration Section
+            'show_system_admin_section': show_system_admin_section,
             'can_access_system_health': can_access_system_health,
             'can_access_system_logs': can_access_system_logs,
             'can_access_user_management': can_access_user_management,
-            'can_access_machine_management': can_access_machine_management,
         }
         
         # Debug: Print context keys

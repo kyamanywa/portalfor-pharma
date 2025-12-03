@@ -529,6 +529,7 @@
             </div>
             
             <!-- Dashboard Overview Section -->
+            {% if show_overview_section %}
             <div class="sidebar-section">Overview</div>
         <ul class="sidebar-menu">
             <li>
@@ -542,16 +543,10 @@
                 </a>
             </li>
         </ul>
+        {% endif %}
         
         <!-- Production Management Section -->
-        {% has_dashboard_permission user 'bmr_tracking' as can_access_bmr_tracking %}
-        {% has_dashboard_permission user 'live_tracking' as can_access_live_tracking %}
-        {% has_dashboard_permission user 'analytics_metrics' as can_access_analytics %}
-        {% has_dashboard_permission user 'machine_management' as can_access_machine_mgmt %}
-        {% has_dashboard_permission user 'quality_control' as can_access_quality_control %}
-        {% has_dashboard_permission user 'inventory' as can_access_inventory %}
-        
-        {% if can_access_bmr_tracking or can_access_live_tracking or can_access_analytics or can_access_machine_mgmt or can_access_quality_control or can_access_inventory %}
+        {% if show_production_section %}
         <div class="sidebar-section">Production Management</div>
         <ul class="sidebar-menu">
             {% if can_access_bmr_tracking %}
@@ -578,7 +573,7 @@
                     <i class="fas fa-industry"></i> Work in Progress
                 </a>
             </li>
-            {% if can_access_machine_mgmt %}
+            {% if can_access_machine_management %}
             <li>
                 <a href="/dashboard/machine-management/" id="machine-mgmt-link">
                     <i class="fas fa-cogs"></i> Machine Management
@@ -603,9 +598,7 @@
         {% endif %}
         
         <!-- Quarantine Tracking Section -->
-        {% has_dashboard_permission user 'quarantine_tracking' as can_access_quarantine %}
-        
-        {% if can_access_quarantine %}
+        {% if show_quarantine_section %}
         <div class="sidebar-section">Quarantine Tracking</div>
         <ul class="sidebar-menu">
             <li>
@@ -617,9 +610,7 @@
         {% endif %}
         
         <!-- Notifications & Alerts Section -->
-        {% has_dashboard_permission user 'phase_notifications' as can_access_notifications %}
-        
-        {% if can_access_notifications %}
+        {% if show_notifications_section %}
         <div class="sidebar-section">Notifications & Alerts</div>
         <ul class="sidebar-menu">
             <li>
@@ -631,14 +622,10 @@
         {% endif %}
         
         <!-- System Administration Section -->
-        {% has_dashboard_permission user 'user_management' as can_access_user_mgmt %}
-        {% has_dashboard_permission user 'system_health' as can_access_system_health %}
-        {% has_dashboard_permission user 'system_logs' as can_access_system_logs %}
-        
-        {% if can_access_user_mgmt or can_access_system_health or can_access_system_logs %}
+        {% if show_system_admin_section %}
         <div class="sidebar-section">System Administration</div>
         <ul class="sidebar-menu">
-            {% if can_access_user_mgmt %}
+            {% if can_access_user_management %}
             <li>
                 <a href="/dashboard/user-management/" id="user-mgmt-link">
                     <i class="fas fa-users"></i> User Management
