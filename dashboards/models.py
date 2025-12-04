@@ -20,9 +20,31 @@ class DashboardMetrics(models.Model):
     
     class Meta:
         unique_together = ['user', 'date']
+        verbose_name = 'Dashboard Metric'
+        verbose_name_plural = 'Dashboard Metrics'
+        ordering = ['-date', 'user__username']
     
     def __str__(self):
         return f"{self.user.username} - {self.date}"
+    
+    @classmethod
+    def record_metrics(cls, user, active_batches=0, completed_phases_today=0, pending_phases=0, rejected_phases_today=0, role_specific_data=None):
+        """Record or update metrics for a user for today"""
+        from django.utils import timezone
+        today = timezone.now().date()
+        
+        metric, created = cls.objects.update_or_create(
+            user=user,
+            date=today,
+            defaults={
+                'active_batches': active_batches,
+                'completed_phases_today': completed_phases_today,
+                'pending_phases': pending_phases,
+                'rejected_phases_today': rejected_phases_today,
+                'role_specific_data': role_specific_data or {},
+            }
+        )
+        return metric
 
 class NotificationAlert(models.Model):
     """System notifications and alerts for users"""
@@ -70,6 +92,66 @@ class NotificationAlert(models.Model):
     
     def __str__(self):
         return f"{self.recipient.username} - {self.title}"
+
+
+class NotificationSettings(models.Model):
+    """Admin-configurable settings for notification panel visibility by role"""
+    ROLE_CHOICES = [
+        ('admin', 'Admin'),
+        ('qa', 'QA'),
+        ('qc', 'QC'),
+        ('regulatory', 'Regulatory'),
+        ('production_manager', 'Production Manager'),
+        ('store_manager', 'Store Manager'),
+        ('mixing_operator', 'Mixing Operator'),
+        ('granulation_operator', 'Granulation Operator'),
+        ('blending_operator', 'Blending Operator'),
+        ('compression_operator', 'Compression Operator'),
+        ('coating_operator', 'Coating Operator'),
+        ('drying_operator', 'Drying Operator'),
+        ('filling_operator', 'Filling Operator'),
+        ('tube_filling_operator', 'Tube Filling Operator'),
+        ('packing_operator', 'Packing Operator'),
+        ('sorting_operator', 'Sorting Operator'),
+        ('dispensing_operator', 'Dispensing Operator'),
+    ]
+    
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, unique=True)
+    show_notification_panel = models.BooleanField(
+        default=True,
+        help_text="Enable/disable notification panel for this role"
+    )
+    auto_refresh_notifications = models.BooleanField(
+        default=True,
+        help_text="Auto-refresh notifications without page reload"
+    )
+    notification_sound = models.BooleanField(
+        default=False,
+        help_text="Play sound when new notification arrives"
+    )
+    max_notifications_display = models.IntegerField(
+        default=10,
+        help_text="Maximum number of notifications to display in panel"
+    )
+    
+    class Meta:
+        verbose_name = 'Notification Setting'
+        verbose_name_plural = 'Notification Settings'
+        ordering = ['role']
+    
+    def __str__(self):
+        return f"Notifications for {self.get_role_display()}"
+    
+    @classmethod
+    def can_see_notifications(cls, user_role):
+        """Check if a role can see the notification panel"""
+        try:
+            setting = cls.objects.get(role=user_role)
+            return setting.show_notification_panel
+        except cls.DoesNotExist:
+            # Default: show notifications for all roles if not configured
+            return True
+
 
 class UserDashboardPreferences(models.Model):
     """User preferences for dashboard customization"""

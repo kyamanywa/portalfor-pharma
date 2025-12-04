@@ -72,3 +72,62 @@ def admin_settings_context(request):
                 'max_file_upload_size_mb': 50,
             }
         }
+
+def user_notifications(request):
+    """Add user notifications to template context - available on all pages"""
+    if request.user.is_authenticated:
+        try:
+            from dashboards.models import NotificationAlert, NotificationSettings
+            
+            # Check if this role can see notifications
+            can_see = NotificationSettings.can_see_notifications(request.user.role)
+            
+            if not can_see:
+                return {
+                    'notifications': [],
+                    'unread_count': 0,
+                    'show_notification_panel': False,
+                }
+            
+            # Get notification settings for this role
+            try:
+                settings = NotificationSettings.objects.get(role=request.user.role)
+                max_display = settings.max_notifications_display
+            except NotificationSettings.DoesNotExist:
+                max_display = 10  # Default
+            
+            # Get unread notifications
+            unread_notifications = NotificationAlert.objects.filter(
+                recipient=request.user,
+                is_read=False
+            ).order_by('-created_date')[:max_display]
+            
+            # Get recent read notifications (only 3)
+            read_notifications = NotificationAlert.objects.filter(
+                recipient=request.user,
+                is_read=True
+            ).order_by('-created_date')[:3]
+            
+            all_notifications = list(unread_notifications) + list(read_notifications)
+            unread_count = NotificationAlert.objects.filter(
+                recipient=request.user,
+                is_read=False
+            ).count()
+            
+            return {
+                'notifications': all_notifications,
+                'unread_count': unread_count,
+                'show_notification_panel': True,
+            }
+        except Exception as e:
+            return {
+                'notifications': [],
+                'unread_count': 0,
+                'show_notification_panel': True,
+            }
+    
+    return {
+        'notifications': [],
+        'unread_count': 0,
+        'show_notification_panel': False,
+    }

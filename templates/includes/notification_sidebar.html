@@ -1,0 +1,197 @@
+<!-- Compact Notification Sidebar (Right Side) - Shows on all dashboards -->
+{% if show_notification_panel and notifications %}
+<div class="notification-sidebar">
+    <div class="notification-header" onclick="toggleNotifications()">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-bell me-2"></i>
+                <strong>Notifications</strong>
+                {% if unread_count > 0 %}
+                    <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                {% endif %}
+            </div>
+            <i class="fas fa-chevron-down" id="notif-toggle-icon"></i>
+        </div>
+    </div>
+    <div class="notification-body" id="notification-panel">
+        <div class="notification-actions">
+            <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="clearAllNotifications()" title="Clear all notifications">
+                <i class="fas fa-trash"></i> Clear All Notifications
+            </button>
+        </div>
+        {% for notification in notifications %}
+            {% if not notification.is_read or forloop.counter <= 3 %}
+            <div class="notification-item {% if not notification.is_read %}unread{% endif %}" id="notif-{{ notification.id }}">
+                <div class="notification-title">
+                    {% if notification.priority == 'critical' %}
+                        <i class="fas fa-exclamation-circle text-danger"></i>
+                    {% elif notification.priority == 'high' %}
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                    {% elif notification.priority == 'medium' %}
+                        <i class="fas fa-info-circle text-info"></i>
+                    {% else %}
+                        <i class="fas fa-check-circle text-success"></i>
+                    {% endif %}
+                    {{ notification.title }}
+                    {% if not notification.is_read %}
+                        <span class="badge bg-primary" style="font-size: 9px;">NEW</span>
+                    {% endif %}
+                </div>
+                <div class="notification-message">
+                    {{ notification.message|truncatewords:15 }}
+                </div>
+                <div class="notification-meta">
+                    <i class="fas fa-clock"></i> {{ notification.created_date|timesince }} ago
+                    {% if notification.bmr %}
+                        | <a href="{% url 'bmr:detail' notification.bmr.id %}" class="text-primary" style="font-size: 11px;">View BMR</a>
+                    {% endif %}
+                    {% if not notification.is_read %}
+                        | <a href="#" onclick="markAsRead(event, {{ notification.id }})" class="text-success" style="font-size: 11px;">Mark Read</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+        {% if unread_count == 0 %}
+            <div class="text-center text-muted py-3">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <p class="mb-0" style="font-size: 13px;">All caught up!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* Notification Sidebar Styles */
+    .notification-sidebar {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        width: 350px;
+        max-height: 500px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: transform 0.3s ease;
+    }
+    
+    .notification-sidebar.collapsed {
+        transform: translateY(calc(-100% + 50px));
+    }
+    
+    .notification-actions {
+        padding: 10px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .notification-header {
+        cursor: pointer;
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        border-radius: 8px 8px 0 0;
+        padding: 12px 15px;
+        color: white;
+        transition: border-radius 0.3s ease;
+    }
+    
+    .notification-sidebar.collapsed .notification-header {
+        border-radius: 8px;
+    }
+    
+    .notification-body {
+        max-height: 400px;
+        overflow-y: auto;
+        background: white;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    .notification-item {
+        border-bottom: 1px solid #e9ecef;
+        padding: 12px 15px;
+        transition: background 0.2s;
+    }
+    
+    .notification-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .notification-item.unread {
+        background: #e7f5ff;
+        border-left: 4px solid #17a2b8;
+    }
+    
+    .notification-collapsed {
+        display: none;
+    }
+    
+    .notification-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    
+    .notification-message {
+        font-size: 13px;
+        color: #6c757d;
+        margin-bottom: 6px;
+    }
+    
+    .notification-meta {
+        font-size: 11px;
+        color: #adb5bd;
+    }
+</style>
+
+<script>
+    function toggleNotifications() {
+        const sidebar = document.querySelector('.notification-sidebar');
+        const icon = document.getElementById('notif-toggle-icon');
+        
+        sidebar.classList.toggle('collapsed');
+        
+        if (sidebar.classList.contains('collapsed')) {
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    }
+    
+    function markAsRead(event, notificationId) {
+        event.preventDefault();
+        
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/dashboard/notifications/${notificationId}/mark-read/`;
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+    
+    function clearAllNotifications() {
+        if (confirm('Are you sure you want to clear all notifications?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/dashboard/notifications/clear-all/';
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+{% endif %}

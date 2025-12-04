@@ -117,6 +117,18 @@ def create_bmr_view(request):
                 approved_request.status = 'completed'
                 approved_request.completed_date = timezone.now()
                 approved_request.save()
+                
+                # Notify the Production Manager who requested the BMR
+                from dashboards.views import create_notification
+                create_notification(
+                    recipient=approved_request.requested_by,
+                    notification_type='bmr_approved',
+                    title=f'BMR Assigned: {bmr.batch_number}',
+                    message=f'Your BMR request for {bmr.product.product_name} has been assigned batch number {bmr.batch_number}. Production can now begin.',
+                    priority='high',
+                    bmr=bmr,
+                    phase_execution=None
+                )
             
             messages.success(request, f'BMR {bmr.bmr_number} created successfully.')
             return redirect('bmr:detail', bmr_id=bmr.id)
@@ -375,6 +387,18 @@ class BMRViewSet(viewsets.ModelViewSet):
         bmr.regulatory_comments = request.data.get('comments', '')
         bmr.save()
         
+        # Create notification for QA who created it
+        from dashboards.views import create_notification
+        if bmr.created_by and bmr.created_by.is_active:
+            create_notification(
+                recipient=bmr.created_by,
+                notification_type='phase_rejected',
+                title=f'BMR {bmr.batch_number} Rejected',
+                message=f'Your BMR {bmr.batch_number} has been rejected by Regulatory. Comments: {bmr.regulatory_comments}',
+                priority='high',
+                bmr=bmr
+            )
+        
         return Response({'message': 'BMR rejected'})
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
@@ -589,6 +613,18 @@ def reject_phase_view(request, bmr_id, phase_name):
                 bmr.approved_by = request.user
                 bmr.approved_date = timezone.now()
                 bmr.save()
+                
+                # Create notification for QA who created it
+                from dashboards.views import create_notification
+                if bmr.created_by and bmr.created_by.is_active:
+                    create_notification(
+                        recipient=bmr.created_by,
+                        notification_type='phase_rejected',
+                        title=f'BMR {bmr.batch_number} Rejected',
+                        message=f'Your BMR {bmr.batch_number} has been rejected by Regulatory. Reason: {comments}',
+                        priority='high',
+                        bmr=bmr
+                    )
             
             messages.warning(
                 request,
@@ -632,6 +668,22 @@ def create_bmr_request(request):
             bmr_request.required_date = form.cleaned_data['required_date']
             
             bmr_request.save()
+            
+            # Notify all QA users about the new BMR request
+            from accounts.models import CustomUser
+            from dashboards.views import create_notification
+            qa_users = CustomUser.objects.filter(role='qa', is_active=True)
+            for qa_user in qa_users:
+                create_notification(
+                    recipient=qa_user,
+                    notification_type='phase_assigned',
+                    title=f'New BMR Request: {product.product_name}',
+                    message=f'{request.user.get_full_name()} has requested a BMR for {product.product_name}. Quantity: {bmr_request.quantity_required} {bmr_request.quantity_unit}.',
+                    priority='high',
+                    bmr=None,
+                    phase_execution=None
+                )
+            
             messages.success(
                 request, 
                 f'BMR request for {bmr_request.product.product_name} has been submitted successfully to QA Department'
@@ -650,12 +702,12 @@ def create_bmr_request(request):
 def bmr_request_list(request):
     """View for listing BMR requests"""
     if request.user.role == 'qa':
-        # QA sees all pending requests
-        bmr_requests = BMRRequest.objects.filter(status='pending')
+        # QA sees pending requests AND approved requests waiting for BMR numbers
+        bmr_requests = BMRRequest.objects.filter(status__in=['pending', 'approved']).order_by('-request_date')
         template = 'bmr/qa_bmr_request_list.html'
     elif request.user.role in ['store_manager', 'production_manager']:
         # Store manager and Production manager see their own requests
-        bmr_requests = BMRRequest.objects.filter(requested_by=request.user)
+        bmr_requests = BMRRequest.objects.filter(requested_by=request.user).order_by('-request_date')
         if request.user.role == 'production_manager':
             template = 'bmr/production_manager_bmr_request_list.html'
         else:

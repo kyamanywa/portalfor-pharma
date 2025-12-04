@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.core.exceptions import ValidationError
 import json
-from .models import DashboardMetrics, NotificationAlert, UserDashboardPreferences, DashboardPermission
+from .models import DashboardMetrics, NotificationAlert, NotificationSettings, UserDashboardPreferences, DashboardPermission
 
 class DashboardPermissionAdminForm(forms.ModelForm):
     """Custom form for DashboardPermission admin with proper JSONField handling"""
@@ -72,15 +72,58 @@ class DashboardPermissionAdminForm(forms.ModelForm):
 
 @admin.register(DashboardMetrics)
 class DashboardMetricsAdmin(admin.ModelAdmin):
-    list_display = ['user', 'date', 'active_batches', 'completed_phases_today', 'pending_phases']
-    list_filter = ['date', 'user__role']
+    list_display = ['user', 'date', 'active_batches', 'completed_phases_today', 'pending_phases', 'rejected_phases_today']
+    list_filter = ['date', 'user__role', 'user__is_active']
     search_fields = ['user__username', 'user__first_name', 'user__last_name']
+    readonly_fields = ['date']
+    date_hierarchy = 'date'
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user', 'date')
+        }),
+        ('General Metrics', {
+            'fields': ('active_batches', 'completed_phases_today', 'pending_phases', 'rejected_phases_today')
+        }),
+        ('Role-Specific Data', {
+            'fields': ('role_specific_data',),
+            'classes': ('collapse',),
+            'description': 'Additional metrics stored as JSON for specific roles'
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Metrics should be auto-generated, not manually added
+        return False
 
 @admin.register(NotificationAlert)
 class NotificationAlertAdmin(admin.ModelAdmin):
     list_display = ['recipient', 'notification_type', 'title', 'is_read', 'priority', 'created_date']
     list_filter = ['notification_type', 'priority', 'is_read', 'created_date']
     search_fields = ['recipient__username', 'title', 'message']
+
+
+@admin.register(NotificationSettings)
+class NotificationSettingsAdmin(admin.ModelAdmin):
+    list_display = ['role', 'show_notification_panel', 'auto_refresh_notifications', 'notification_sound', 'max_notifications_display']
+    list_filter = ['show_notification_panel', 'auto_refresh_notifications', 'notification_sound']
+    search_fields = ['role']
+    
+    fieldsets = (
+        ('Role Configuration', {
+            'fields': ('role',),
+            'description': 'Select the user role to configure notification settings for.'
+        }),
+        ('Panel Visibility', {
+            'fields': ('show_notification_panel',),
+            'description': 'Control whether this role can see the notification panel on their dashboard.'
+        }),
+        ('Notification Behavior', {
+            'fields': ('auto_refresh_notifications', 'notification_sound', 'max_notifications_display'),
+            'description': 'Configure how notifications behave for this role.'
+        }),
+    )
+
 
 @admin.register(UserDashboardPreferences)
 class UserDashboardPreferencesAdmin(admin.ModelAdmin):

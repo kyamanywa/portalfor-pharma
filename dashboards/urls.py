@@ -74,6 +74,12 @@ urlpatterns = [
     path('api/request-explanation/', views.request_explanation_api, name='request_explanation_api'),
     path('api/request-all-explanations/', views.request_all_explanations_api, name='request_all_explanations_api'),
     
+    # Notification mark as read
+    path('notifications/<int:notification_id>/mark-read/', views.mark_notification_read, name='mark_notification_read'),
+    
+    # Clear all notifications
+    path('notifications/clear-all/', views.clear_all_notifications, name='clear_all_notifications'),
+    
     # Timer expiration notification
     path('api/phase-timer-expired/', views.phase_timer_expired_api, name='phase_timer_expired'),
     

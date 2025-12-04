@@ -90,6 +90,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'dashboards.context_processors.admin_settings_context',  # Add admin settings context
+                'dashboards.context_processors.user_notifications',  # Add notifications context
             ],
         },
     },

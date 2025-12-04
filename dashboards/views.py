@@ -25,6 +25,68 @@ from workflow.constants import (
 
 from .permissions import require_dashboard_permission, check_dashboard_permission
 
+def save_dashboard_metrics(user, active_batches=0, completed_today=0, pending_phases=0, rejected_today=0, role_data=None):
+    """Helper function to save dashboard metrics to database"""
+    try:
+        from .models import DashboardMetrics
+        from django.utils import timezone
+        
+        today = timezone.now().date()
+        
+        # If metrics not provided, calculate them
+        if completed_today == 0:
+            completed_today = BatchPhaseExecution.objects.filter(
+                status='completed',
+                completed_date__date=today
+            ).count()
+        
+        if rejected_today == 0:
+            rejected_today = BatchPhaseExecution.objects.filter(
+                status='rejected',
+                completed_date__date=today
+            ).count()
+        
+        if pending_phases == 0:
+            pending_phases = BatchPhaseExecution.objects.filter(
+                status='pending'
+            ).count()
+        
+        if active_batches == 0:
+            active_batches = BMR.objects.filter(
+                status__in=['draft', 'approved', 'in_production']
+            ).count()
+        
+        # Save metrics
+        DashboardMetrics.record_metrics(
+            user=user,
+            active_batches=active_batches,
+            completed_phases_today=completed_today,
+            pending_phases=pending_phases,
+            rejected_phases_today=rejected_today,
+            role_specific_data=role_data or {}
+        )
+    except Exception as e:
+        print(f"Warning: Could not save dashboard metrics for {user.username}: {e}")
+
+def create_notification(recipient, notification_type, title, message, priority='medium', bmr=None, phase_execution=None):
+    """Helper function to create notification alerts"""
+    try:
+        from .models import NotificationAlert
+        
+        notification = NotificationAlert.objects.create(
+            recipient=recipient,
+            notification_type=notification_type,
+            priority=priority,
+            title=title,
+            message=message,
+            bmr=bmr,
+            phase_execution=phase_execution
+        )
+        return notification
+    except Exception as e:
+        print(f"Warning: Could not create notification for {recipient.username}: {e}")
+        return None
+
 @login_required
 def admin_timeline_view(request):
     """Admin Timeline View - Track all BMRs through the system"""
@@ -571,6 +633,19 @@ def admin_dashboard(request):
             'can_access_user_management': can_access_user_management,
         }
         
+        # Record metrics to database for admin viewing
+        save_dashboard_metrics(
+            user=request.user,
+            active_batches=active_batches,
+            role_data={
+                'total_bmrs': total_bmrs,
+                'completed_batches': completed_batches,
+                'rejected_batches': rejected_batches,
+                'total_users': total_users,
+                'active_users': active_users_count,
+            }
+        )
+        
         return render(request, 'dashboards/admin_dashboard.html', context)
         
     except Exception as e:
@@ -756,7 +831,7 @@ def qa_dashboard(request):
     # CRITICAL: Get pending BMR requests from production managers that need BMR creation
     from bmr.models import BMRRequest
     bmr_requests_pending = BMRRequest.objects.filter(
-        status='pending',
+        status__in=['pending', 'approved'],  # Include both pending approval AND approved waiting for batch numbers
         bmr__isnull=True  # Show requests that DON'T have BMRs yet - QA needs to create them!
     ).select_related('product', 'requested_by').order_by('-request_date')
     
@@ -768,8 +843,8 @@ def qa_dashboard(request):
     
     # BMR request counts for dashboard stats
     bmr_request_counts = {
-        'pending': BMRRequest.objects.filter(status='pending', bmr__isnull=True).count(),  # Requests needing BMR creation
-        'approved': BMRRequest.objects.filter(status='approved').count(),
+        'pending': BMRRequest.objects.filter(status__in=['pending', 'approved'], bmr__isnull=True).count(),  # Requests needing approval OR batch number assignment
+        'approved': BMRRequest.objects.filter(status='approved', bmr__isnull=False).count(),  # Approved AND already have batch numbers
         'rejected': BMRRequest.objects.filter(status='rejected').count(),
         'completed': BMRRequest.objects.filter(status='completed').count(),
     }
@@ -876,6 +951,32 @@ def regulatory_dashboard(request):
                         # Trigger next phase in workflow
                         WorkflowService.trigger_next_phase(bmr, regulatory_phase.phase)
                         
+                        # Create notification for production managers and QA
+                        from accounts.models import CustomUser
+                        
+                        # Notify production managers
+                        production_managers = CustomUser.objects.filter(role='production_manager', is_active=True)
+                        for pm in production_managers:
+                            create_notification(
+                                recipient=pm,
+                                notification_type='bmr_approved',
+                                title=f'BMR {bmr.batch_number} Approved',
+                                message=f'BMR {bmr.batch_number} for {bmr.product.product_name} has been approved by Regulatory and is ready for production.',
+                                priority='high',
+                                bmr=bmr
+                            )
+                        
+                        # Notify QA who created the BMR
+                        if bmr.created_by and bmr.created_by.is_active:
+                            create_notification(
+                                recipient=bmr.created_by,
+                                notification_type='bmr_approved',
+                                title=f'BMR {bmr.batch_number} Approved',
+                                message=f'Your BMR {bmr.batch_number} has been approved by Regulatory.',
+                                priority='medium',
+                                bmr=bmr
+                            )
+                        
                         messages.success(request, f'BMR {bmr.batch_number} has been approved successfully.')
                         
                     elif action == 'reject':
@@ -899,6 +1000,17 @@ def regulatory_dashboard(request):
                             signed_by=request.user,
                             comments=comments if comments else f'BMR rejected by {request.user.get_full_name()}'
                         )
+                        
+                        # Create notification for QA who created it
+                        if bmr.created_by and bmr.created_by.is_active:
+                            create_notification(
+                                recipient=bmr.created_by,
+                                notification_type='phase_rejected',
+                                title=f'BMR {bmr.batch_number} Rejected',
+                                message=f'Your BMR {bmr.batch_number} has been rejected by Regulatory. Reason: {comments}',
+                                priority='high',
+                                bmr=bmr
+                            )
                         
                         messages.warning(request, f'BMR {bmr.batch_number} has been rejected and sent back to QA.')
                 else:
@@ -1287,6 +1399,53 @@ def operator_dashboard(request):
                     # Trigger next phase in workflow
                     WorkflowService.trigger_next_phase(phase_execution.bmr, phase_execution.phase)
                     
+                    # Find and notify next operator if phase was triggered
+                    try:
+                        from accounts.models import CustomUser
+                        next_phase = BatchPhaseExecution.objects.filter(
+                            bmr=phase_execution.bmr,
+                            status='pending',
+                            phase__phase_order__gt=phase_execution.phase.phase_order
+                        ).order_by('phase__phase_order').first()
+                        
+                        if next_phase:
+                            # Map phase to role
+                            phase_role_map = {
+                                'mixing': 'mixing_operator',
+                                'granulation': 'granulation_operator',
+                                'blending': 'blending_operator',
+                                'compression': 'compression_operator',
+                                'coating': 'coating_operator',
+                                'drying': 'drying_operator',
+                                'filling': 'filling_operator',
+                                'tube_filling': 'tube_filling_operator',
+                                'blister_packing': 'packing_operator',
+                                'bulk_packing': 'packing_operator',
+                                'secondary_packaging': 'packing_operator',
+                                'qc_testing': 'qc',
+                                'post_compression_qc': 'qc',
+                                'post_mixing_qc': 'qc',
+                                'post_blending_qc': 'qc',
+                                'final_qa': 'qa',
+                            }
+                            
+                            next_role = phase_role_map.get(next_phase.phase.phase_name)
+                            if next_role:
+                                # Notify all operators of that role
+                                operators = CustomUser.objects.filter(role=next_role, is_active=True)
+                                for operator in operators:
+                                    create_notification(
+                                        recipient=operator,
+                                        notification_type='phase_assigned',
+                                        title=f'New Phase Assignment: {next_phase.phase.get_phase_name_display()}',
+                                        message=f'Batch {next_phase.bmr.batch_number} ({next_phase.bmr.product.product_name}) is ready for {next_phase.phase.get_phase_name_display()}.',
+                                        priority='medium',
+                                        bmr=next_phase.bmr,
+                                        phase_execution=next_phase
+                                    )
+                    except Exception as notify_error:
+                        print(f"Warning: Could not notify next operator: {notify_error}")
+                    
                     completion_msg = f'Phase {phase_execution.phase.phase_name} completed for batch {phase_execution.bmr.batch_number}.'
                     if breakdown_occurred:
                         completion_msg += ' Breakdown recorded.'
@@ -1491,6 +1650,38 @@ def operator_dashboard(request):
         'available_machines': available_machines,
         'show_breakdown_tracking': show_breakdown_tracking,
     }
+    
+    # Get notifications for this user (unread first, then recent 3 read)
+    from .models import NotificationAlert
+    unread_notifications = NotificationAlert.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).order_by('-created_date')
+    
+    read_notifications = NotificationAlert.objects.filter(
+        recipient=request.user,
+        is_read=True
+    ).order_by('-created_date')[:3]  # Only show 3 most recent read
+    
+    all_notifications = list(unread_notifications) + list(read_notifications)
+    unread_count = unread_notifications.count()
+    
+    context['notifications'] = all_notifications
+    context['unread_count'] = unread_count
+    
+    # Save operator metrics to database
+    save_dashboard_metrics(
+        user=request.user,
+        active_batches=stats.get('in_progress_phases', 0),
+        completed_today=stats.get('completed_today', 0),
+        pending_phases=stats.get('pending_phases', 0),
+        role_data={
+            'batches_handled': operator_stats.get('batches_handled', 0),
+            'success_rate': operator_stats.get('success_rate', 0),
+            'total_completed': total_completed,
+            'total_attempted': total_attempted,
+        }
+    )
 
     return render(request, 'dashboards/operator_dashboard.html', context)
 
@@ -3562,6 +3753,52 @@ def overrun_alerts_api(request):
 @login_required
 @require_http_methods(["POST"])
 @csrf_exempt
+@login_required
+def mark_notification_read(request, notification_id):
+    """Mark a notification alert as read (non-API version for form POST)"""
+    if request.method == 'POST':
+        try:
+            from .models import NotificationAlert
+            from django.utils import timezone
+            
+            notification = NotificationAlert.objects.get(
+                id=notification_id,
+                recipient=request.user  # Only mark own notifications
+            )
+            
+            notification.is_read = True
+            notification.read_date = timezone.now()
+            notification.save()
+            
+            messages.success(request, 'Notification marked as read.')
+        except NotificationAlert.DoesNotExist:
+            messages.error(request, 'Notification not found.')
+        except Exception as e:
+            messages.error(request, f'Error marking notification as read: {e}')
+    
+    # Redirect back to the previous page
+    return redirect(request.META.get('HTTP_REFERER', 'dashboards:dashboard_home'))
+
+@login_required
+def clear_all_notifications(request):
+    """Clear all notifications for the current user"""
+    if request.method == 'POST':
+        try:
+            from .models import NotificationAlert
+            
+            # Delete all notifications for this user
+            deleted_count = NotificationAlert.objects.filter(
+                recipient=request.user
+            ).delete()[0]
+            
+            messages.success(request, f'Cleared {deleted_count} notification(s).')
+        except Exception as e:
+            messages.error(request, f'Error clearing notifications: {e}')
+    
+    # Redirect back to the previous page
+    return redirect(request.META.get('HTTP_REFERER', 'dashboards:dashboard_home'))
+
+@login_required
 def mark_notification_read_api(request, notification_id):
     """API endpoint to mark a notification as read/acknowledged"""
     try:

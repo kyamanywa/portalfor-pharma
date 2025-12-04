@@ -250,6 +250,11 @@
     </div>
     {% endif %}
     
+    <!-- Include notification sidebar for all logged-in users -->
+    {% if user.is_authenticated %}
+        {% include 'includes/notification_sidebar.html' %}
+    {% endif %}
+    
     <div class="container-fluid py-4">
 
         {% block content %}
