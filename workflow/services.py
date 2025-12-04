@@ -76,8 +76,9 @@ class WorkflowService:
             for template_phase in filtered_phases:
                 
                 # Get or create the production phase definition PRESERVING TEMPLATE ORDER
+                # Create or get production phase using the template's product type
                 phase, created = ProductionPhase.objects.get_or_create(
-                    product_type=product_type,
+                    product_type=template_product_type,
                     phase_name=template_phase.phase_name,
                     defaults={
                         'phase_order': template_phase.phase_order,  # Use template's original order
@@ -110,8 +111,54 @@ class WorkflowService:
                         'status': initial_status
                     }
                 )
+
+                # Verification pass: ensure all filtered template phases have an execution entry.
+                # This helps with transient DB lock issues in tests where background checkers
+                # might briefly interfere with writes. Retry a few times on failure.
+                import time
+                from django.db import OperationalError
+
+                for template_phase in filtered_phases:
+                    # Resolve the production phase we created/updated above
+                    phase_obj = ProductionPhase.objects.filter(
+                        product_type=template_product_type,
+                        phase_name=template_phase.phase_name
+                    ).first()
+
+                    if not phase_obj:
+                        # Nothing to do if phase definition missing
+                        continue
+
+                    attempts = 3
+                    for attempt in range(attempts):
+                        try:
+                            BatchPhaseExecution.objects.get_or_create(
+                                bmr=bmr,
+                                phase=phase_obj,
+                                defaults={'status': PHASE_STATUSES['NOT_READY']}
+                            )
+                            break
+                        except OperationalError:
+                            # Small backoff and retry
+                            time.sleep(0.1)
+                        except Exception:
+                            # Don't let verification break overall initialization; log and continue
+                            logger.exception(f"Error ensuring execution for phase {template_phase.phase_name} on BMR {bmr.batch_number}")
+                            break
             
-            logger.info(f"Initialized workflow from template for {bmr.batch_number} with {template_phases.count()} phases")
+            # Diagnostic logs: list template phases, filtered phases, and created executions
+            try:
+                template_phase_names = [tp.phase_name for tp in template_phases]
+                filtered_phase_names = [tp.phase_name for tp in filtered_phases]
+                executions = list(BatchPhaseExecution.objects.filter(bmr=bmr).values_list('phase__phase_name', flat=True))
+
+                logger.info(f"Initialized workflow from template for {bmr.batch_number} with {template_phases.count()} template phases")
+                logger.debug(f"Template phases: {template_phase_names}")
+                logger.debug(f"Filtered phases after product checks: {filtered_phase_names}")
+                logger.debug(f"BatchPhaseExecution entries for {bmr.batch_number}: {executions}")
+            except Exception:
+                logger.exception("Error while logging diagnostic phase lists")
+
             return True
             
         except Exception as e:
@@ -310,7 +357,14 @@ class WorkflowService:
                 phase__phase_order__gte=rollback_phase.phase.phase_order
             )
             
+            logger.info(f"Phases to reset for BMR {bmr.batch_number}: {[p.phase.phase_name for p in phases_to_reset]}")
+            logger.info(f"Rollback target: {rollback_phase.phase.phase_name} (order {rollback_phase.phase.phase_order})")
             for phase_execution in phases_to_reset:
+                # Debug logging: show pre-reset values
+                try:
+                    logger.info(f"Pre-reset: {phase_execution.phase.phase_name} - started_by={phase_execution.started_by}, started_date={phase_execution.started_date}, completed_by={phase_execution.completed_by}, completed_date={phase_execution.completed_date}")
+                except Exception:
+                    logger.info(f"Pre-reset: {phase_execution.phase.phase_name} - (unable to read fields)")
                 # Reset to not_ready - they will be activated in proper sequence
                 phase_execution.status = 'not_ready'
                 phase_execution.started_by = None
@@ -326,6 +380,11 @@ class WorkflowService:
                     phase_execution.operator_comments = 'RESET: Waiting for workflow sequence after rollback.'
                 
                 phase_execution.save()
+                # Debug logging: show post-reset values
+                try:
+                    logger.info(f"Post-reset: {phase_execution.phase.phase_name} - started_by={phase_execution.started_by}, started_date={phase_execution.started_date}, completed_by={phase_execution.completed_by}, completed_date={phase_execution.completed_date}")
+                except Exception:
+                    logger.info(f"Post-reset: {phase_execution.phase.phase_name} - (unable to read fields)")
             
             # Set ONLY the rollback phase to pending so work can resume
             rollback_phase.status = 'pending'

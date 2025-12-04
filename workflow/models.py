@@ -107,8 +107,9 @@ class ProductionPhase(models.Model):
     PHASE_CHOICES = PHASE_CHOICES
     PRODUCT_TYPE_CHOICES = PRODUCT_TYPE_CHOICES
     
-    product_type = models.CharField(max_length=20, choices=get_product_type_choices)  # Note: callable
-    phase_name = models.CharField(max_length=30, choices=get_phase_choices)  # Note: callable
+    # Use base constant choices at model level; admin forms can override dynamically
+    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES)
+    phase_name = models.CharField(max_length=30, choices=PHASE_CHOICES)
     phase_order = models.IntegerField()
     description = models.TextField(blank=True, help_text="Description of this phase")
     is_mandatory = models.BooleanField(default=True)
@@ -118,7 +119,16 @@ class ProductionPhase(models.Model):
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,
-        help_text="Phase to rollback to if this phase fails"
+        related_name='qc_rollback_from',
+        help_text="Phase to rollback to if QC fails this phase"
+    )
+    qa_can_rollback_to = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='qa_rollback_from',
+        help_text="Phase to rollback to if QA/Final QA fails this phase"
     )
     estimated_duration_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     
@@ -760,7 +770,8 @@ class WorkflowTemplate(models.Model):
     ]
     
     name = models.CharField(max_length=100, help_text="Template name (e.g., 'Standard Tablet Workflow')")
-    product_type = models.CharField(max_length=20, choices=get_product_type_choices)  # Note: callable
+    # Use base constant choices at model level; admin forms can override dynamically
+    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES)
     description = models.TextField(blank=True, help_text="Description of when to use this template")
     is_active = models.BooleanField(default=True, help_text="Active templates are available for new BMRs")
     is_default = models.BooleanField(default=False, help_text="Default template for this product type")
@@ -825,7 +836,8 @@ class WorkflowTemplate(models.Model):
         ProductionPhase.objects.filter(product_type=self.product_type).delete()
         
         # Create new phases from template
-        rollback_mapping = {}  # To handle rollback relationships
+        rollback_mapping = {}  # To handle QC rollback relationships
+        qa_rollback_mapping = {}  # To handle QA rollback relationships
         created_phases = {}
         
         # First pass: Create all phases
@@ -843,12 +855,21 @@ class WorkflowTemplate(models.Model):
             
             if template_phase.rollback_target_order:
                 rollback_mapping[production_phase] = template_phase.rollback_target_order
+            
+            if template_phase.qa_rollback_target_order:
+                qa_rollback_mapping[production_phase] = template_phase.qa_rollback_target_order
         
         # Second pass: Set rollback relationships
         for phase, rollback_order in rollback_mapping.items():
             if rollback_order in created_phases:
                 phase.can_rollback_to = created_phases[rollback_order]
                 phase.save(update_fields=['can_rollback_to'])
+        
+        # Third pass: Set QA rollback relationships
+        for phase, qa_rollback_order in qa_rollback_mapping.items():
+            if qa_rollback_order in created_phases:
+                phase.qa_can_rollback_to = created_phases[qa_rollback_order]
+                phase.save(update_fields=['qa_can_rollback_to'])
         
         return len(created_phases)
 
@@ -869,7 +890,11 @@ class WorkflowTemplatePhase(models.Model):
     # Rollback configuration (store order number, not FK to avoid circular dependencies)
     rollback_target_order = models.PositiveIntegerField(
         null=True, blank=True,
-        help_text="Phase order to rollback to if this phase fails (must be lower number)"
+        help_text="Phase order to rollback to if QC fails this phase (must be lower number)"
+    )
+    qa_rollback_target_order = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Phase order to rollback to if QA/Final QA fails this phase (must be lower number)"
     )
     
     class Meta:
@@ -891,6 +916,19 @@ class WorkflowTemplatePhase(models.Model):
                 if self.pk:  # Only check if we're updating existing record
                     raise ValidationError({
                         'rollback_target_order': f'No phase with order {self.rollback_target_order} exists in this template'
+                    })
+        
+        if self.qa_rollback_target_order:
+            if self.qa_rollback_target_order >= self.phase_order:
+                raise ValidationError({
+                    'qa_rollback_target_order': 'QA rollback target must have a lower order number than current phase'
+                })
+            
+            # Check if target order exists in template
+            if self.template_id and not self.template.phases.filter(phase_order=self.qa_rollback_target_order).exists():
+                if self.pk:  # Only check if we're updating existing record
+                    raise ValidationError({
+                        'qa_rollback_target_order': f'No phase with order {self.qa_rollback_target_order} exists in this template'
                     })
 
 # Import and make available all admin settings models for migrations

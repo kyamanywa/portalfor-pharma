@@ -162,27 +162,109 @@ Final QA → Finished Goods
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.8+
-- Django 4.0+
-- Virtual environment
+- Python 3.8+ (Python 3.11+ recommended)
+- pip (Python package manager)
+- Virtual environment support
+- 4GB RAM minimum (8GB+ recommended)
+- 10GB free storage
 
+### Quick Installation
 
-### Installation
-1. Clone the repository
-2. Create virtual environment
-3. Install dependencies: `pip install -r requirements.txt`
-4. Run migrations: `python manage.py migrate`
-5. **Initialize default workflow templates:**
-  - `python manage.py setup_workflow_templates`
-  - (To overwrite existing templates: `python manage.py setup_workflow_templates --overwrite`)
-6. Create superuser: `python manage.py createsuperuser`
-7. Start server: `python manage.py runserver`
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/kyamanywa/portalfor-pharma.git
+cd portalfor-pharma
+```
 
-### Initial Setup
-1. Configure user roles
-2. Set up product master data
-3. Configure workflow sequences
-4. Set up QC checkpoints
+#### 2. Create Virtual Environment
+**Windows:**
+```powershell
+python -m venv venv
+.\venv\Scripts\activate
+```
+
+**Linux/Mac:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+#### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+#### 4. Initialize Database
+```bash
+python manage.py migrate
+```
+
+#### 5. Load Default System Data (REQUIRED)
+**These commands set up essential system configurations:**
+
+```bash
+# Initialize all system settings (Dashboard, Session, Alerts, Production Limits)
+python manage.py init_admin_settings
+
+# Initialize dashboard permissions (Role-based access control)
+python manage.py init_dashboard_permissions
+
+# Create product types and workflows (Ointments, Tablets, Capsules)
+python manage.py seed_product_types
+
+# Initialize phase timing settings (Optional but recommended)
+python manage.py init_timing_settings
+```
+
+**What gets created:**
+- ✅ 62 configurable system settings (dashboard, session, alerts, limits)
+- ✅ 15 dashboard permission controls
+- ✅ 4 product types with complete production workflows
+- ✅ All production phases properly configured
+- ✅ Phase timing templates
+
+#### 6. Create Admin User
+```bash
+python manage.py createsuperuser
+```
+
+#### 7. Create Sample Users (Optional - For Testing)
+```bash
+python manage.py create_sample_users
+```
+*Creates test users for all roles with default passwords (change in production!)*
+
+#### 8. Start the Server
+```bash
+python manage.py runserver
+```
+
+**Access the system:**
+- **Main Portal:** http://127.0.0.1:8000/
+- **Admin Panel:** http://127.0.0.1:8000/admin/
+- **API Docs:** http://127.0.0.1:8000/api/
+
+### 📖 Detailed Setup Guide
+For complete installation instructions, troubleshooting, and verification steps, see:
+**[INSTALLATION_GUIDE.md](./INSTALLATION_GUIDE.md)**
+
+### Initial Configuration
+After installation, configure through Django Admin:
+
+1. **Dashboard Settings:** Admin → Workflow → Dashboard Settings
+   - Configure refresh intervals, pagination, UI preferences
+   
+2. **Session Settings:** Admin → Workflow → Session Management Settings
+   - Set session timeouts, authentication rules, password policies
+   
+3. **Production Limits:** Admin → Workflow → Production Limit Settings
+   - Configure batch limits, file upload limits, concurrent operations
+   
+4. **Dashboard Permissions:** Admin → Dashboards → Dashboard Permissions
+   - Set role-based access controls for each dashboard type
+   
+5. **User Management:** Admin → Accounts → Users
+   - Create user accounts and assign roles
 
 ## 🌟 Future Enhancements
 

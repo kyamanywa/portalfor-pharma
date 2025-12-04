@@ -86,6 +86,16 @@ def create_bmr_view(request):
                 bmr.created_by = request.user
             try:
                 bmr.save()
+                
+                # Create electronic signature for BMR creation
+                from bmr.models import BMRSignature
+                BMRSignature.objects.create(
+                    bmr=bmr,
+                    signature_type='created',
+                    signed_by=request.user,
+                    comments=f'BMR created by {request.user.get_full_name()} for product {bmr.product.product_name}'
+                )
+                
             except Exception as e:
                 from django.db import IntegrityError
                 if isinstance(e, IntegrityError) and 'UNIQUE constraint failed' in str(e):
@@ -244,11 +254,16 @@ def bmr_detail_view(request, bmr_id):
         else:
             total_production_time = "In Progress"
     
+    # Get electronic signatures
+    from bmr.models import BMRSignature
+    signatures = BMRSignature.objects.filter(bmr=bmr).select_related('signed_by').order_by('signed_date')
+    
     return render(request, 'bmr/bmr_detail.html', {
         'bmr': bmr,
         'materials': materials,
         'workflow_status': workflow_status,
         'user_phases': user_phases,
+        'signatures': signatures,
         'total_production_time': total_production_time,
         'production_status': production_status,
         'total_production_hours': total_production_hours,
@@ -456,6 +471,15 @@ def complete_phase_view(request, bmr_id, phase_name):
         bmr.status = 'completed'
         bmr.actual_completion_date = timezone.now()
         bmr.save()
+        
+        # Create electronic signature for production completion
+        from bmr.models import BMRSignature
+        BMRSignature.objects.create(
+            bmr=bmr,
+            signature_type='final_approval',
+            signed_by=request.user,
+            comments=f'Production completed and released by {request.user.get_full_name()}'
+        )
     
     # Redirect back to appropriate dashboard
     if request.user.role == 'regulatory':

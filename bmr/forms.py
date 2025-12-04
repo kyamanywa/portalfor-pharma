@@ -61,10 +61,11 @@ class BMRCreateForm(forms.ModelForm):
                     "Batch number must be exactly 7 digits in format XXXYYYY (e.g., 0012025)"
                 )
             
-            # Check if batch number already exists
-            if BMR.objects.filter(batch_number=batch_number).exists():
+            # Check if batch number already exists for THIS PRODUCT (not globally)
+            product = self.cleaned_data.get('product')
+            if product and BMR.objects.filter(product=product, batch_number=batch_number).exists():
                 raise forms.ValidationError(
-                    f"Batch number {batch_number} already exists. Please use a different number."
+                    f"Batch number {batch_number} already exists for {product.product_name}. Please use a different number."
                 )
         
         return batch_number

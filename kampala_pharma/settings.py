@@ -308,43 +308,14 @@ REST_FRAMEWORK = {
 }
 
 # Channels Configuration (WebSocket support) - Optional
-try:
-    import channels
-    ASGI_APPLICATION = 'kampala_pharma.asgi.application'
-    
-    # Redis configuration for channels (WebSocket) and caching
-    REDIS_URL = env('REDIS_URL')
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                "hosts": [REDIS_URL],
-            },
-        },
+# Redis is disabled - using local memory cache for simplicity
+print("⚠️  Using local memory cache (Redis disabled)")
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
-    
-    # Caching Configuration
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-            'KEY_PREFIX': 'kpi_ops',
-            'TIMEOUT': 300,  # 5 minutes default timeout
-        }
-    }
-    
-    # Session Configuration for Cloud Deployment
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-    SESSION_CACHE_ALIAS = 'default'
-    
-except ImportError:
-    print("⚠️  Redis/Channels not available - using default cache")
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        }
-    }
-    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+}
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG  # Secure cookies in production

@@ -54,8 +54,9 @@ class Command(BaseCommand):
             
             self.stdout.write(f'Template phases ({template_phases.count()}):')
             for phase in template_phases:
-                rollback = f' → {phase.rollback_target_order}' if phase.rollback_target_order else ''
-                self.stdout.write(f'  {phase.phase_order}. {phase.phase_name}{rollback}')
+                qc_rollback = f' QC→{phase.rollback_target_order}' if phase.rollback_target_order else ''
+                qa_rollback = f' QA→{phase.qa_rollback_target_order}' if phase.qa_rollback_target_order else ''
+                self.stdout.write(f'  {phase.phase_order}. {phase.phase_name}{qc_rollback}{qa_rollback}')
             
             if not dry_run:
                 # Apply template

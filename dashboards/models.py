@@ -108,6 +108,8 @@ class DashboardPermission(models.Model):
         ('inventory', 'Inventory Management'),
         ('quality_control', 'Quality Control Management'),
         ('system_health', 'System Health'),
+        ('bmr_reports', 'BMR Print & Download Reports'),
+        ('phase_notifications', 'Phase Timing Alerts'),
         ('qa_dashboard', 'QA Dashboard'),
         ('production_manager', 'Production Manager Dashboard'),
         ('store_dashboard', 'Store Dashboard'),

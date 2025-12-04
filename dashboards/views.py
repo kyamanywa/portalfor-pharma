@@ -194,6 +194,8 @@ def admin_dashboard(request):
         
         # Overview Section (always shown - it's the main dashboard)
         show_overview_section = True
+        can_access_analytics = True  # Core analytics, always accessible for admin
+        can_access_bmr_reports = check_dashboard_permission(request.user, 'bmr_reports')
         
         # Production Management Section
         can_access_bmr_tracking = True  # Core functionality, always accessible
@@ -391,12 +393,9 @@ def admin_dashboard(request):
         
         # Get monthly analytics data with error handling
         try:
-            print(f"DEBUG: Getting analytics for month {selected_month}, year {selected_year}")
             selected_month_analytics = get_monthly_production_analytics(selected_month, selected_year)
             current_month_totals = get_product_type_production_totals(selected_month, selected_year)
-            print(f"DEBUG: Analytics successful - Total batches: {selected_month_analytics['total_batches_completed']}")
         except Exception as e:
-            print(f"DEBUG: Analytics error: {e}")
             import traceback
             traceback.print_exc()
             # Fallback analytics data - create simple mock data
@@ -469,7 +468,6 @@ def admin_dashboard(request):
                 ).select_related('bmr', 'phase', 'started_by')[:10],
             }
         except Exception as e:
-            print(f"DEBUG: QC stats error: {e}")
             qc_stats = {'passed_tests': 0, 'failed_tests': 0, 'pending_tests': 0}
             qc_test_details = {'passed_tests_data': [], 'failed_tests_data': [], 'pending_tests_data': []}
         
@@ -486,6 +484,10 @@ def admin_dashboard(request):
             'active_phases': active_phases,
             'timeline_data': timeline_data,  # Now populated with real data
             'work_in_progress_bmrs': work_in_progress_bmrs,  # Added for work-in-progress section
+            
+            # REPORTS DATA - For BMR Reports section
+            'all_bmrs': BMR.objects.select_related('product', 'created_by', 'approved_by').order_by('-created_date'),
+            'all_products': Product.objects.all().order_by('product_name'),
             
             # CHART DATA
             'tablet_count': tablet_count,
@@ -543,6 +545,8 @@ def admin_dashboard(request):
             # Dashboard access permissions for ALL sidebar sections
             # Overview Section
             'show_overview_section': show_overview_section,
+            'can_access_analytics': can_access_analytics,
+            'can_access_bmr_reports': can_access_bmr_reports,
             
             # Production Management Section
             'show_production_section': show_production_section,
@@ -566,10 +570,6 @@ def admin_dashboard(request):
             'can_access_system_logs': can_access_system_logs,
             'can_access_user_management': can_access_user_management,
         }
-        
-        # Debug: Print context keys
-        print(f"DEBUG: Context created with {len(context)} keys: {list(context.keys())}")
-        print(f"DEBUG: tablet_count={context['tablet_count']}, capsule_count={context['capsule_count']}")
         
         return render(request, 'dashboards/admin_dashboard.html', context)
         
@@ -864,6 +864,15 @@ def regulatory_dashboard(request):
                         bmr.approved_date = timezone.now()
                         bmr.save()
                         
+                        # Create electronic signature for regulatory approval
+                        from bmr.models import BMRSignature
+                        BMRSignature.objects.create(
+                            bmr=bmr,
+                            signature_type='approved',
+                            signed_by=request.user,
+                            comments=comments if comments else f'BMR approved for production by {request.user.get_full_name()}'
+                        )
+                        
                         # Trigger next phase in workflow
                         WorkflowService.trigger_next_phase(bmr, regulatory_phase.phase)
                         
@@ -881,6 +890,15 @@ def regulatory_dashboard(request):
                         bmr.approved_by = request.user
                         bmr.approved_date = timezone.now()
                         bmr.save()
+                        
+                        # Create electronic signature for regulatory rejection
+                        from bmr.models import BMRSignature
+                        BMRSignature.objects.create(
+                            bmr=bmr,
+                            signature_type='reviewed',
+                            signed_by=request.user,
+                            comments=comments if comments else f'BMR rejected by {request.user.get_full_name()}'
+                        )
                         
                         messages.warning(request, f'BMR {bmr.batch_number} has been rejected and sent back to QA.')
                 else:
@@ -1555,6 +1573,15 @@ def qc_dashboard(request):
                     phase_execution.completed_date = timezone.now()
                     phase_execution.operator_comments = f"QC Test Passed by {request.user.get_full_name()}. Results: {test_results}"
                     phase_execution.save()
+                    
+                    # Create electronic signature for QC approval
+                    from bmr.models import BMRSignature
+                    BMRSignature.objects.create(
+                        bmr=phase_execution.bmr,
+                        signature_type='qc_approved',
+                        signed_by=request.user,
+                        comments=test_results if test_results else f'QC testing passed by {request.user.get_full_name()}'
+                    )
                     
                     # Trigger next phase in workflow
                     WorkflowService.trigger_next_phase(phase_execution.bmr, phase_execution.phase)

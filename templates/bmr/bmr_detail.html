@@ -28,6 +28,12 @@
                     Edit BMR
                 </a>
                 {% endif %}
+                {% if user.is_staff or user.is_superuser %}
+                <a href="{% url 'reports:bmr_print' bmr.id %}" class="btn btn-success" target="_blank">
+                    <i class="fas fa-print me-2"></i>
+                    Print BMR
+                </a>
+                {% endif %}
                 <a href="{% url 'bmr:list' %}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>
                     Back to List
@@ -415,6 +421,83 @@
                     </div>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Electronic Signatures Section -->
+        {% if signatures %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-signature me-2"></i>
+                    Electronic Signatures
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th><i class="fas fa-file-signature me-1"></i>Signature Type</th>
+                                <th><i class="fas fa-user me-1"></i>Signed By</th>
+                                <th><i class="fas fa-user-tag me-1"></i>Role</th>
+                                <th><i class="fas fa-calendar-check me-1"></i>Date & Time</th>
+                                <th><i class="fas fa-comment me-1"></i>Comments</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for signature in signatures %}
+                            <tr>
+                                <td>
+                                    {% if signature.signature_type == 'created' %}
+                                        <span class="badge bg-info"><i class="fas fa-plus-circle me-1"></i>Created</span>
+                                    {% elif signature.signature_type == 'reviewed' %}
+                                        <span class="badge bg-warning"><i class="fas fa-eye me-1"></i>Reviewed</span>
+                                    {% elif signature.signature_type == 'approved' %}
+                                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Approved</span>
+                                    {% elif signature.signature_type == 'final_approval' %}
+                                        <span class="badge bg-primary"><i class="fas fa-award me-1"></i>Final Approval</span>
+                                    {% elif signature.signature_type == 'dispensed' %}
+                                        <span class="badge bg-secondary"><i class="fas fa-box me-1"></i>Materials Dispensed</span>
+                                    {% elif signature.signature_type == 'production_started' %}
+                                        <span class="badge bg-info"><i class="fas fa-play me-1"></i>Production Started</span>
+                                    {% elif signature.signature_type == 'production_completed' %}
+                                        <span class="badge bg-success"><i class="fas fa-flag-checkered me-1"></i>Production Completed</span>
+                                    {% elif signature.signature_type == 'qc_approved' %}
+                                        <span class="badge bg-success"><i class="fas fa-microscope me-1"></i>QC Approved</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ signature.get_signature_type_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ signature.signed_by.get_full_name|default:signature.signed_by.username }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ signature.signed_by.get_role_display }}</span>
+                                </td>
+                                <td>
+                                    <small>
+                                        <i class="fas fa-clock me-1"></i>{{ signature.signed_date|date:"M d, Y" }}<br>
+                                        {{ signature.signed_date|time:"h:i A" }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if signature.comments %}
+                                        <small class="text-muted">{{ signature.comments|truncatewords:15 }}</small>
+                                    {% else %}
+                                        <small class="text-muted fst-italic">No comments</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Regulatory Compliance:</strong> All electronic signatures are captured with username, date/time, and action for full audit trail compliance with pharmaceutical regulations.
+                </div>
             </div>
         </div>
         {% endif %}

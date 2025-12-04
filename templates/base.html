@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>{% block title %}Kampala Pharmaceutical Industries - Operations{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -104,6 +106,35 @@
                 transform: translateX(0);
                 opacity: 1;
             }
+        }
+        
+        /* Mobile Responsiveness - System-wide */
+        @media (max-width: 768px) {
+            body { padding-top: 50px; font-size: 14px; }
+            .container-fluid { padding-left: 10px; padding-right: 10px; }
+            .card { margin-bottom: 15px; }
+            .card-body { padding: 12px; }
+            h2 { font-size: 1.5rem; }
+            h3 { font-size: 1.3rem; }
+            .btn { padding: 6px 12px; font-size: 13px; }
+            .table { font-size: 12px; }
+            .table th, .table td { padding: 6px; }
+            .navbar-brand { font-size: 1rem; }
+            /* Fix horizontal scrolling on activity panels */
+            .row { margin-left: 0; margin-right: 0; }
+            .col, [class*="col-"] { padding-left: 5px; padding-right: 5px; }
+            .overflow-auto { overflow-x: hidden !important; }
+            /* Make tables responsive */
+            .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
+        
+        @media (max-width: 576px) {
+            body { font-size: 13px; }
+            h2 { font-size: 1.3rem; }
+            .btn-group { flex-wrap: wrap; }
+            .btn-sm { font-size: 11px; padding: 4px 8px; }
+            /* Stack cards vertically */
+            [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
         }
         
         .toast-message .toast-header {

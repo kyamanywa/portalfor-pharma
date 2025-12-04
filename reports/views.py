@@ -591,3 +591,98 @@ def bmr_comments_detail(request, bmr_id):
     }
     
     return render(request, 'reports/bmr_comments_detail.html', context)
+
+
+@login_required
+def bmr_print_view(request, bmr_id):
+    """Comprehensive BMR print view with all product information, signatures, and workflow details"""
+    bmr = get_object_or_404(BMR, id=bmr_id)
+    
+    # Check permissions - ONLY admin/superuser can print BMR
+    if not (request.user.is_staff or request.user.is_superuser):
+        from django.contrib import messages
+        messages.error(request, 'Access denied. Only administrators can print BMR documents.')
+        return redirect('bmr:detail', bmr_id=bmr.id)
+    
+    # Get product information
+    product = bmr.product
+    
+    # Get materials
+    from bmr.models import BMRMaterial
+    materials = BMRMaterial.objects.filter(bmr=bmr).select_related('dispensed_by')
+    
+    # Get workflow phases
+    phases = BatchPhaseExecution.objects.filter(bmr=bmr).select_related(
+        'phase', 'started_by', 'completed_by'
+    ).order_by('phase__phase_order')
+    
+    # Calculate workflow statistics
+    total_phases = phases.count()
+    completed_phases = phases.filter(status='completed').count()
+    progress_percentage = (completed_phases / total_phases * 100) if total_phases > 0 else 0
+    
+    # Calculate total production time
+    first_started_phase = phases.filter(started_date__isnull=False).order_by('started_date').first()
+    last_completed_phase = phases.filter(completed_date__isnull=False).order_by('-completed_date').first()
+    
+    total_production_time = None
+    if first_started_phase and last_completed_phase:
+        from django.utils import timezone
+        if bmr.status == 'completed':
+            duration = last_completed_phase.completed_date - first_started_phase.started_date
+        else:
+            duration = timezone.now() - first_started_phase.started_date
+        
+        days = duration.days
+        hours = int(duration.seconds / 3600)
+        minutes = int((duration.seconds % 3600) / 60)
+        
+        if days > 0:
+            total_production_time = f"{days} day{'s' if days > 1 else ''}, {hours} hour{'s' if hours != 1 else ''}"
+        elif hours > 0:
+            total_production_time = f"{hours} hour{'s' if hours != 1 else ''}, {minutes} minute{'s' if minutes != 1 else ''}"
+        else:
+            total_production_time = f"{minutes} minute{'s' if minutes != 1 else ''}"
+    
+    # Get electronic signatures
+    signatures = BMRSignature.objects.filter(bmr=bmr).select_related('signed_by').order_by('signed_date')
+    
+    # Get QC test results from phase comments
+    qc_results = []
+    for phase in phases:
+        if 'quality_control' in phase.phase.phase_name or 'qc' in phase.phase.phase_name.lower():
+            qc_results.append({
+                'phase': phase.phase.get_phase_name_display(),
+                'status': phase.get_status_display(),
+                'tested_by': phase.completed_by.get_full_name() if phase.completed_by else 'N/A',
+                'date': phase.completed_date,
+                'results': phase.operator_comments or 'No comments recorded'
+            })
+    
+    # Get quarantine information
+    from quarantine.models import QuarantineBatch, SampleRequest
+    quarantine_batch = QuarantineBatch.objects.filter(bmr=bmr).first()
+    samples = []
+    if quarantine_batch:
+        samples = SampleRequest.objects.filter(
+            quarantine_batch=quarantine_batch
+        ).select_related('requested_by', 'sampled_by').order_by('request_date')
+    
+    context = {
+        'bmr': bmr,
+        'product': product,
+        'materials': materials,
+        'phases': phases,
+        'signatures': signatures,
+        'qc_results': qc_results,
+        'quarantine_batch': quarantine_batch,
+        'samples': samples,
+        'total_phases': total_phases,
+        'completed_phases': completed_phases,
+        'progress_percentage': progress_percentage,
+        'total_production_time': total_production_time,
+        'print_date': datetime.now(),
+        'printed_by': request.user,
+    }
+    
+    return render(request, 'reports/bmr_print.html', context)

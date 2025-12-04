@@ -193,7 +193,7 @@ class ProductionPhaseAdmin(admin.ModelAdmin):
     form = ProductionPhaseAdminForm
     list_display = [
         'phase_name', 'product_type', 'phase_order', 'is_mandatory', 
-        'requires_approval', 'get_rollback_target', 'estimated_duration_hours'
+        'requires_approval', 'get_qc_rollback_target', 'get_qa_rollback_target', 'estimated_duration_hours'
     ]
     list_filter = ['product_type', 'is_mandatory', 'requires_approval']
     search_fields = ['phase_name', 'description']
@@ -207,9 +207,13 @@ class ProductionPhaseAdmin(admin.ModelAdmin):
             'fields': ('phase_order', 'is_mandatory', 'requires_approval'),
             'description': 'Configure how this phase fits into the workflow'
         }),
-        ('Quality Control', {
+        ('Quality Control Rollback', {
             'fields': ('can_rollback_to',),
-            'description': 'Configure rollback behavior for failed QC'
+            'description': 'Configure rollback behavior when QC fails this phase'
+        }),
+        ('Quality Assurance Rollback', {
+            'fields': ('qa_can_rollback_to',),
+            'description': 'Configure rollback behavior when QA/Final QA fails this phase'
         }),
         ('Timing', {
             'fields': ('estimated_duration_hours',),
@@ -217,8 +221,8 @@ class ProductionPhaseAdmin(admin.ModelAdmin):
         }),
     )
     
-    def get_rollback_target(self, obj):
-        """Display rollback target with order"""
+    def get_qc_rollback_target(self, obj):
+        """Display QC rollback target with order"""
         if obj.can_rollback_to:
             return format_html(
                 '<span style="color: #e74c3c;">→ {} (Order: {})</span>',
@@ -226,11 +230,23 @@ class ProductionPhaseAdmin(admin.ModelAdmin):
                 obj.can_rollback_to.phase_order
             )
         return format_html('<span style="color: #95a5a6;">No rollback</span>')
-    get_rollback_target.short_description = 'Rollback Target'
-    get_rollback_target.admin_order_field = 'can_rollback_to__phase_order'
+    get_qc_rollback_target.short_description = 'QC Rollback'
+    get_qc_rollback_target.admin_order_field = 'can_rollback_to__phase_order'
+    
+    def get_qa_rollback_target(self, obj):
+        """Display QA rollback target with order"""
+        if obj.qa_can_rollback_to:
+            return format_html(
+                '<span style="color: #3498db;">→ {} (Order: {})</span>',
+                obj.qa_can_rollback_to.phase_name,
+                obj.qa_can_rollback_to.phase_order
+            )
+        return format_html('<span style="color: #95a5a6;">No rollback</span>')
+    get_qa_rollback_target.short_description = 'QA Rollback'
+    get_qa_rollback_target.admin_order_field = 'qa_can_rollback_to__phase_order'
     
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('can_rollback_to')
+        return super().get_queryset(request).select_related('can_rollback_to', 'qa_can_rollback_to')
     
     actions = ['reorder_phases', 'validate_workflow']
     
@@ -299,7 +315,7 @@ class WorkflowTemplatePhaseInline(admin.TabularInline):
     model = WorkflowTemplatePhase
     extra = 1
     fields = ['phase_order', 'phase_name', 'description', 'is_mandatory', 'requires_approval', 
-             'estimated_duration_hours', 'rollback_target_order']
+             'estimated_duration_hours', 'rollback_target_order', 'qa_rollback_target_order']
     ordering = ['phase_order']
 
 
@@ -421,7 +437,7 @@ class WorkflowTemplateAdmin(admin.ModelAdmin):
 class WorkflowTemplatePhaseAdmin(admin.ModelAdmin):
     list_display = [
         'template', 'phase_order', 'phase_name', 'is_mandatory', 
-        'requires_approval', 'estimated_duration_hours', 'get_rollback_display'
+        'requires_approval', 'estimated_duration_hours', 'get_qc_rollback_display', 'get_qa_rollback_display'
     ]
     list_filter = ['template__product_type', 'is_mandatory', 'requires_approval']
     search_fields = ['template__name', 'phase_name', 'description']
@@ -436,18 +452,31 @@ class WorkflowTemplatePhaseAdmin(admin.ModelAdmin):
         }),
         ('Quality Control', {
             'fields': ('rollback_target_order',),
-            'description': 'Phase order to rollback to if this phase fails QC'
+            'description': 'Phase order to rollback to if QC fails this phase (must be lower number)'
+        }),
+        ('Quality Assurance', {
+            'fields': ('qa_rollback_target_order',),
+            'description': 'Phase order to rollback to if QA/Final QA fails this phase (must be lower number)'
         }),
     )
     
-    def get_rollback_display(self, obj):
+    def get_qc_rollback_display(self, obj):
         if obj.rollback_target_order:
             return format_html(
                 '<span style="color: #e74c3c;">→ Order {}</span>',
                 obj.rollback_target_order
             )
         return format_html('<span style="color: #95a5a6;">No rollback</span>')
-    get_rollback_display.short_description = 'Rollback Target'
+    get_qc_rollback_display.short_description = 'QC Rollback'
+    
+    def get_qa_rollback_display(self, obj):
+        if obj.qa_rollback_target_order:
+            return format_html(
+                '<span style="color: #3498db;">→ Order {}</span>',
+                obj.qa_rollback_target_order
+            )
+        return format_html('<span style="color: #95a5a6;">No rollback</span>')
+    get_qa_rollback_display.short_description = 'QA Rollback'
 
 
 # ============ ENHANCED PRODUCTION PHASE ADMIN ============

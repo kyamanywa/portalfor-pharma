@@ -48,15 +48,11 @@
         border-radius: 8px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         display: none; /* Default hidden */
-        visibility: hidden;
-        opacity: 0;
-        transition: opacity 0.3s ease;
     }
     
     /* Make active sections visible with important to override any conflicting styles */
     .content-section.active {
         display: block !important;
-        visibility: visible !important;
         opacity: 1 !important;
     }
     
@@ -94,12 +90,33 @@
         transition: all 0.3s ease;
     }
     
-    /* Sidebar content with internal scroll only if absolutely needed */
+    /* Sidebar content with smooth scroll */
     .admin-sidebar .sidebar-content {
         height: 100%;
         overflow-y: auto;
         overflow-x: hidden;
         padding-bottom: 20px;
+        /* Custom scrollbar styling */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.3) transparent;
+    }
+    
+    /* Webkit browsers scrollbar styling */
+    .admin-sidebar .sidebar-content::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .admin-sidebar .sidebar-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .admin-sidebar .sidebar-content::-webkit-scrollbar-thumb {
+        background-color: rgba(255,255,255,0.3);
+        border-radius: 3px;
+    }
+    
+    .admin-sidebar .sidebar-content::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255,255,255,0.5);
     }
     
     /* Main Content Area - Single controlled scroll */
@@ -115,14 +132,8 @@
         overflow-x: hidden;
     }
     
-    /* Content Sections */
-    .content-section {
-        display: none; /* Hide all sections by default */
-    }
-    
-    .content-section.active {
-        display: block; /* Show active section */
-    }
+    /* Content Sections - styling handled above */
+    /* Removed duplicate rules to prevent conflicts */
     
     /* Sidebar Header */
     .sidebar-header {
@@ -195,21 +206,6 @@
         margin-right: 12px;
         text-align: center;
         font-size: 16px;
-    }
-    
-    /* Content Sections */
-    .content-section {
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
-    
-    .content-section.active {
-        display: block;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
     }
     
     /* Dashboard Cards */
@@ -537,11 +533,20 @@
                     <i class="fas fa-tachometer-alt"></i> Dashboard Overview
                 </a>
             </li>
+            {% if can_access_analytics %}
             <li>
                 <a href="#" data-section="analytics-section" class="section-link" id="analytics-section-link">
                     <i class="fas fa-chart-line"></i> Analytics & Metrics
                 </a>
             </li>
+            {% endif %}
+            {% if can_access_bmr_reports %}
+            <li>
+                <a href="#" data-section="bmr-reports" class="section-link" id="bmr-reports-link">
+                    <i class="fas fa-file-pdf"></i> BMR Reports
+                </a>
+            </li>
+            {% endif %}
         </ul>
         {% endif %}
         
@@ -608,6 +613,21 @@
             </li>
         </ul>
         {% endif %}
+        
+        <!-- Reports Section -->
+        <div class="sidebar-section">Reports</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{% url 'reports:comments_report' %}" id="comments-report-link">
+                    <i class="fas fa-comments"></i> Comments Report
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'reports:timeline_list' %}" id="timeline-report-link">
+                    <i class="fas fa-chart-line"></i> Timeline Reports
+                </a>
+            </li>
+        </ul>
         
         <!-- Notifications & Alerts Section -->
         {% if show_notifications_section %}
@@ -962,6 +982,180 @@
                         <div class="metric-value">{{ active_users_count|default:87 }}</div>
                         <div class="metric-label">Active Users</div>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BMR Reports Section (Third section in Overview) -->
+        <div class="content-section" id="bmr-reports">
+            <div class="mb-4">
+                <h1 class="section-title">
+                    <i class="fas fa-file-pdf me-2"></i>BMR Print & Download Reports
+                </h1>
+                <p class="section-subtitle">Search, filter, print or download comprehensive batch manufacturing records</p>
+            </div>
+            
+            <!-- Summary Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                            <h3 class="mb-0">{{ all_bmrs.count }}</h3>
+                            <small>Total BMRs</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="approvedCount">0</h3>
+                            <small>Approved</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <i class="fas fa-spinner fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="inProgressCount">0</h3>
+                            <small>In Progress</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-flag-checkered fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="completedCount">0</h3>
+                            <small>Completed</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search and Filter -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="bmrSearchInput"><i class="fas fa-search me-1"></i>Search BMR/Batch Number</label>
+                                <input type="text" class="form-control" id="bmrSearchInput" placeholder="Search by BMR or Batch number...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="bmrStatusFilter"><i class="fas fa-filter me-1"></i>Status Filter</label>
+                                <select class="form-select" id="bmrStatusFilter">
+                                    <option value="">All Statuses</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="bmrProductFilter"><i class="fas fa-box me-1"></i>Product Filter</label>
+                                <select class="form-select" id="bmrProductFilter">
+                                    <option value="">All Products</option>
+                                    {% for product in all_products %}
+                                    <option value="{{ product.id }}">{{ product.product_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-secondary w-100" id="clearBmrFilters">
+                                <i class="fas fa-redo me-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- BMR List Table -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Available BMRs for Printing
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="bmrReportsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><i class="fas fa-hashtag me-1"></i>BMR Number</th>
+                                    <th><i class="fas fa-barcode me-1"></i>Batch Number</th>
+                                    <th><i class="fas fa-box me-1"></i>Product</th>
+                                    <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                                    <th><i class="fas fa-calendar me-1"></i>Manufacturing Date</th>
+                                    <th><i class="fas fa-user me-1"></i>Created By</th>
+                                    <th class="text-center" style="min-width: 200px;"><i class="fas fa-cog me-1"></i>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bmrReportsTableBody">
+                                {% for bmr in all_bmrs %}
+                                <tr class="bmr-row" data-status="{{ bmr.status }}" data-product="{{ bmr.product.id }}" data-bmr-number="{{ bmr.bmr_number }}" data-batch-number="{{ bmr.batch_number }}">
+                                    <td><strong>{{ bmr.bmr_number }}</strong></td>
+                                    <td><span class="batch-number">{{ bmr.batch_number }}</span></td>
+                                    <td>{{ bmr.product.product_name }}</td>
+                                    <td>
+                                        {% if bmr.status == 'approved' %}
+                                            <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Approved</span>
+                                        {% elif bmr.status == 'completed' %}
+                                            <span class="badge bg-primary"><i class="fas fa-flag-checkered me-1"></i>Completed</span>
+                                        {% elif bmr.status == 'in_progress' %}
+                                            <span class="badge bg-warning"><i class="fas fa-spinner me-1"></i>In Progress</span>
+                                        {% elif bmr.status == 'rejected' %}
+                                            <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ bmr.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ bmr.manufacturing_date|date:"M d, Y" }}</td>
+                                    <td>{{ bmr.created_by.get_full_name }}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'reports:bmr_print' bmr.id %}" target="_blank" class="btn btn-success btn-sm" title="Print BMR">
+                                                <i class="fas fa-print"></i> Print
+                                            </a>
+                                            <button type="button" class="btn btn-primary btn-sm download-bmr-btn" data-bmr-id="{{ bmr.id }}" data-bmr-number="{{ bmr.bmr_number }}" title="Download as PDF">
+                                                <i class="fas fa-download"></i> PDF
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                        No BMRs available
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Help Card -->
+            <div class="card mt-4 border-info">
+                <div class="card-body">
+                    <h6 class="card-title text-info">
+                        <i class="fas fa-info-circle me-2"></i>How to Print & Download BMR
+                    </h6>
+                    <ul class="mb-0">
+                        <li>Click the <strong>"Print"</strong> button to open BMR in a new window</li>
+                        <li>Click the <strong>"PDF"</strong> button to download as PDF</li>
+                        <li>The document includes: Product info, materials, workflow, signatures, QC results, and more</li>
+                        <li>Use search and filters to find specific BMRs quickly</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -1802,6 +1996,7 @@ function showSection(sectionId, clickedElement) {
     
     // Show selected section - use !important to override any CSS
     targetSection.style.setProperty('display', 'block', 'important');
+    targetSection.style.setProperty('opacity', '1', 'important');
     targetSection.classList.add('active');
     
     // Add active class to clicked link
@@ -2669,6 +2864,161 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// BMR Reports Search and Filter
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('bmrSearchInput');
+    const statusFilter = document.getElementById('bmrStatusFilter');
+    const productFilter = document.getElementById('bmrProductFilter');
+    const clearButton = document.getElementById('clearBmrFilters');
+    const tableRows = document.querySelectorAll('.bmr-row');
+    
+    // Calculate status counts on page load
+    function updateStatusCounts() {
+        let approvedCount = 0;
+        let inProgressCount = 0;
+        let completedCount = 0;
+        
+        tableRows.forEach(row => {
+            const status = row.dataset.status || '';
+            if (status === 'approved') approvedCount++;
+            else if (status === 'in_progress') inProgressCount++;
+            else if (status === 'completed') completedCount++;
+        });
+        
+        const approvedEl = document.getElementById('approvedCount');
+        const inProgressEl = document.getElementById('inProgressCount');
+        const completedEl = document.getElementById('completedCount');
+        
+        if (approvedEl) approvedEl.textContent = approvedCount;
+        if (inProgressEl) inProgressEl.textContent = inProgressCount;
+        if (completedEl) completedEl.textContent = completedCount;
+    }
+    
+    // Call on load
+    updateStatusCounts();
+    
+    function filterBMRTable() {
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const statusValue = statusFilter ? statusFilter.value : '';
+        const productValue = productFilter ? productFilter.value : '';
+        
+        let visibleCount = 0;
+        
+        tableRows.forEach(row => {
+            const bmrNumber = row.dataset.bmrNumber ? row.dataset.bmrNumber.toLowerCase() : '';
+            const batchNumber = row.dataset.batchNumber ? row.dataset.batchNumber.toLowerCase() : '';
+            const status = row.dataset.status || '';
+            const product = row.dataset.product || '';
+            
+            const matchesSearch = bmrNumber.includes(searchTerm) || batchNumber.includes(searchTerm);
+            const matchesStatus = !statusValue || status === statusValue;
+            const matchesProduct = !productValue || product === productValue;
+            
+            if (matchesSearch && matchesStatus && matchesProduct) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Show/hide empty message
+        const tbody = document.getElementById('bmrReportsTableBody');
+        if (tbody) {
+            let emptyRow = tbody.querySelector('.empty-row');
+            if (visibleCount === 0 && tableRows.length > 0) {
+                if (!emptyRow) {
+                    emptyRow = document.createElement('tr');
+                    emptyRow.className = 'empty-row';
+                    emptyRow.innerHTML = `
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="fas fa-search fa-2x mb-2 d-block"></i>
+                            No BMRs match your search criteria
+                        </td>
+                    `;
+                    tbody.appendChild(emptyRow);
+                }
+            } else if (emptyRow) {
+                emptyRow.remove();
+            }
+        }
+    }
+    
+    // Event listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', filterBMRTable);
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterBMRTable);
+    }
+    
+    if (productFilter) {
+        productFilter.addEventListener('change', filterBMRTable);
+    }
+    
+    if (clearButton) {
+        clearButton.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            if (statusFilter) statusFilter.value = '';
+            if (productFilter) productFilter.value = '';
+            filterBMRTable();
+        });
+    }
+    
+    // Download BMR as PDF functionality
+    document.querySelectorAll('.download-bmr-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const bmrId = this.dataset.bmrId;
+            const bmrNumber = this.dataset.bmrNumber;
+            const originalHTML = this.innerHTML;
+            
+            // Show loading state
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+            this.disabled = true;
+            
+            // Open print view in hidden iframe and trigger print to PDF
+            const printUrl = `/reports/bmr-print/${bmrId}/`;
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            
+            iframe.onload = function() {
+                setTimeout(() => {
+                    try {
+                        // Trigger print dialog with "Save as PDF" option
+                        iframe.contentWindow.print();
+                        
+                        // Reset button after delay
+                        setTimeout(() => {
+                            button.innerHTML = originalHTML;
+                            button.disabled = false;
+                            document.body.removeChild(iframe);
+                        }, 1000);
+                    } catch (e) {
+                        console.error('Print error:', e);
+                        // Fallback: open in new window
+                        window.open(printUrl, '_blank');
+                        button.innerHTML = originalHTML;
+                        button.disabled = false;
+                        document.body.removeChild(iframe);
+                    }
+                }, 500);
+            };
+            
+            iframe.src = printUrl;
+            
+            // Fallback timeout
+            setTimeout(() => {
+                if (button.disabled) {
+                    button.innerHTML = originalHTML;
+                    button.disabled = false;
+                }
+            }, 5000);
+        });
+    });
+});
+
 </script>
 <!-- QC Test Detail Modals -->
 <!-- Passed Tests Modal -->
@@ -3000,5 +3350,4 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
-
 {% endblock content %}

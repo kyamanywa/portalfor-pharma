@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMR {{ bmr.batch_number }} - Batch Manufacturing Record</title>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 15px; }
+            .page-break { page-break-after: always; }
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24pt;
+            font-weight: bold;
+        }
+        
+        .header h2 {
+            margin: 5px 0;
+            font-size: 16pt;
+            font-weight: normal;
+        }
+        
+        .company-info {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 10pt;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+            border: 1px solid #333;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        
+        .section-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #000;
+            text-transform: uppercase;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 150px;
+        }
+        
+        .info-value {
+            display: inline-block;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 10pt;
+        }
+        
+        .status-approved { background: #d4edda; color: #155724; border: 1px solid #155724; }
+        .status-completed { background: #cce5ff; color: #004085; border: 1px solid #004085; }
+        .status-in-progress { background: #fff3cd; color: #856404; border: 1px solid #856404; }
+        .status-pending { background: #f8f9fa; color: #383d41; border: 1px solid #383d41; }
+        .status-rejected { background: #f8d7da; color: #721c24; border: 1px solid #721c24; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 10pt;
+        }
+        
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background: #333;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+        
+        .signature-section {
+            margin-top: 15px;
+            border: 2px solid #000;
+            padding: 10px;
+        }
+        
+        .signature-box {
+            display: inline-block;
+            width: 45%;
+            margin: 10px 2%;
+            border: 1px solid #333;
+            padding: 10px;
+            min-height: 80px;
+            vertical-align: top;
+        }
+        
+        .signature-label {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 5px;
+        }
+        
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 40px;
+            padding-top: 5px;
+            font-size: 9pt;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #000;
+            font-size: 9pt;
+            text-align: center;
+        }
+        
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        
+        .print-button:hover {
+            background: #0056b3;
+        }
+        
+        .close-button {
+            position: fixed;
+            top: 20px;
+            right: 150px;
+            padding: 10px 20px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        
+        .close-button:hover {
+            background: #545b62;
+        }
+        
+        .batch-number-highlight {
+            background: #ffeb3b;
+            padding: 2px 5px;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Print Buttons -->
+    <button onclick="window.print()" class="print-button no-print">🖨️ Print BMR</button>
+    <button onclick="window.close()" class="close-button no-print">✖ Close</button>
+    
+    <!-- Header -->
+    <div class="header">
+        <div class="company-info">
+            <strong>KAMPALA PHARMACEUTICAL INDUSTRIES</strong><br>
+            Plot 20-22, Industrial Area, Kampala, Uganda<br>
+            Tel: +256-XXX-XXXXXX | Email: info@kpi.ug
+        </div>
+        <h1>BATCH MANUFACTURING RECORD</h1>
+        <h2>{{ product.product_name }}</h2>
+        <div style="margin-top: 10px;">
+            <strong>BMR Number:</strong> {{ bmr.bmr_number }} | 
+            <strong>Batch Number:</strong> <span class="batch-number-highlight">{{ bmr.batch_number }}</span>
+        </div>
+    </div>
+    
+    <!-- Section 1: BMR Information -->
+    <div class="section">
+        <div class="section-title">📋 BMR Information</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">BMR Number:</span>
+                <span class="info-value">{{ bmr.bmr_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Batch Number:</span>
+                <span class="info-value"><strong>{{ bmr.batch_number }}</strong></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value">
+                    {% if bmr.status == 'approved' %}
+                        <span class="status-badge status-approved">APPROVED</span>
+                    {% elif bmr.status == 'completed' %}
+                        <span class="status-badge status-completed">COMPLETED</span>
+                    {% elif bmr.status == 'in_progress' %}
+                        <span class="status-badge status-in-progress">IN PROGRESS</span>
+                    {% elif bmr.status == 'rejected' %}
+                        <span class="status-badge status-rejected">REJECTED</span>
+                    {% else %}
+                        <span class="status-badge status-pending">{{ bmr.get_status_display|upper }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Manufacturing Date:</span>
+                <span class="info-value">{{ bmr.manufacturing_date|date:"M d, Y" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Created Date:</span>
+                <span class="info-value">{{ bmr.created_date|date:"M d, Y H:i" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Created By:</span>
+                <span class="info-value">{{ bmr.created_by.get_full_name }} ({{ bmr.created_by.get_role_display }})</span>
+            </div>
+            {% if bmr.approved_by %}
+            <div class="info-item">
+                <span class="info-label">Approved By:</span>
+                <span class="info-value">{{ bmr.approved_by.get_full_name }} ({{ bmr.approved_by.get_role_display }})</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Approved Date:</span>
+                <span class="info-value">{{ bmr.approved_date|date:"M d, Y H:i" }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Section 2: Product Information -->
+    <div class="section">
+        <div class="section-title">💊 Product Information</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Product Name:</span>
+                <span class="info-value"><strong>{{ product.product_name }}</strong></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Product Code:</span>
+                <span class="info-value">{{ product.product_code }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Product Type:</span>
+                <span class="info-value">{{ product.get_product_type_display }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Dosage Form:</span>
+                <span class="info-value">{{ product.dosage_form|default:"N/A" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Strength:</span>
+                <span class="info-value">{{ product.strength|default:"N/A" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Standard Batch Size:</span>
+                <span class="info-value">{{ product.standard_batch_size|floatformat:0 }} {{ product.batch_size_unit|default:"units" }}</span>
+            </div>
+        </div>
+        
+        {% if product.description %}
+        <div style="margin-top: 10px;">
+            <span class="info-label">Description:</span>
+            <div style="margin-top: 5px; padding: 10px; background: white; border: 1px solid #ddd;">
+                {{ product.description }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Section 3: Batch Specifications -->
+    <div class="section">
+        <div class="section-title">📊 Batch Specifications</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Actual Batch Size:</span>
+                <span class="info-value"><strong>{{ bmr.actual_batch_size|floatformat:2 }} {{ bmr.actual_batch_size_unit }}</strong></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Planned Start Date:</span>
+                <span class="info-value">{{ bmr.planned_start_date|date:"M d, Y"|default:"Not set" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Planned Completion:</span>
+                <span class="info-value">{{ bmr.planned_completion_date|date:"M d, Y"|default:"Not set" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Actual Start Date:</span>
+                <span class="info-value">{{ bmr.actual_start_date|date:"M d, Y H:i"|default:"Not started" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Actual Completion:</span>
+                <span class="info-value">{{ bmr.actual_completion_date|date:"M d, Y H:i"|default:"Not completed" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Total Production Time:</span>
+                <span class="info-value"><strong>{{ total_production_time|default:"In Progress" }}</strong></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Page Break -->
+    <div class="page-break"></div>
+    
+    <!-- Section 4: Raw Materials & Components -->
+    <div class="section">
+        <div class="section-title">🧪 Raw Materials & Components</div>
+        {% if materials %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 30%;">Material Name</th>
+                    <th style="width: 15%;">Required Qty</th>
+                    <th style="width: 10%;">Unit</th>
+                    <th style="width: 15%;">Lot Number</th>
+                    <th style="width: 15%;">Expiry Date</th>
+                    <th style="width: 10%;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for material in materials %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><strong>{{ material.material_name }}</strong></td>
+                    <td>{{ material.required_quantity|floatformat:2 }}</td>
+                    <td>{{ material.unit_of_measure }}</td>
+                    <td>{{ material.batch_lot_number|default:"N/A" }}</td>
+                    <td>{{ material.expiry_date|date:"M d, Y"|default:"N/A" }}</td>
+                    <td>
+                        {% if material.dispensed_quantity %}
+                            ✓ Dispensed
+                        {% else %}
+                            ⏳ Pending
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="text-align: center; padding: 20px; color: #666;">No materials recorded</p>
+        {% endif %}
+    </div>
+    
+    <!-- Section 5: Manufacturing Instructions -->
+    {% if bmr.manufacturing_instructions %}
+    <div class="section">
+        <div class="section-title">📝 Manufacturing Instructions</div>
+        <div style="padding: 10px; background: white; border: 1px solid #ddd; white-space: pre-wrap;">{{ bmr.manufacturing_instructions }}</div>
+    </div>
+    {% endif %}
+    
+    {% if bmr.special_instructions %}
+    <div class="section">
+        <div class="section-title">⚠️ Special Instructions</div>
+        <div style="padding: 10px; background: #fff3cd; border: 2px solid #856404; white-space: pre-wrap;">{{ bmr.special_instructions }}</div>
+    </div>
+    {% endif %}
+    
+    <!-- Page Break -->
+    <div class="page-break"></div>
+    
+    <!-- Section 6: Production Workflow Progress -->
+    <div class="section">
+        <div class="section-title">⚙️ Production Workflow Progress ({{ completed_phases }}/{{ total_phases }} Phases - {{ progress_percentage|floatformat:1 }}%)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 25%;">Phase Name</th>
+                    <th style="width: 12%;">Status</th>
+                    <th style="width: 18%;">Started By / Date</th>
+                    <th style="width: 18%;">Completed By / Date</th>
+                    <th style="width: 22%;">Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for phase in phases %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><strong>{{ phase.phase.get_phase_name_display }}</strong></td>
+                    <td>
+                        {% if phase.status == 'completed' %}
+                            <span class="status-badge status-completed">✓ Completed</span>
+                        {% elif phase.status == 'in_progress' %}
+                            <span class="status-badge status-in-progress">⏳ In Progress</span>
+                        {% elif phase.status == 'failed' %}
+                            <span class="status-badge status-rejected">✗ Failed</span>
+                        {% else %}
+                            <span class="status-badge status-pending">⏸ Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if phase.started_by %}
+                            {{ phase.started_by.get_full_name }}<br>
+                            <small>{{ phase.started_date|date:"M d, Y H:i" }}</small>
+                        {% else %}
+                            <small>Not started</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if phase.completed_by %}
+                            {{ phase.completed_by.get_full_name }}<br>
+                            <small>{{ phase.completed_date|date:"M d, Y H:i" }}</small>
+                        {% else %}
+                            <small>Not completed</small>
+                        {% endif %}
+                    </td>
+                    <td><small>{{ phase.operator_comments|truncatewords:10|default:"—" }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Page Break -->
+    <div class="page-break"></div>
+    
+    <!-- Section 7: Quality Control Results -->
+    {% if qc_results %}
+    <div class="section">
+        <div class="section-title">🔬 Quality Control Test Results</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 30%;">QC Phase</th>
+                    <th style="width: 15%;">Status</th>
+                    <th style="width: 20%;">Tested By</th>
+                    <th style="width: 15%;">Test Date</th>
+                    <th style="width: 20%;">Results/Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in qc_results %}
+                <tr>
+                    <td><strong>{{ result.phase }}</strong></td>
+                    <td>
+                        {% if result.status == 'Completed' %}
+                            <span class="status-badge status-completed">✓ Passed</span>
+                        {% elif result.status == 'Failed' %}
+                            <span class="status-badge status-rejected">✗ Failed</span>
+                        {% else %}
+                            <span class="status-badge status-pending">{{ result.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ result.tested_by }}</td>
+                    <td>{{ result.date|date:"M d, Y H:i"|default:"N/A" }}</td>
+                    <td><small>{{ result.results|truncatewords:15 }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    <!-- Section 8: Quarantine & Sampling -->
+    {% if quarantine_batch %}
+    <div class="section">
+        <div class="section-title">🔒 Quarantine & Sampling Information</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Quarantine Date:</span>
+                <span class="info-value">{{ quarantine_batch.quarantine_date|date:"M d, Y H:i" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Location:</span>
+                <span class="info-value">{{ quarantine_batch.location|default:"N/A" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value">
+                    {% if quarantine_batch.status == 'approved' %}
+                        <span class="status-badge status-approved">✓ Approved</span>
+                    {% elif quarantine_batch.status == 'rejected' %}
+                        <span class="status-badge status-rejected">✗ Rejected</span>
+                    {% else %}
+                        <span class="status-badge status-pending">{{ quarantine_batch.get_status_display }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Total Samples:</span>
+                <span class="info-value"><strong>{{ samples.count }}</strong></span>
+            </div>
+        </div>
+        
+        {% if samples %}
+        <table style="margin-top: 15px;">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Sample #</th>
+                    <th style="width: 25%;">Requested By</th>
+                    <th style="width: 20%;">Request Date</th>
+                    <th style="width: 25%;">Sampled By</th>
+                    <th style="width: 20%;">Sample Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sample in samples %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ sample.requested_by.get_full_name }}</td>
+                    <td>{{ sample.request_date|date:"M d, Y H:i" }}</td>
+                    <td>{{ sample.sampled_by.get_full_name|default:"N/A" }}</td>
+                    <td>{{ sample.sample_date|date:"M d, Y H:i"|default:"Pending" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Page Break -->
+    <div class="page-break"></div>
+    
+    <!-- Section 9: Electronic Signatures -->
+    <div class="section">
+        <div class="section-title">✍️ Electronic Signatures (Regulatory Compliance)</div>
+        {% if signatures %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 20%;">Signature Type</th>
+                    <th style="width: 25%;">Signed By</th>
+                    <th style="width: 15%;">Role</th>
+                    <th style="width: 20%;">Date & Time</th>
+                    <th style="width: 20%;">Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for signature in signatures %}
+                <tr>
+                    <td><strong>{{ signature.get_signature_type_display }}</strong></td>
+                    <td>{{ signature.signed_by.get_full_name }}</td>
+                    <td>{{ signature.signed_by.get_role_display }}</td>
+                    <td>{{ signature.signed_date|date:"M d, Y H:i:s" }}</td>
+                    <td><small>{{ signature.comments|truncatewords:10|default:"—" }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 15px; padding: 10px; background: #e7f3ff; border: 1px solid #004085;">
+            <strong>Note:</strong> All electronic signatures are captured with username, timestamp, and action meaning for full audit trail compliance with pharmaceutical GMP regulations.
+        </div>
+        {% else %}
+        <p style="text-align: center; padding: 20px; color: #666;">No electronic signatures recorded</p>
+        {% endif %}
+    </div>
+    
+    <!-- Section 10: Manual Signature Section (for physical records) -->
+    <div class="signature-section">
+        <div class="section-title" style="border: none; padding-bottom: 10px;">📝 Manual Approval Signatures</div>
+        
+        <div class="signature-box">
+            <div class="signature-label">Production Manager:</div>
+            <div class="signature-line">
+                Name: ______________________ Signature: ______________________<br>
+                Date: ______________________
+            </div>
+        </div>
+        
+        <div class="signature-box">
+            <div class="signature-label">Quality Assurance:</div>
+            <div class="signature-line">
+                Name: ______________________ Signature: ______________________<br>
+                Date: ______________________
+            </div>
+        </div>
+        
+        <div class="signature-box">
+            <div class="signature-label">Quality Control:</div>
+            <div class="signature-line">
+                Name: ______________________ Signature: ______________________<br>
+                Date: ______________________
+            </div>
+        </div>
+        
+        <div class="signature-box">
+            <div class="signature-label">Regulatory Affairs:</div>
+            <div class="signature-line">
+                Name: ______________________ Signature: ______________________<br>
+                Date: ______________________
+            </div>
+        </div>
+    </div>
+    
+    <!-- Comments Section -->
+    {% if bmr.qa_comments or bmr.regulatory_comments %}
+    <div class="section" style="margin-top: 20px;">
+        <div class="section-title">💬 Additional Comments</div>
+        
+        {% if bmr.qa_comments %}
+        <div style="margin-bottom: 15px;">
+            <strong>QA Comments:</strong>
+            <div style="padding: 10px; background: white; border: 1px solid #ddd; margin-top: 5px;">
+                {{ bmr.qa_comments }}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if bmr.regulatory_comments %}
+        <div>
+            <strong>Regulatory Comments:</strong>
+            <div style="padding: 10px; background: white; border: 1px solid #ddd; margin-top: 5px;">
+                {{ bmr.regulatory_comments }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Footer -->
+    <div class="footer">
+        <strong>KAMPALA PHARMACEUTICAL INDUSTRIES</strong><br>
+        This is an official Batch Manufacturing Record. All information must be accurate and complete.<br>
+        Document printed on: {{ print_date|date:"F d, Y \a\t H:i" }} by {{ printed_by.get_full_name }} ({{ printed_by.get_role_display }})<br>
+        <br>
+        <em>Page generated by KPI Operations Management System</em>
+    </div>
+    
+    <script>
+        // Auto-focus for printing
+        window.onload = function() {
+            // Optional: Auto-print when page loads (uncomment if desired)
+            // setTimeout(function() { window.print(); }, 500);
+        }
+    </script>
+</body>
+</html>

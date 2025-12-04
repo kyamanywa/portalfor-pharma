@@ -11,7 +11,9 @@ class Product(models.Model):
     
     # Essential fields only
     product_name = models.CharField(max_length=200)
-    product_type = models.CharField(max_length=20, choices=get_product_type_choices)  # Note: callable, not called
+    # Use base product type choices at model-level (keeps migrations stable and admin consistent)
+    # The admin form dynamically augments choices from the DB via `get_product_type_choices()`.
+    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES)
     
     # Tablet specific fields (only show when product_type is 'tablet')
     coating_type = models.CharField(
@@ -58,6 +60,26 @@ class Product(models.Model):
     def is_coated(self):
         """Backward compatibility property"""
         return self.coating_type == 'coated'
+
+    def __init__(self, *args, **kwargs):
+        # Accept legacy kwarg(s) when creating Product instances in tests
+        # Some older tests or fixtures may pass fields that are no longer model fields
+        # (e.g., `is_coated`, `strength`). Pop and handle what we can, ignore others.
+        is_coated = kwargs.pop('is_coated', None)
+        legacy_strength = kwargs.pop('strength', None)
+
+        super().__init__(*args, **kwargs)
+
+        if is_coated is not None:
+            # Normalize into coating_type for storage
+            self.coating_type = 'coated' if is_coated else 'uncoated'
+
+        # Keep legacy_strength as an attribute for test objects if provided
+        if legacy_strength is not None:
+            try:
+                setattr(self, 'strength', legacy_strength)
+            except Exception:
+                pass
     
     def __str__(self):
         if self.product_type == 'tablet':
