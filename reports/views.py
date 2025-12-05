@@ -76,6 +76,49 @@ def get_filtered_comments_data(request):
         )
     
     for phase in phases:
+        # Store Material Availability Check (RM/PM) - Show at top of store comments
+        if phase.phase.phase_name == 'raw_material_release' and phase.phase_data:
+            rm_available = phase.phase_data.get('rm_available')
+            pm_available = phase.phase_data.get('pm_available')
+            check_by = phase.phase_data.get('materials_check_by', 'Unknown')
+            check_date_str = phase.phase_data.get('materials_check_date')
+            
+            if rm_available is not None or pm_available is not None:
+                # Build material status comment
+                status_parts = []
+                if rm_available:
+                    status_parts.append("✓ RM (Raw Materials): Available")
+                else:
+                    status_parts.append("✗ RM (Raw Materials): Not Available")
+                    
+                if pm_available:
+                    status_parts.append("✓ PM (Packaging Materials): Available")
+                else:
+                    status_parts.append("✗ PM (Packaging Materials): Not Available")
+                
+                material_status = "\n".join(status_parts)
+                
+                # Parse check date
+                try:
+                    from django.utils.dateparse import parse_datetime
+                    check_date = parse_datetime(check_date_str) if check_date_str else phase.started_date
+                except:
+                    check_date = phase.started_date
+                
+                comments_data.append({
+                    'bmr_number': phase.bmr.batch_number,
+                    'product': phase.bmr.product.product_name,
+                    'comment_type': 'Store Material Availability',
+                    'phase': 'Raw Material Release',
+                    'user': check_by,
+                    'user_role': 'store_manager',
+                    'date': check_date or phase.created_date,
+                    'comments': material_status,
+                    'status': phase.status,
+                    'bmr_id': phase.bmr.id,
+                    'phase_id': phase.id
+                })
+        
         # Operator Comments
         if phase.operator_comments:
             comments_data.append({

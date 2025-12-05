@@ -1,9 +1,251 @@
 {% extends 'dashboards/dashboard_base.html' %}
 {% load static %}
+{% load dashboard_permissions %}
 
 {% block title %}Production Manager Dashboard{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Production Manager Dashboard Styles */
+    body {
+        padding-top: 56px !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+    
+    .pm-dashboard {
+        position: relative;
+        background-color: #f8f9fa;
+        margin: 0;
+        padding: 0;
+        height: calc(100vh - 56px);
+        overflow: hidden;
+    }
+    
+    /* Fixed Sidebar */
+    .pm-sidebar {
+        width: 280px;
+        background-color: #0056b3;
+        color: white;
+        position: fixed;
+        height: calc(100vh - 56px);
+        top: 56px;
+        left: 0;
+        overflow: hidden;
+        z-index: 99;
+        box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .pm-sidebar .sidebar-content {
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: 20px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.3) transparent;
+    }
+    
+    .pm-sidebar .sidebar-content::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .pm-sidebar .sidebar-content::-webkit-scrollbar-thumb {
+        background-color: rgba(255,255,255,0.3);
+        border-radius: 3px;
+    }
+    
+    /* Main Content Area */
+    .pm-main-content {
+        margin-left: 280px;
+        padding: 20px;
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        background-color: #f8f9fa;
+    }
+    
+    /* Sidebar Header */
+    .pm-sidebar-header {
+        padding: 20px;
+        background-color: rgba(0,0,0,0.1);
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    /* Sidebar Menu */
+    .pm-sidebar-section {
+        padding: 15px 20px 5px 20px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: rgba(255,255,255,0.7);
+        font-weight: 600;
+    }
+    
+    .pm-sidebar-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .pm-sidebar-menu li {
+        margin: 0;
+    }
+    
+    .pm-sidebar-menu a {
+        display: block;
+        padding: 12px 20px;
+        color: white;
+        text-decoration: none;
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+    }
+    
+    .pm-sidebar-menu a:hover {
+        background-color: rgba(0,0,0,0.1);
+        border-left-color: white;
+    }
+    
+    .pm-sidebar-menu a.active {
+        background-color: rgba(0,0,0,0.2);
+        border-left-color: white;
+        font-weight: 600;
+    }
+    
+    .pm-sidebar-menu a i {
+        width: 20px;
+        margin-right: 10px;
+    }
+    
+    /* Content Sections */
+    .pm-content-section {
+        display: none;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    .pm-content-section.active {
+        display: block !important;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Section Title */
+    .pm-section-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    
+    .pm-section-subtitle {
+        color: #6c757d;
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+{% csrf_token %}
+
+<div class="pm-dashboard">
+    <!-- Sidebar -->
+    <div class="pm-sidebar">
+        <div class="sidebar-content">
+            <!-- Sidebar Header -->
+            <div class="pm-sidebar-header">
+                <h5 class="mb-1"><i class="fas fa-industry me-2"></i>Production Manager</h5>
+                <small class="text-white-50">{{ user.get_full_name }}</small>
+            </div>
+            
+            <!-- Overview Section -->
+            <div class="pm-sidebar-section">Overview</div>
+            <ul class="pm-sidebar-menu">
+                <li>
+                    <a href="#" data-section="pm-overview" class="section-link active" id="pm-overview-link">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard Overview
+                    </a>
+                </li>
+                {% if can_access_pm_notifications %}
+                <li>
+                    <a href="#" data-section="pm-notifications" class="section-link" id="pm-notifications-link">
+                        <i class="fas fa-bell"></i> Notifications
+                        {% if unread_count > 0 %}
+                            <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <!-- Production Management Section -->
+            {% if can_access_pm_bmr_reports or can_access_pm_timeline or can_access_pm_bmr_tracking or can_access_pm_live_tracking or can_access_pm_quarantine %}
+            <div class="pm-sidebar-section">Production Management</div>
+            <ul class="pm-sidebar-menu">
+                {% if can_access_pm_bmr_reports %}
+                <li>
+                    <a href="#" data-section="pm-bmr-reports" class="section-link" id="pm-bmr-reports-link">
+                        <i class="fas fa-file-medical"></i> BMR Reports
+                    </a>
+                </li>
+                {% endif %}
+                {% if can_access_pm_bmr_tracking %}
+                <li>
+                    <a href="#" data-section="pm-bmr-tracking" class="section-link" id="pm-bmr-tracking-link">
+                        <i class="fas fa-tasks"></i> BMR Tracking
+                    </a>
+                </li>
+                {% endif %}
+                {% if can_access_pm_live_tracking %}
+                <li>
+                    <a href="#" data-section="pm-live-tracking" class="section-link" id="pm-live-tracking-link">
+                        <i class="fas fa-spinner"></i> Live Tracking
+                    </a>
+                </li>
+                {% endif %}
+                {% if can_access_pm_timeline %}
+                <li>
+                    <a href="#" data-section="pm-timeline" class="section-link" id="pm-timeline-link">
+                        <i class="fas fa-project-diagram"></i> Production Timeline
+                    </a>
+                </li>
+                {% endif %}
+                {% if can_access_pm_quarantine %}
+                <li>
+                    <a href="#" data-section="pm-quarantine" class="section-link" id="pm-quarantine-link">
+                        <i class="fas fa-exclamation-triangle"></i> Quarantine
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            {% endif %}
+            
+            <!-- Actions Section -->
+            <div class="pm-sidebar-section">Actions</div>
+            <ul class="pm-sidebar-menu">
+                <li>
+                    <a href="{% url 'bmr:create_bmr_request' %}">
+                        <i class="fas fa-plus-circle"></i> Request New BMR
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'bmr:bmr_request_list' %}">
+                        <i class="fas fa-list"></i> My BMR Requests
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="pm-main-content">
+        
+        <!-- Overview Section (Default Active) -->
+        <div class="pm-content-section active" id="pm-overview">
 <div class="container-fluid mt-4">
     <!-- Header -->
     <div class="row mb-4">
@@ -468,7 +710,400 @@
     </div>
     {% endif %}
 </div>
-{% endblock %}
+        </div>
+        <!-- End Overview Section -->
+        
+        <!-- Notifications Section -->
+        <div class="pm-content-section" id="pm-notifications">
+            <div class="mb-4">
+                <h1 class="pm-section-title">
+                    <i class="fas fa-bell me-2"></i>Notifications
+                    {% if unread_count > 0 %}
+                        <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                    {% endif %}
+                </h1>
+                <p class="pm-section-subtitle">Material shortages, batch assignments, and production alerts</p>
+            </div>
+            
+            <!-- Notification Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
+                            <h3 class="mb-0">{{ unread_count }}</h3>
+                            <small>Unread Notifications</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <i class="fas fa-box-open fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="pmMaterialShortageCount">0</h3>
+                            <small>Material Shortages</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="pmBatchAssignedCount">0</h3>
+                            <small>Batch Assignments</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notifications List -->
+            <div class="card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Notification Center
+                    </h5>
+                    {% if notifications %}
+                    <form method="POST" action="{% url 'dashboards:clear_all_notifications' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-light" onclick="return confirm('Clear all notifications?')">
+                            <i class="fas fa-trash me-1"></i>Clear All
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if notifications %}
+                        <div class="list-group list-group-flush">
+                            {% for notification in notifications %}
+                            <div class="list-group-item {% if not notification.is_read %}list-group-item-warning{% endif %}">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-2">
+                                            {% if notification.priority == 'critical' %}
+                                                <i class="fas fa-exclamation-circle text-danger fa-lg me-2"></i>
+                                            {% elif notification.priority == 'high' %}
+                                                <i class="fas fa-exclamation-triangle text-warning fa-lg me-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-info-circle text-info fa-lg me-2"></i>
+                                            {% endif %}
+                                            <h6 class="mb-0 fw-bold">{{ notification.title }}</h6>
+                                            {% if not notification.is_read %}
+                                                <span class="badge bg-primary ms-2">NEW</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mb-2">{{ notification.message }}</p>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>{{ notification.created_date|timesince }} ago
+                                            </small>
+                                            {% if notification.bmr %}
+                                            <a href="{% url 'bmr:detail' notification.bmr.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <i class="fas fa-external-link-alt me-1"></i>View BMR
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="ms-3">
+                                        {% if not notification.is_read %}
+                                        <form method="POST" action="{% url 'dashboards:mark_notification_read' notification.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check me-1"></i>Mark Read
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> Read
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-muted">No Notifications</h5>
+                            <p class="text-muted">You're all caught up!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- End Notifications Section -->
+        
+        <!-- BMR Reports Section - EXACT COPY FROM ADMIN -->
+        {% if can_access_pm_bmr_reports %}
+        <div class="pm-content-section" id="pm-bmr-reports">
+            {% include 'dashboards/sections/bmr_reports_section.html' %}
+        </div>
+        {% endif %}
+        <!-- End BMR Reports Section -->
+        
+        <!-- BMR Tracking Section - EXACT COPY FROM ADMIN -->
+        {% if can_access_pm_bmr_tracking %}
+        <div class="pm-content-section" id="pm-bmr-tracking">
+            {% include 'dashboards/sections/bmr_tracking_section.html' %}
+        </div>
+        {% endif %}
+        <!-- End BMR Tracking Section -->
+        
+        <!-- Live Tracking Section - EXACT COPY FROM ADMIN -->
+        {% if can_access_pm_live_tracking %}
+        <div class="pm-content-section" id="pm-live-tracking">
+            <div class="mb-4">
+                <h1 class="section-title">Work in Progress</h1>
+                <p class="section-subtitle">Current products in production with status and details</p>
+            </div>
+
+            <div class="table-container">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Batch Number</th>
+                            <th>Batch Size</th>
+                            <th>Packaging Size</th>
+                            <th>Current Status</th>
+                            <th>Started Date</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bmr in work_in_progress_bmrs %}
+                        <tr>
+                            <td><strong>{{ bmr.product.product_name }}</strong></td>
+                            <td>{{ bmr.batch_number }}</td>
+                            <td>
+                                {% if bmr.actual_batch_size %}
+                                    {{ bmr.actual_batch_size }} {{ bmr.actual_batch_size_unit }}
+                                {% else %}
+                                    {{ bmr.product.standard_batch_size }} {{ bmr.product.batch_size_unit }}
+                                {% endif %}
+                            </td>
+                            <td>{{ bmr.product.packaging_size_in_units }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ bmr.current_phase_name }}</span>
+                            </td>
+                            <td>{{ bmr.actual_start_date|date:"M d, Y" }}</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ bmr.progress_percentage }}%;" 
+                                         aria-valuenow="{{ bmr.progress_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                        {{ bmr.progress_percentage }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No work in progress at the moment</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        <!-- End Live Tracking Section -->
+        
+        <!-- Production Timeline Section -->
+        <div class="pm-content-section" id="pm-timeline">
+            <div class="mb-4">
+                <h1 class="pm-section-title">
+                    <i class="fas fa-file-medical me-2"></i>BMR Reports
+                </h1>
+                <p class="pm-section-subtitle">View and download batch manufacturing records</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Available BMRs</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-center text-muted">BMR report functionality coming soon...</p>
+                    <div class="text-center">
+                        <a href="{% url 'bmr:list' %}" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>View All BMRs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End BMR Reports Section -->
+        
+        <!-- Production Timeline Section -->
+        <div class="pm-content-section" id="pm-timeline">
+            <div class="mb-4">
+                <h1 class="pm-section-title">
+                    <i class="fas fa-project-diagram me-2"></i>Production Timeline
+                </h1>
+                <p class="pm-section-subtitle">Track batches through the production workflow</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-stream me-2"></i>Timeline View</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-center text-muted">Timeline functionality coming soon...</p>
+                    <div class="text-center">
+                        <a href="{% url 'reports:timeline_list' %}" class="btn btn-info">
+                            <i class="fas fa-external-link-alt me-2"></i>View Production Timeline
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End Timeline Section -->
+        
+        <!-- BMR Tracking Section - ALREADY INCLUDED ABOVE -->
+        
+        <!-- Live Tracking Section - ALREADY INCLUDED ABOVE -->
+        
+        <!-- Quarantine Section - EXACT COPY FROM ADMIN -->
+        {% if can_access_pm_quarantine %}
+        <div class="pm-content-section" id="pm-quarantine">
+            <div class="mb-4">
+                <h1 class="section-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Quarantine Management
+                </h1>
+                <p class="section-subtitle">Track quarantined batches and quality issues</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-box me-2"></i>Quarantined Batches</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Batch Number</th>
+                                    <th>Product</th>
+                                    <th>Phase</th>
+                                    <th>Status</th>
+                                    <th>Quarantine Date</th>
+                                    <th>Samples</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in quarantine_records %}
+                                <tr>
+                                    <td><strong>{{ record.bmr.batch_number }}</strong></td>
+                                    <td>{{ record.bmr.product.product_name }}</td>
+                                    <td>{{ record.current_phase.get_phase_name_display }}</td>
+                                    <td>
+                                        {% if record.status == 'quarantined' %}
+                                            <span class="badge bg-warning">Quarantined</span>
+                                        {% elif record.status == 'sample_requested' %}
+                                            <span class="badge bg-info">Sample Requested</span>
+                                        {% elif record.status == 'sample_approved' %}
+                                            <span class="badge bg-success">Sample Approved</span>
+                                        {% elif record.status == 'sample_failed' %}
+                                            <span class="badge bg-danger">Sample Failed</span>
+                                        {% elif record.status == 'released' %}
+                                            <span class="badge bg-primary">Released</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ record.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ record.quarantine_date|date:"M d, Y H:i" }}</td>
+                                    <td>{{ record.sample_count }}/2</td>
+                                    <td>
+                                        <a href="{% url 'quarantine:details' record.id %}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-check-circle fa-3x mb-3 d-block text-success"></i>
+                                        No batches in quarantine
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'quarantine:dashboard' %}" class="btn btn-warning">
+                            <i class="fas fa-external-link-alt me-2"></i>View Full Quarantine System
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <!-- End Quarantine Section -->
+        
+    </div>
+    <!-- End Main Content -->
+</div>
+
+<script>
+// Section Navigation
+document.addEventListener('DOMContentLoaded', function() {
+    const sectionLinks = document.querySelectorAll('.section-link');
+    const contentSections = document.querySelectorAll('.pm-content-section');
+    
+    sectionLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active class from all links
+            sectionLinks.forEach(l => l.classList.remove('active'));
+            
+            // Add active class to clicked link
+            this.classList.add('active');
+            
+            // Hide all sections
+            contentSections.forEach(section => section.classList.remove('active'));
+            
+            // Show target section
+            const targetSection = this.getAttribute('data-section');
+            const targetElement = document.getElementById(targetSection);
+            if (targetElement) {
+                targetElement.classList.add('active');
+                
+                // Initialize charts when analytics section is shown
+                if (targetSection === 'pm-analytics') {
+                    setTimeout(function() {
+                        if (typeof initializeAnalyticsCharts === 'function') {
+                            initializeAnalyticsCharts();
+                        }
+                    }, 150);
+                }
+            }
+        });
+    });
+    
+    // Count notification types
+    const notifications = document.querySelectorAll('#pm-notifications .list-group-item');
+    let materialShortageCount = 0;
+    let batchAssignedCount = 0;
+    
+    notifications.forEach(notif => {
+        const text = notif.textContent.toLowerCase();
+        if (text.includes('material') && text.includes('shortage')) {
+            materialShortageCount++;
+        }
+        if (text.includes('batch') && text.includes('assigned')) {
+            batchAssignedCount++;
+        }
+    });
+    
+    const materialCounter = document.getElementById('pmMaterialShortageCount');
+    const batchCounter = document.getElementById('pmBatchAssignedCount');
+    
+    if (materialCounter) materialCounter.textContent = materialShortageCount;
+    if (batchCounter) batchCounter.textContent = batchAssignedCount;
+});
+</script>
 
 <!-- Request Details Modal -->
 <div class="modal fade" id="requestDetailsModal" tabindex="-1">
@@ -568,94 +1203,19 @@
     </div>
 </div>
 
-{% block extra_css %}
-<style>
-.clickable-row {
-    transition: background-color 0.2s ease-in-out;
-}
+<!-- Include Shared Product Details Modal -->
+{% include 'dashboards/includes/product_details_modal.html' %}
 
-.pagination-info {
-    font-size: 0.9rem;
-}
-
-.table th {
-    background-color: #343a40;
-    color: white;
-    border-color: #495057;
-    font-weight: 500;
-}
-
-.table-responsive {
-    border-radius: 0.375rem;
-    overflow: hidden;
-}
-
-.badge {
-    font-size: 0.75em;
-}
-
-.pagination-sm .page-link {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
-.card-header h5 {
-    margin-bottom: 0;
-}
-
-/* Status-specific badge colors */
-.badge.bg-success {
-    background-color: #198754 !important;
-}
-
-.badge.bg-danger {
-    background-color: #dc3545 !important;
-}
-
-.badge.bg-warning {
-    background-color: #ffc107 !important;
-    color: #000 !important;
-}
-
-.badge.bg-info {
-    background-color: #0dcaf0 !important;
-    color: #000 !important;
-}
-
-.badge.bg-secondary {
-    background-color: #6c757d !important;
-}
-
-.badge.bg-primary {
-    background-color: #0d6efd !important;
-}
-
-/* Modal enhancements */
-.modal-header {
-    border-bottom: 1px solid #dee2e6;
-}
-
-.modal-footer {
-    border-top: 1px solid #dee2e6;
-}
-
-.progress {
-    height: 1.5rem;
-}
-
-.progress-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 500;
-}
-</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Initialize tooltips
+// Utility Functions
+function viewTimeline(bmrId) {
+    window.open(`/reports/timeline/${bmrId}/`, '_blank');
+}
+
+// Initialize tooltips on DOM load
 document.addEventListener('DOMContentLoaded', function() {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -776,5 +1336,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
 </script>
 {% endblock %}

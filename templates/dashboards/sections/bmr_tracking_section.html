@@ -1,0 +1,88 @@
+<div class="mb-4">
+    <h1 class="section-title">BMR Timeline Tracking</h1>
+    <p class="section-subtitle">Complete production workflow monitoring from QA to FGS</p>
+    
+    <!-- Export Tools -->
+    <div class="mb-3">
+        <a href="{% url 'reports:export_timeline_csv' %}" class="btn btn-success export-btn">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </a>
+        <a href="{% url 'reports:export_timeline_excel' %}" class="btn btn-primary export-btn">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </a>
+    </div>
+</div>
+
+<!-- Timeline Statistics -->
+<div class="row mb-4">
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="stats-card bg-primary text-white">
+            <div class="metric-value">{{ completed_count|default:0 }}</div>
+            <div class="metric-label">Completed Timelines</div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="stats-card bg-warning text-dark">
+            <div class="metric-value">{{ in_progress_count|default:0 }}</div>
+            <div class="metric-label">In Progress</div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="stats-card bg-info text-white">
+            <div class="metric-value">{{ avg_production_time|default:"N/A" }}</div>
+            <div class="metric-label">Avg Production Time (Days)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline Table -->
+<div class="table-container">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Batch Number</th>
+                <th>Product Name</th>
+                <th>Type</th>
+                <th>Created</th>
+                <th>Current Phase</th>
+                <th>Cycle Time</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for timeline in timeline_data %}
+            <tr>
+                <td><strong>{{ timeline.bmr.batch_number }}</strong></td>
+                <td>{{ timeline.bmr.product.product_name }}</td>
+                <td>{{ timeline.bmr.product.product_type|title }}</td>
+                <td>{{ timeline.bmr.created_date|date:"M d, Y" }}</td>
+                <td>
+                    {% if timeline.current_phase %}
+                        <span class="badge bg-info">{{ timeline.current_phase.phase.get_phase_name_display }}</span>
+                    {% else %}
+                        <span class="badge bg-success">Completed</span>
+                    {% endif %}
+                </td>
+                <td>{{ timeline.total_time_days|default:"In Progress" }} {% if timeline.total_time_days %}days{% endif %}</td>
+                <td>
+                    {% if timeline.is_completed %}
+                        <span class="badge bg-success">Completed</span>
+                    {% else %}
+                        <span class="badge bg-warning">In Progress</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info btn-action" onclick="viewTimeline('{{ timeline.bmr.id }}')">
+                        <i class="fas fa-timeline"></i> Timeline
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center">No timeline data available</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

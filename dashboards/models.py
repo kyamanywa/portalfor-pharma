@@ -183,21 +183,37 @@ class DashboardPermission(models.Model):
     """Manage dashboard access permissions for users and roles"""
     
     DASHBOARD_CHOICES = [
+        # Main Dashboard Access
         ('admin_dashboard', 'Admin Dashboard'),
-        ('system_logs', 'System Logs'),
-        ('user_management', 'User Management'),
-        ('machine_management', 'Machine Management'),
-        ('inventory', 'Inventory Management'),
-        ('quality_control', 'Quality Control Management'),
-        ('system_health', 'System Health'),
-        ('bmr_reports', 'BMR Print & Download Reports'),
-        ('phase_notifications', 'Phase Timing Alerts'),
         ('qa_dashboard', 'QA Dashboard'),
         ('production_manager', 'Production Manager Dashboard'),
         ('store_dashboard', 'Store Dashboard'),
         ('qc_dashboard', 'QC Dashboard'),
         ('regulatory_dashboard', 'Regulatory Dashboard'),
         ('operator_dashboard', 'Operator Dashboard'),
+        
+        # Admin Dashboard Sections
+        ('analytics', 'Analytics & Metrics'),
+        ('bmr_reports', 'BMR Print & Download Reports'),
+        ('bmr_tracking', 'BMR Tracking'),
+        ('live_tracking', 'Live Production Tracking'),
+        ('machine_management', 'Machine Management'),
+        ('quality_control', 'Quality Control Management'),
+        ('inventory', 'Inventory Management'),
+        ('quarantine', 'Quarantine Tracking'),
+        ('phase_notifications', 'Phase Timing Alerts'),
+        ('user_management', 'User Management'),
+        ('system_health', 'System Health'),
+        ('system_logs', 'System Logs'),
+        
+        # Production Manager Dashboard Sections
+        ('pm_notifications', 'Production Manager Notifications'),
+        ('pm_bmr_reports', 'Production Manager BMR Reports'),
+        ('pm_timeline', 'Production Manager Timeline'),
+        ('pm_analytics', 'Production Manager Analytics'),
+        ('pm_bmr_tracking', 'Production Manager BMR Tracking'),
+        ('pm_live_tracking', 'Production Manager Live Tracking'),
+        ('pm_quarantine', 'Production Manager Quarantine'),
     ]
     
     name = models.CharField(max_length=50, choices=DASHBOARD_CHOICES, unique=True)
@@ -274,6 +290,10 @@ class DashboardPermission(models.Model):
             return False
             
         # Check role permissions
+        # If allowed_roles is empty, allow all authenticated users
+        if not self.allowed_roles:
+            return True
+            
         if hasattr(user, 'role') and user.role in self.allowed_roles:
             return True
             

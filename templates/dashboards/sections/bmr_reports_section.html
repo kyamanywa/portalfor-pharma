@@ -1,0 +1,170 @@
+<div class="mb-4">
+    <h1 class="section-title">
+        <i class="fas fa-file-pdf me-2"></i>BMR Print & Download Reports
+    </h1>
+    <p class="section-subtitle">Search, filter, print or download comprehensive batch manufacturing records</p>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                <h3 class="mb-0">{{ all_bmrs.count }}</h3>
+                <small>Total BMRs</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h3 class="mb-0" id="approvedCount">0</h3>
+                <small>Approved</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <i class="fas fa-spinner fa-2x mb-2"></i>
+                <h3 class="mb-0" id="inProgressCount">0</h3>
+                <small>In Progress</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-flag-checkered fa-2x mb-2"></i>
+                <h3 class="mb-0" id="completedCount">0</h3>
+                <small>Completed</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="bmrSearchInput"><i class="fas fa-search me-1"></i>Search BMR/Batch Number</label>
+                    <input type="text" class="form-control" id="bmrSearchInput" placeholder="Search by BMR or Batch number...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="bmrStatusFilter"><i class="fas fa-filter me-1"></i>Status Filter</label>
+                    <select class="form-select" id="bmrStatusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="approved">Approved</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="bmrProductFilter"><i class="fas fa-box me-1"></i>Product Filter</label>
+                    <select class="form-select" id="bmrProductFilter">
+                        <option value="">All Products</option>
+                        {% for product in all_products %}
+                        <option value="{{ product.id }}">{{ product.product_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-secondary w-100" id="clearBmrFilters">
+                    <i class="fas fa-redo me-1"></i>Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BMR List Table -->
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>Available BMRs for Printing
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="bmrReportsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="fas fa-hashtag me-1"></i>BMR Number</th>
+                        <th><i class="fas fa-barcode me-1"></i>Batch Number</th>
+                        <th><i class="fas fa-box me-1"></i>Product</th>
+                        <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                        <th><i class="fas fa-calendar me-1"></i>Manufacturing Date</th>
+                        <th><i class="fas fa-user me-1"></i>Created By</th>
+                        <th class="text-center" style="min-width: 200px;"><i class="fas fa-cog me-1"></i>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bmrReportsTableBody">
+                    {% for bmr in all_bmrs %}
+                    <tr class="bmr-row" data-status="{{ bmr.status }}" data-product="{{ bmr.product.id }}" data-bmr-number="{{ bmr.bmr_number }}" data-batch-number="{{ bmr.batch_number }}">
+                        <td><strong>{{ bmr.bmr_number }}</strong></td>
+                        <td><span class="batch-number">{{ bmr.batch_number }}</span></td>
+                        <td>{{ bmr.product.product_name }}</td>
+                        <td>
+                            {% if bmr.status == 'approved' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Approved</span>
+                            {% elif bmr.status == 'completed' %}
+                                <span class="badge bg-primary"><i class="fas fa-flag-checkered me-1"></i>Completed</span>
+                            {% elif bmr.status == 'in_progress' %}
+                                <span class="badge bg-warning"><i class="fas fa-spinner me-1"></i>In Progress</span>
+                            {% elif bmr.status == 'rejected' %}
+                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ bmr.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ bmr.manufacturing_date|date:"M d, Y" }}</td>
+                        <td>{{ bmr.created_by.get_full_name }}</td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'reports:bmr_print' bmr.id %}" target="_blank" class="btn btn-success btn-sm" title="Print BMR">
+                                    <i class="fas fa-print"></i> Print
+                                </a>
+                                <button type="button" class="btn btn-primary btn-sm download-bmr-btn" data-bmr-id="{{ bmr.id }}" data-bmr-number="{{ bmr.bmr_number }}" title="Download as PDF">
+                                    <i class="fas fa-download"></i> PDF
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                            No BMRs available
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Help Card -->
+<div class="card mt-4 border-info">
+    <div class="card-body">
+        <h6 class="card-title text-info">
+            <i class="fas fa-info-circle me-2"></i>How to Print & Download BMR
+        </h6>
+        <ul class="mb-0">
+            <li>Click the <strong>"Print"</strong> button to open BMR in a new window</li>
+            <li>Click the <strong>"PDF"</strong> button to download as PDF</li>
+            <li>The document includes: Product info, materials, workflow, signatures, QC results, and more</li>
+            <li>Use search and filters to find specific BMRs quickly</li>
+        </ul>
+    </div>
+</div>

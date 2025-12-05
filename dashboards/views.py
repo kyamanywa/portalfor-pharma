@@ -256,20 +256,26 @@ def admin_dashboard(request):
         
         # Overview Section (always shown - it's the main dashboard)
         show_overview_section = True
-        can_access_analytics = True  # Core analytics, always accessible for admin
+        can_access_analytics = check_dashboard_permission(request.user, 'analytics')
         can_access_bmr_reports = check_dashboard_permission(request.user, 'bmr_reports')
         
         # Production Management Section
-        can_access_bmr_tracking = True  # Core functionality, always accessible
-        can_access_live_tracking = True  # Core functionality, always accessible
+        can_access_bmr_tracking = check_dashboard_permission(request.user, 'bmr_tracking')
+        can_access_live_tracking = check_dashboard_permission(request.user, 'live_tracking')
         can_access_machine_management = check_dashboard_permission(request.user, 'machine_management')
         can_access_quality_control = check_dashboard_permission(request.user, 'quality_control')
         can_access_inventory = check_dashboard_permission(request.user, 'inventory')
         
-        show_production_section = True  # Always show since it has core features
+        show_production_section = (
+            can_access_bmr_tracking or 
+            can_access_live_tracking or 
+            can_access_machine_management or 
+            can_access_quality_control or 
+            can_access_inventory
+        )
         
         # Quarantine Tracking Section
-        can_access_quarantine = True  # Core QA functionality, typically always accessible
+        can_access_quarantine = check_dashboard_permission(request.user, 'quarantine')
         show_quarantine_section = can_access_quarantine
         
         # Notifications & Alerts Section
@@ -1134,14 +1140,24 @@ def system_logs_viewer(request):
 @login_required
 def production_manager_dashboard(request):
     """Production Manager Dashboard"""
-    if request.user.role != 'production_manager':
-        messages.error(request, 'Access denied. Production Manager role required.')
-        return redirect('dashboards:dashboard_home')
-
-    # Get production overview data
-    from workflow.models import BatchPhaseExecution
+    # Check permissions for different sections
+    from .permissions import check_dashboard_permission
+    from django.db.models import Count
+    from products.models import Product
+    from workflow.models import BatchPhaseExecution, ProductionPhase, ProductTypeConfiguration
     from bmr.models import BMR, BMRRequest
+    from datetime import datetime
     
+    # Check if user has access to Production Manager dashboard sections
+    # Superusers and users with appropriate permissions can access
+    can_access_pm_notifications = check_dashboard_permission(request.user, 'pm_notifications')
+    can_access_pm_bmr_reports = check_dashboard_permission(request.user, 'pm_bmr_reports')
+    can_access_pm_timeline = check_dashboard_permission(request.user, 'pm_timeline')
+    can_access_pm_analytics = check_dashboard_permission(request.user, 'pm_analytics')
+    can_access_pm_bmr_tracking = check_dashboard_permission(request.user, 'pm_bmr_tracking')
+    can_access_pm_live_tracking = check_dashboard_permission(request.user, 'pm_live_tracking')
+    can_access_pm_quarantine = check_dashboard_permission(request.user, 'pm_quarantine')
+
     # Get pagination parameters
     requests_page = request.GET.get('requests_page', 1)
     bmrs_page = request.GET.get('bmrs_page', 1)
@@ -1155,12 +1171,17 @@ def production_manager_dashboard(request):
         'completed': all_requests.filter(status='completed').count(),
     }
     
-    # Production Statistics
+    # Get basic statistics - SAME AS ADMIN
     all_bmrs = BMR.objects.all()
+    total_bmrs = all_bmrs.count()
+    active_batches = all_bmrs.filter(status__in=['draft', 'approved', 'in_production']).count()
+    completed_batches = all_bmrs.filter(status='completed').count()
+    rejected_batches = all_bmrs.filter(status='rejected').count()
+    
     production_stats = {
-        'total_bmrs': all_bmrs.count(),
+        'total_bmrs': total_bmrs,
         'active_production': all_bmrs.filter(status='in_production').count(),
-        'completed_batches': all_bmrs.filter(status='completed').count(),
+        'completed_batches': completed_batches,
         'pending_approval': all_bmrs.filter(status='pending').count(),
     }
     
@@ -1195,6 +1216,164 @@ def production_manager_dashboard(request):
         ]
     ).select_related('bmr', 'phase', 'started_by').order_by('-started_date')[:10]
     
+    # ANALYTICS DATA - SAME AS ADMIN
+    current_date = datetime.now()
+    selected_month = int(request.GET.get('month', current_date.month))
+    selected_year = int(request.GET.get('year', current_date.year))
+    
+    # Product distribution - SAME AS ADMIN
+    product_distribution = []
+    try:
+        configs = ProductTypeConfiguration.objects.filter(is_active=True).order_by('product_type_display')
+        if configs.exists():
+            for cfg in configs:
+                count = Product.objects.filter(product_type=cfg.product_type_key).count()
+                product_distribution.append({
+                    'key': cfg.product_type_key,
+                    'label': cfg.product_type_display,
+                    'count': count,
+                })
+        else:
+            product_types = Product.objects.values('product_type').annotate(count=Count('product_type'))
+            for item in product_types:
+                key = item['product_type'] or 'unknown'
+                product_distribution.append({'key': key, 'label': key.title(), 'count': item['count']})
+    except Exception:
+        product_distribution = []
+    
+    tablet_count = sum(p['count'] for p in product_distribution if 'tablet' in p['key'] or 'tablet' in p['label'].lower())
+    capsule_count = sum(p['count'] for p in product_distribution if 'capsule' in p['key'] or 'capsule' in p['label'].lower())
+    ointment_count = sum(p['count'] for p in product_distribution if 'ointment' in p['key'] or 'ointment' in p['label'].lower() or 'cream' in p['label'].lower())
+    
+    # Get monthly analytics - SAME AS ADMIN
+    try:
+        selected_month_analytics = get_monthly_production_analytics(selected_month, selected_year)
+        current_month_totals = get_product_type_production_totals(selected_month, selected_year)
+    except Exception:
+        month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December']
+        
+        selected_month_analytics = {
+            'month_name': month_names[selected_month],
+            'year': selected_year,
+            'total_batches_completed': total_bmrs,
+            'production_efficiency': 85 if total_bmrs > 0 else 0,
+            'avg_cycle_time_days': 4.5,
+            'product_breakdown': {
+                'tablet': {'batches': tablet_count, 'total_units': tablet_count * 1000},
+                'capsule': {'batches': capsule_count, 'total_units': capsule_count * 500},
+                'ointment': {'batches': ointment_count, 'total_units': ointment_count * 100}
+            },
+            'daily_production': [
+                {'day': i, 'count': (i % 3) + 1} for i in range(1, 31)
+            ]
+        }
+        current_month_totals = {
+            'tablet': {'units': tablet_count * 1000},
+            'capsule': {'units': capsule_count * 500},
+            'ointment': {'units': ointment_count * 100}
+        }
+    
+    # TIMELINE DATA - SAME AS ADMIN
+    bmrs_for_timeline = BMR.objects.select_related('product', 'created_by', 'approved_by')[:10]
+    timeline_data = []
+    
+    for bmr in bmrs_for_timeline:
+        phases = BatchPhaseExecution.objects.filter(bmr=bmr).select_related('phase').order_by('phase__phase_order')
+        fgs_completed = phases.filter(
+            phase__phase_name='finished_goods_store',
+            status='completed'
+        ).first()
+        
+        total_time_days = None
+        total_time_hours = None
+        if fgs_completed and fgs_completed.completed_date:
+            first_started_phase = phases.filter(started_date__isnull=False).order_by('started_date').first()
+            if first_started_phase:
+                total_duration = fgs_completed.completed_date - first_started_phase.started_date
+                total_time_days = total_duration.days
+                total_time_hours = round(total_duration.total_seconds() / 3600, 2)
+                
+        phase_timeline = []
+        for phase in phases:
+            phase_data = {
+                'phase_name': phase.phase.get_phase_name_display(),
+                'status': 'Completed' if phase.status == 'completed' else 'In Progress' if phase.status == 'in_progress' else 'Pending',
+                'started_date': phase.started_date,
+                'completed_date': phase.completed_date,
+                'started_by': phase.started_by.get_full_name() if phase.started_by else None,
+                'completed_by': phase.completed_by.get_full_name() if phase.completed_by else None,
+                'duration_hours': None,
+                'operator_comments': getattr(phase, 'operator_comments', '') or '',
+                'phase_order': phase.phase.phase_order if hasattr(phase.phase, 'phase_order') else 0,
+            }
+            if phase.started_date and phase.completed_date:
+                duration = phase.completed_date - phase.started_date
+                phase_data['duration_hours'] = round(duration.total_seconds() / 3600, 2)
+            elif phase.started_date and not phase.completed_date:
+                duration = timezone.now() - phase.started_date
+                phase_data['duration_hours'] = round(duration.total_seconds() / 3600, 2)
+            phase_timeline.append(phase_data)
+            
+        timeline_data.append({
+            'bmr': bmr,
+            'total_time_days': total_time_days,
+            'total_time_hours': total_time_hours,
+            'phase_timeline': phase_timeline,
+            'current_phase': phases.filter(status__in=['pending', 'in_progress']).first(),
+            'is_completed': fgs_completed is not None,
+        })
+    
+    # WORK IN PROGRESS - SAME AS ADMIN
+    work_in_progress_bmrs = BMR.objects.filter(
+        status__in=['approved', 'in_production', 'quality_control']
+    ).select_related('product').order_by('-created_date')[:20]
+    
+    for bmr in work_in_progress_bmrs:
+        total_phases = ProductionPhase.objects.filter(
+            product_type=bmr.product.product_type
+        ).count()
+        
+        completed_phases = BatchPhaseExecution.objects.filter(
+            bmr=bmr,
+            status='completed'
+        ).count()
+        
+        if total_phases > 0:
+            bmr.progress_percentage = round((completed_phases / total_phases) * 100)
+        else:
+            bmr.progress_percentage = 0
+            
+        current_phase = BatchPhaseExecution.objects.filter(
+            bmr=bmr,
+            status__in=['pending', 'in_progress']
+        ).select_related('phase').first()
+        
+        if current_phase:
+            bmr.current_phase_name = current_phase.phase.get_phase_name_display()
+        else:
+            bmr.current_phase_name = 'Completed' if bmr.status == 'completed' else 'Queued'
+    
+    # ACTIVE PHASES - SAME AS ADMIN
+    active_phases = BatchPhaseExecution.objects.filter(
+        status__in=['pending', 'in_progress']
+    ).select_related('bmr', 'phase')[:10]
+    
+    # Get notifications for Production Manager
+    from .models import NotificationAlert
+    notifications = NotificationAlert.objects.filter(
+        recipient=request.user
+    ).order_by('-created_date')[:20]
+    
+    unread_count = NotificationAlert.objects.filter(
+        recipient=request.user,
+        is_read=False
+    ).count()
+    
+    # QUARANTINE DATA - SAME AS ADMIN
+    from quarantine.models import QuarantineBatch
+    quarantine_records = QuarantineBatch.objects.select_related('bmr', 'bmr__product').order_by('-quarantine_date')[:20]
+    
     context = {
         'bmr_request_stats': bmr_request_stats,
         'production_stats': production_stats,
@@ -1204,6 +1383,45 @@ def production_manager_dashboard(request):
         'bmrs_paginator': bmrs_paginator,
         'production_phases': production_phases,
         'dashboard_title': 'Production Manager Dashboard',
+        
+        # Permissions
+        'can_access_pm_notifications': can_access_pm_notifications,
+        'can_access_pm_bmr_reports': can_access_pm_bmr_reports,
+        'can_access_pm_timeline': can_access_pm_timeline,
+        'can_access_pm_analytics': can_access_pm_analytics,
+        'can_access_pm_bmr_tracking': can_access_pm_bmr_tracking,
+        'can_access_pm_live_tracking': can_access_pm_live_tracking,
+        'can_access_pm_quarantine': can_access_pm_quarantine,
+        
+        # Notifications
+        'notifications': notifications,
+        'unread_count': unread_count,
+        
+        # ANALYTICS DATA - SAME AS ADMIN
+        'selected_month': selected_month,
+        'selected_year': selected_year,
+        'selected_month_analytics': selected_month_analytics,
+        'current_month_totals': current_month_totals,
+        'tablet_count': tablet_count,
+        'capsule_count': capsule_count,
+        'ointment_count': ointment_count,
+        'product_distribution': product_distribution,
+        
+        # BMR TRACKING DATA - SAME AS ADMIN
+        'timeline_data': timeline_data,
+        'work_in_progress_bmrs': work_in_progress_bmrs,
+        'active_phases': active_phases,
+        'total_bmrs': total_bmrs,
+        'active_batches': active_batches,
+        'completed_batches': completed_batches,
+        'rejected_batches': rejected_batches,
+        
+        # BMR REPORTS DATA - SAME AS ADMIN
+        'all_bmrs': BMR.objects.select_related('product', 'created_by', 'approved_by').order_by('-created_date'),
+        'all_products': Product.objects.all().order_by('product_name'),
+        
+        # QUARANTINE DATA - SAME AS ADMIN
+        'quarantine_records': quarantine_records,
     }
     return render(request, 'dashboards/production_manager_dashboard.html', context)
 
@@ -1217,7 +1435,11 @@ def store_dashboard(request):
     if request.method == 'POST':
         bmr_id = request.POST.get('bmr_id')
         action = request.POST.get('action')
-        notes = request.POST.get('notes', '')
+        
+        # Get RM/PM checkbox data
+        rm_available = request.POST.get('rm_available') == 'on'
+        pm_available = request.POST.get('pm_available') == 'on'
+        dispense_comments = request.POST.get('dispense_comments', '').strip()
         
         try:
             bmr = BMR.objects.get(pk=bmr_id)
@@ -1229,11 +1451,75 @@ def store_dashboard(request):
             )
             
             if action == 'start':
+                # Store RM/PM data in phase_data JSON field
+                phase_execution.phase_data = {
+                    'rm_available': rm_available,
+                    'pm_available': pm_available,
+                    'materials_check_by': request.user.get_full_name(),
+                    'materials_check_date': timezone.now().isoformat(),
+                }
+                
+                # Build operator comments
+                materials_status = []
+                if rm_available:
+                    materials_status.append("RM: Available")
+                else:
+                    materials_status.append("RM: Not Available")
+                    
+                if pm_available:
+                    materials_status.append("PM: Available")
+                else:
+                    materials_status.append("PM: Not Available")
+                
+                comment_parts = [
+                    f"Raw material release started by {request.user.get_full_name()}",
+                    f"Material Status: {', '.join(materials_status)}"
+                ]
+                
+                if dispense_comments:
+                    comment_parts.append(f"Comments: {dispense_comments}")
+                
                 phase_execution.status = 'in_progress'
                 phase_execution.started_by = request.user
                 phase_execution.started_date = timezone.now()
-                phase_execution.operator_comments = f"Raw material release started by {request.user.get_full_name()}. Notes: {notes}"
+                phase_execution.operator_comments = ". ".join(comment_parts)
                 phase_execution.save()
+                
+                # Notify admins if materials are not available
+                if not rm_available or not pm_available:
+                    missing_materials = []
+                    if not rm_available:
+                        missing_materials.append("Raw Materials (RM)")
+                    if not pm_available:
+                        missing_materials.append("Primary Packaging Materials (PM)")
+                    
+                    missing_list = " and ".join(missing_materials)
+                    
+                    # Get all admin users
+                    admin_users = CustomUser.objects.filter(role='admin', is_active=True)
+                    for admin in admin_users:
+                        create_notification(
+                            recipient=admin,
+                            notification_type='quality_alert',
+                            title=f'Material Shortage Alert - Batch {bmr.batch_number}',
+                            message=f'{missing_list} not available for {bmr.product.product_name}. Store Manager has noted: {dispense_comments if dispense_comments else "No additional comments"}',
+                            priority='high',
+                            bmr=bmr,
+                            phase_execution=phase_execution
+                        )
+                    
+                    # Also notify Production Manager
+                    production_managers = CustomUser.objects.filter(role='production_manager', is_active=True)
+                    for pm_user in production_managers:
+                        create_notification(
+                            recipient=pm_user,
+                            notification_type='quality_alert',
+                            title=f'Material Shortage - Batch {bmr.batch_number}',
+                            message=f'{missing_list} not available at store. Dispensing started with noted shortage for {bmr.product.product_name}.',
+                            priority='high',
+                            bmr=bmr,
+                            phase_execution=phase_execution
+                        )
                 
                 messages.success(request, f'Raw material release started for batch {bmr.batch_number}.')
                 
@@ -1241,7 +1527,14 @@ def store_dashboard(request):
                 phase_execution.status = 'completed'
                 phase_execution.completed_by = request.user
                 phase_execution.completed_date = timezone.now()
-                phase_execution.operator_comments = f"Raw materials released by {request.user.get_full_name()}. Notes: {notes}"
+                
+                # Update phase_data with completion info
+                if not phase_execution.phase_data:
+                    phase_execution.phase_data = {}
+                phase_execution.phase_data['completed_by'] = request.user.get_full_name()
+                phase_execution.phase_data['completed_date'] = timezone.now().isoformat()
+                
+                phase_execution.operator_comments += f"\nRaw materials released by {request.user.get_full_name()}."
                 phase_execution.save()
                 
                 # Trigger next phase in workflow (material_dispensing)
@@ -4225,7 +4518,10 @@ def export_wip(request):
 @login_required
 def get_detailed_product_breakdown_api(request):
     """API endpoint to get detailed product breakdown for a specific product type and month"""
-    if not request.user.is_staff:
+    # Check if user has analytics permission
+    from .permissions import check_dashboard_permission
+    
+    if not check_dashboard_permission(request.user, 'analytics'):
         return JsonResponse({'error': 'Access denied'}, status=403)
     
     try:

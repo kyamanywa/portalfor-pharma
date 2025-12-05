@@ -547,6 +547,14 @@
                 </a>
             </li>
             {% endif %}
+            <li>
+                <a href="#" data-section="admin-notifications" class="section-link" id="admin-notifications-link">
+                    <i class="fas fa-bell"></i> Notifications
+                    {% if unread_count > 0 %}
+                        <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
         </ul>
         {% endif %}
         
@@ -1156,6 +1164,139 @@
                         <li>The document includes: Product info, materials, workflow, signatures, QC results, and more</li>
                         <li>Use search and filters to find specific BMRs quickly</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Admin Notifications Section -->
+        <div class="content-section" id="admin-notifications">
+            <div class="mb-4">
+                <h1 class="section-title">
+                    <i class="fas fa-bell me-2"></i>Admin Notifications
+                    {% if unread_count > 0 %}
+                        <span class="badge bg-danger ms-2">{{ unread_count }}</span>
+                    {% endif %}
+                </h1>
+                <p class="section-subtitle">Material shortages, quality alerts, and system notifications</p>
+            </div>
+            
+            <!-- Notification Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
+                            <h3 class="mb-0">{{ unread_count }}</h3>
+                            <small>Unread Notifications</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <i class="fas fa-box-open fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="materialShortageCount">0</h3>
+                            <small>Material Shortages</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-clipboard-check fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="qualityAlertCount">0</h3>
+                            <small>Quality Alerts</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h3 class="mb-0" id="readNotifCount">{{ notifications|length|add:"-"|add:unread_count }}</h3>
+                            <small>Read Notifications</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notifications List -->
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Notification Center
+                    </h5>
+                    {% if notifications %}
+                    <form method="POST" action="{% url 'dashboards:clear_all_notifications' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-light" onclick="return confirm('Mark all notifications as read?')">
+                            <i class="fas fa-check-double me-1"></i>Mark All Read
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if notifications %}
+                        <div class="list-group list-group-flush">
+                            {% for notification in notifications %}
+                            <div class="list-group-item {% if not notification.is_read %}list-group-item-warning{% endif %}" id="notification-{{ notification.id }}">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-2">
+                                            {% if notification.priority == 'critical' %}
+                                                <i class="fas fa-exclamation-circle text-danger fa-lg me-2"></i>
+                                            {% elif notification.priority == 'high' %}
+                                                <i class="fas fa-exclamation-triangle text-warning fa-lg me-2"></i>
+                                            {% elif notification.priority == 'medium' %}
+                                                <i class="fas fa-info-circle text-info fa-lg me-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-bell text-secondary fa-lg me-2"></i>
+                                            {% endif %}
+                                            <h6 class="mb-0 fw-bold">{{ notification.title }}</h6>
+                                            {% if not notification.is_read %}
+                                                <span class="badge bg-primary ms-2">NEW</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mb-2 text-muted">{{ notification.message }}</p>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>{{ notification.created_date|timesince }} ago
+                                            </small>
+                                            <small class="text-muted">
+                                                <i class="fas fa-tag me-1"></i>{{ notification.get_notification_type_display }}
+                                            </small>
+                                            {% if notification.bmr %}
+                                            <a href="{% url 'bmr:detail' notification.bmr.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <i class="fas fa-external-link-alt me-1"></i>View BMR
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="ms-3">
+                                        {% if not notification.is_read %}
+                                        <form method="POST" action="{% url 'dashboards:mark_notification_read' notification.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check me-1"></i>Mark Read
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> Read
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-muted">No Notifications</h5>
+                            <p class="text-muted">You're all caught up! No new notifications at this time.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -3350,4 +3491,30 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<script>
+// Count notification types on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const notifications = document.querySelectorAll('#admin-notifications .list-group-item');
+    let materialShortageCount = 0;
+    let qualityAlertCount = 0;
+    
+    notifications.forEach(notif => {
+        const text = notif.textContent.toLowerCase();
+        if (text.includes('material') && text.includes('shortage')) {
+            materialShortageCount++;
+        }
+        if (text.includes('quality') || text.includes('alert')) {
+            qualityAlertCount++;
+        }
+    });
+    
+    const materialCounter = document.getElementById('materialShortageCount');
+    const qualityCounter = document.getElementById('qualityAlertCount');
+    
+    if (materialCounter) materialCounter.textContent = materialShortageCount;
+    if (qualityCounter) qualityCounter.textContent = qualityAlertCount;
+});
+</script>
+
 {% endblock content %}
