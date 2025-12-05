@@ -698,9 +698,22 @@ def admin_dashboard(request):
         phase_data[f"{phase_name}_completed"] = completed
         phase_data[f"{phase_name}_inprogress"] = in_progress
     
+    # Get Phase Timing Alerts for admin dashboard
+    from workflow.models import PhaseTimeOverrunNotification
+    phase_timing_alerts = PhaseTimeOverrunNotification.objects.filter(
+        acknowledged=False
+    ).select_related(
+        'phase_execution__bmr',
+        'phase_execution__phase'
+    ).order_by('-notification_time')[:20]
+    
+    unread_alerts_count = phase_timing_alerts.count()
+    
     context = {
         'user': request.user,
         'dashboard_title': 'Admin Dashboard',
+        'notifications': phase_timing_alerts,
+        'unread_count': unread_alerts_count,
         'total_bmrs': total_bmrs,
         'active_batches': active_batches,
         'completed_batches': completed_batches,
@@ -3652,24 +3665,17 @@ def admin_system_health(request):
 
 @login_required
 def phase_notifications_view(request):
-    """Phase Timing Notifications and Overrun Alerts"""
+    """Phase Timing Alerts Dashboard"""
     if not (request.user.is_staff or request.user.role == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
-    from workflow.models import PhaseOverrunNotification, PhaseTimeOverrunNotification, BatchPhaseExecution
+    from workflow.models import PhaseOverrunNotification, PhaseTimeOverrunNotification, BatchPhaseExecution, ProductMachineTimingSetting
     from django.utils import timezone
     from datetime import datetime, timedelta
+    import logging
     
-    # Get overrun notifications
-    overrun_notifications = PhaseOverrunNotification.objects.filter(
-        status__in=['pending', 'responded']
-    ).select_related('phase_execution__bmr', 'phase_execution__phase').order_by('-created_at')[:20]
-    
-    # Get time-based overrun notifications  
-    time_notifications = PhaseTimeOverrunNotification.objects.filter(
-        acknowledged=False
-    ).select_related('phase_execution__bmr', 'phase_execution__phase').order_by('-notification_time')[:20]
+    logger = logging.getLogger('workflow')
     
     # Get currently active phases that might be overrunning
     active_phases = BatchPhaseExecution.objects.filter(
@@ -3677,20 +3683,68 @@ def phase_notifications_view(request):
         started_date__isnull=False
     ).select_related('bmr', 'phase')
     
-    # Calculate which active phases are overrunning
+    # Check each active phase and create notifications if overrunning
     overrunning_phases = []
     for phase in active_phases:
         if phase.started_date:
-            duration_hours = phase.duration_hours or 0
-            expected_hours = float(phase.phase.estimated_duration_hours) if phase.phase.estimated_duration_hours else 0
-            overrun_threshold = SystemTimingSettings.get_setting('overrun_threshold_percentage', 120) / 100.0
-            if expected_hours > 0 and duration_hours > (expected_hours * overrun_threshold):
+            # Calculate elapsed time
+            elapsed = timezone.now() - phase.started_date
+            elapsed_hours = elapsed.total_seconds() / 3600
+            
+            # Get expected duration using ProductMachineTimingSetting
+            try:
+                expected_hours = ProductMachineTimingSetting.get_expected_duration_for_execution(phase)
+                    
+            except Exception as e:
+                logger.warning(f"Error getting timing for {phase.bmr.batch_number}: {e}")
+                continue
+            
+            # Check if overrunning
+            if expected_hours > 0 and elapsed_hours > expected_hours:
+                overrun_hours = elapsed_hours - expected_hours
+                overrun_percent = int((elapsed_hours / expected_hours) * 100) - 100
+                
+                # Add to overrunning list
                 overrunning_phases.append({
                     'phase': phase,
-                    'duration_hours': duration_hours,
+                    'duration_hours': elapsed_hours,
                     'expected_hours': expected_hours,
-                    'overrun_percent': ((duration_hours - expected_hours) / expected_hours * 100)
+                    'overrun_percent': overrun_percent
                 })
+                
+                # Create notification if it doesn't exist
+                existing = PhaseTimeOverrunNotification.objects.filter(
+                    phase_execution=phase,
+                    acknowledged=False
+                ).exists()
+                
+                if not existing:
+                    # Format overrun time
+                    overrun_minutes = int((overrun_hours % 1) * 60)
+                    overrun_hours_int = int(overrun_hours)
+                    
+                    if overrun_hours_int > 0:
+                        overrun_time_str = f"{overrun_hours_int}h {overrun_minutes}m"
+                    else:
+                        overrun_time_str = f"{overrun_minutes}m"
+                    
+                    # Create the notification
+                    PhaseTimeOverrunNotification.objects.create(
+                        phase_execution=phase,
+                        threshold_exceeded_percent=overrun_percent,
+                        message=f"OVERRUN: Batch {phase.bmr.batch_number} - {phase.phase.phase_name.replace('_', ' ').title()} exceeded expected {expected_hours:.1f}h by +{overrun_time_str}"
+                    )
+                    logger.warning(f"Created Phase Timing Alert for {phase.bmr.batch_number} - {phase.phase.phase_name}")
+    
+    # Get Phase Timing Alerts (legacy model)
+    overrun_notifications = PhaseOverrunNotification.objects.filter(
+        status__in=['pending', 'responded']
+    ).select_related('phase_execution__bmr', 'phase_execution__phase').order_by('-created_at')[:20]
+    
+    # Get Phase Timing Alerts (current model) - NOW these should exist!
+    time_notifications = PhaseTimeOverrunNotification.objects.filter(
+        acknowledged=False
+    ).select_related('phase_execution__bmr', 'phase_execution__phase').order_by('-notification_time')[:20]
     
     context = {
         'dashboard_title': 'Phase Timing Alerts & Notifications',
