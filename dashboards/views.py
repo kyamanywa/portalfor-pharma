@@ -3712,10 +3712,9 @@ def phase_notifications_view(request):
                     'overrun_percent': overrun_percent
                 })
                 
-                # Create notification if it doesn't exist
+                # Create notification if it doesn't exist (check for any alert, acknowledged or not)
                 existing = PhaseTimeOverrunNotification.objects.filter(
-                    phase_execution=phase,
-                    acknowledged=False
+                    phase_execution=phase
                 ).exists()
                 
                 if not existing:
@@ -3754,6 +3753,62 @@ def phase_notifications_view(request):
         'total_notifications': len(overrun_notifications) + len(time_notifications),
     }
     return render(request, 'dashboards/phase_notifications.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def acknowledge_phase_timing_alert(request, alert_id):
+    """Acknowledge a single Phase Timing Alert"""
+    if not (request.user.is_staff or request.user.role == 'admin'):
+        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+    
+    from workflow.models import PhaseTimeOverrunNotification
+    from django.utils import timezone
+    
+    try:
+        alert = PhaseTimeOverrunNotification.objects.get(id=alert_id)
+        alert.acknowledged = True
+        alert.acknowledged_by = request.user
+        alert.acknowledged_at = timezone.now()
+        alert.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Alert for batch {alert.phase_execution.bmr.batch_number} acknowledged'
+        })
+    except PhaseTimeOverrunNotification.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Alert not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def acknowledge_all_phase_timing_alerts(request):
+    """Acknowledge all unacknowledged Phase Timing Alerts"""
+    if not (request.user.is_staff or request.user.role == 'admin'):
+        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+    
+    from workflow.models import PhaseTimeOverrunNotification
+    from django.utils import timezone
+    
+    try:
+        alerts = PhaseTimeOverrunNotification.objects.filter(acknowledged=False)
+        count = alerts.count()
+        
+        alerts.update(
+            acknowledged=True,
+            acknowledged_by=request.user,
+            acknowledged_at=timezone.now()
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{count} alerts acknowledged',
+            'count': count
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 def phase_specific_dashboard(request, phase_name):

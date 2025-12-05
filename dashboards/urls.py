@@ -25,6 +25,8 @@ urlpatterns = [
     
     # Phase Notifications & Timing
     path('phase-notifications/', views.phase_notifications_view, name='phase_notifications'),
+    path('api/phase-timing-alerts/<int:alert_id>/acknowledge/', views.acknowledge_phase_timing_alert, name='acknowledge_phase_timing_alert'),
+    path('api/phase-timing-alerts/acknowledge-all/', views.acknowledge_all_phase_timing_alerts, name='acknowledge_all_phase_timing_alerts'),
     
     # System Logs Viewer (Admin/QA access)
     path('system-logs/', views.system_logs_viewer, name='system_logs'),
