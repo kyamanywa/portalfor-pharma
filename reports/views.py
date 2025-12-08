@@ -612,11 +612,17 @@ def bmr_comments_detail(request, bmr_id):
     
     for signature in signatures:
         if signature.comments:
+            # Get display name for signature type
+            signature_type_display = dict(signature.SIGNATURE_TYPE_CHOICES).get(
+                signature.signature_type, 
+                signature.signature_type.replace('_', ' ').title()
+            )
+            
             comments.append({
                 'type': 'Electronic Signature',
-                'phase': f"Signature - {signature.signed_by_role}",
+                'phase': f"Signature - {signature_type_display}",
                 'user': signature.signed_by.get_full_name() if signature.signed_by else 'Unknown',
-                'role': signature.signed_by_role,
+                'role': signature.signed_by.role if signature.signed_by else 'Unknown',
                 'date': signature.signed_date,
                 'content': signature.comments,
                 'status': 'Signed'
