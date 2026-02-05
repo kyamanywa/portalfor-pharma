@@ -93,4 +93,7 @@ urlpatterns = [
     
     # Detailed Product Breakdown API
     path('api/detailed-product-breakdown/', views.get_detailed_product_breakdown_api, name='detailed_product_breakdown_api'),
+    
+    # Phase Chart Filter API
+    path('api/phase-chart-data/', views.get_phase_chart_data_api, name='phase_chart_data_api'),
 ]

@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from datetime import timedelta
+import json
 
 # Model imports
 from bmr.models import BMR
@@ -433,23 +434,83 @@ def admin_dashboard(request):
         capsule_count = sum(p['count'] for p in product_distribution if 'capsule' in p['key'] or 'capsule' in p['label'].lower())
         ointment_count = sum(p['count'] for p in product_distribution if 'ointment' in p['key'] or 'ointment' in p['label'].lower() or 'cream' in p['label'].lower())
         
-        # Phase completion data for chart
-        common_phases = ['mixing', 'drying', 'granulation', 'compression', 'packing']
-        phase_data = {}
+        # Phase completion data for chart - DYNAMIC
+        from workflow.models import ProductionPhase
         
-        for phase_name in common_phases:
+        # Get filter from request (for AJAX updates or URL parameter)
+        phase_filter = request.GET.get('phase_filter', 'top')
+        
+        # Get all phases that have executions
+        phases_with_executions = BatchPhaseExecution.objects.values(
+            'phase__phase_name'
+        ).distinct().order_by('phase__phase_name')
+        
+        phase_names = [p['phase__phase_name'] for p in phases_with_executions if p['phase__phase_name']]
+        
+        # Filter phases based on selection
+        if phase_filter == 'ointment':
+            from workflow.constants import OINTMENT_PHASES
+            phase_names = [p for p in phase_names if p in OINTMENT_PHASES]
+        elif phase_filter == 'tablet':
+            from workflow.constants import TABLET_PHASES
+            phase_names = [p for p in phase_names if p in TABLET_PHASES]
+        elif phase_filter == 'capsule':
+            from workflow.constants import CAPSULE_PHASES
+            phase_names = [p for p in phase_names if p in CAPSULE_PHASES]
+        elif phase_filter == 'qc':
+            from workflow.constants import QC_PHASES
+            phase_names = [p for p in phase_names if p in QC_PHASES]
+        elif phase_filter == 'common':
+            # Common workflow phases (not product-specific manufacturing)
+            common_workflow = ['bmr_creation', 'regulatory_approval', 'material_dispensing', 
+                              'packaging_material_release', 'secondary_packaging', 'final_qa', 
+                              'finished_goods_store']
+            phase_names = [p for p in phase_names if p in common_workflow]
+        elif phase_filter == 'top':
+            # Get top 8 most active phases
+            top_phases = BatchPhaseExecution.objects.values(
+                'phase__phase_name'
+            ).annotate(
+                total_count=Count('id')
+            ).order_by('-total_count')[:8]
+            phase_names = [p['phase__phase_name'] for p in top_phases if p['phase__phase_name']]
+        
+        # Limit to top 10 phases if 'all' selected to avoid overcrowding
+        if phase_filter == 'all':
+            phase_names = phase_names[:10]
+        
+        # Collect phase data dynamically
+        phase_data_list = []
+        for phase_name in phase_names:
             completed = BatchPhaseExecution.objects.filter(
-                phase__phase_name__icontains=phase_name,
+                phase__phase_name=phase_name,
                 status='completed'
             ).count()
             
             in_progress = BatchPhaseExecution.objects.filter(
-                phase__phase_name__icontains=phase_name,
+                phase__phase_name=phase_name,
                 status__in=['pending', 'in_progress']
             ).count()
             
-            phase_data[f"{phase_name}_completed"] = completed
-            phase_data[f"{phase_name}_inprogress"] = in_progress
+            # Get display name
+            display_name = phase_name.replace('_', ' ').title()
+            
+            phase_data_list.append({
+                'name': phase_name,
+                'display_name': display_name,
+                'completed': completed,
+                'in_progress': in_progress
+            })
+        
+        # For backward compatibility with hardcoded template variables
+        phase_data = {}
+        if phase_data_list:
+            for i, phase in enumerate(phase_data_list[:4]):  # Keep first 4 for old template
+                phase_data[f"{phase['name']}_completed"] = phase['completed']
+                phase_data[f"{phase['name']}_inprogress"] = phase['in_progress']
+        
+        # Serialize phase_data_list for JavaScript
+        phase_data_json = json.dumps(phase_data_list)
         
         # Analytics data - Add month/year support for analytics section
         from datetime import datetime
@@ -563,7 +624,12 @@ def admin_dashboard(request):
             'ointment_count': ointment_count,
             'product_distribution': product_distribution,
             
-            # Phase chart data
+            # Dynamic Phase chart data
+            'phase_data_list': phase_data_list,
+            'phase_data_json': phase_data_json,
+            'phase_filter': phase_filter,
+            
+            # Legacy phase chart data (for backward compatibility)
             'mixing_completed': phase_data.get('mixing_completed', 0),
             'mixing_inprogress': phase_data.get('mixing_inprogress', 0),
             'granulation_completed': phase_data.get('granulation_completed', 0),
@@ -665,82 +731,11 @@ def admin_dashboard(request):
             'error': str(e),
             'tablet_count': 0,
             'capsule_count': 0,
-            'ointment_count': 0
+            'ointment_count': 0,
+            'phase_data_json': '[]',  # Empty array for chart
+            'phase_filter': 'top',
         }
         return render(request, 'dashboards/admin_dashboard.html', context)
-    capsule_count = 0
-    ointment_count = 0
-    
-    for item in product_types:
-        product_type = item['product_type'].lower() if item['product_type'] else ''
-        if 'tablet' in product_type:
-            tablet_count += item['count']
-        elif 'capsule' in product_type:
-            capsule_count += item['count']
-        elif 'ointment' in product_type or 'cream' in product_type:
-            ointment_count += item['count']
-    
-    # Phase completion data for chart
-    common_phases = ['mixing', 'drying', 'granulation', 'compression', 'packing']
-    phase_data = {}
-    
-    for phase_name in common_phases:
-        completed = BatchPhaseExecution.objects.filter(
-            phase__phase_name__icontains=phase_name,
-            status='completed'
-        ).count()
-        
-        in_progress = BatchPhaseExecution.objects.filter(
-            phase__phase_name__icontains=phase_name,
-            status__in=['pending', 'in_progress']
-        ).count()
-        
-        phase_data[f"{phase_name}_completed"] = completed
-        phase_data[f"{phase_name}_inprogress"] = in_progress
-    
-    # Get Phase Timing Alerts for admin dashboard
-    from workflow.models import PhaseTimeOverrunNotification
-    phase_timing_alerts = PhaseTimeOverrunNotification.objects.filter(
-        acknowledged=False
-    ).select_related(
-        'phase_execution__bmr',
-        'phase_execution__phase'
-    ).order_by('-notification_time')[:20]
-    
-    unread_alerts_count = phase_timing_alerts.count()
-    
-    context = {
-        'user': request.user,
-        'dashboard_title': 'Admin Dashboard',
-        'notifications': phase_timing_alerts,
-        'unread_count': unread_alerts_count,
-        'total_bmrs': total_bmrs,
-        'active_batches': active_batches,
-        'completed_batches': completed_batches,
-        'rejected_batches': rejected_batches,
-        'total_users': total_users,
-        'active_users_count': active_users_count,
-        'recent_bmrs': recent_bmrs,
-        'active_phases': active_phases,
-        'timeline_data': [],  # Empty for now
-        
-        # CHART DATA
-        'tablet_count': tablet_count,
-        'capsule_count': capsule_count,
-        'ointment_count': ointment_count,
-        
-        # Phase chart data
-        'mixing_completed': phase_data.get('mixing_completed', 0),
-        'mixing_inprogress': phase_data.get('mixing_inprogress', 0),
-        'granulation_completed': phase_data.get('granulation_completed', 0),
-        'granulation_inprogress': phase_data.get('granulation_inprogress', 0),
-        'compression_completed': phase_data.get('compression_completed', 0),
-        'compression_inprogress': phase_data.get('compression_inprogress', 0),
-        'packing_completed': phase_data.get('packing_completed', 0),
-        'packing_inprogress': phase_data.get('packing_inprogress', 0),
-    }
-    
-    return render(request, 'dashboards/admin_dashboard.html', context)
 
 
 @csrf_protect
@@ -4659,3 +4654,127 @@ def get_detailed_product_breakdown_api(request):
         return JsonResponse({'error': 'Invalid month or year format'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_phase_chart_data_api(request):
+    """API endpoint to get phase chart data with filtering"""
+    from django.http import JsonResponse
+    from django.db.models import Count, Q
+    from workflow.models import BatchPhaseExecution
+    from django.utils import timezone
+    from datetime import timedelta, datetime
+    
+    phase_filter = request.GET.get('filter', 'top')
+    period_filter = request.GET.get('period', 'all')
+    
+    # Build date filter
+    date_filter = Q()
+    if period_filter == 'today':
+        today = timezone.now().date()
+        date_filter = Q(started_date__date=today) | Q(completed_date__date=today)
+    elif period_filter == 'week':
+        week_ago = timezone.now() - timedelta(days=7)
+        date_filter = Q(started_date__gte=week_ago) | Q(completed_date__gte=week_ago)
+    elif period_filter == 'month':
+        month_ago = timezone.now() - timedelta(days=30)
+        date_filter = Q(started_date__gte=month_ago) | Q(completed_date__gte=month_ago)
+    elif period_filter == 'custom':
+        # Handle custom date range
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        
+        if start_date_str and end_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                
+                # Make end_date inclusive (end of day)
+                from datetime import time
+                start_datetime = timezone.make_aware(datetime.combine(start_date, time.min))
+                end_datetime = timezone.make_aware(datetime.combine(end_date, time.max))
+                
+                date_filter = (
+                    Q(started_date__gte=start_datetime, started_date__lte=end_datetime) |
+                    Q(completed_date__gte=start_datetime, completed_date__lte=end_datetime)
+                )
+            except ValueError:
+                # Invalid date format, fall back to all time
+                pass
+    # 'all' means no date filter
+    
+    # Get all phases that have executions
+    phases_with_executions = BatchPhaseExecution.objects.filter(
+        date_filter
+    ).values(
+        'phase__phase_name'
+    ).distinct().order_by('phase__phase_name')
+    
+    phase_names = [p['phase__phase_name'] for p in phases_with_executions if p['phase__phase_name']]
+    
+    # Filter phases based on selection
+    if phase_filter == 'ointment':
+        from workflow.constants import OINTMENT_PHASES
+        phase_names = [p for p in phase_names if p in OINTMENT_PHASES]
+    elif phase_filter == 'tablet':
+        from workflow.constants import TABLET_PHASES
+        phase_names = [p for p in phase_names if p in TABLET_PHASES]
+    elif phase_filter == 'capsule':
+        from workflow.constants import CAPSULE_PHASES
+        phase_names = [p for p in phase_names if p in CAPSULE_PHASES]
+    elif phase_filter == 'qc':
+        from workflow.constants import QC_PHASES
+        phase_names = [p for p in phase_names if p in QC_PHASES]
+    elif phase_filter == 'common':
+        # Common workflow phases (not product-specific manufacturing)
+        common_workflow = ['bmr_creation', 'regulatory_approval', 'material_dispensing', 
+                          'packaging_material_release', 'secondary_packaging', 'final_qa', 
+                          'finished_goods_store']
+        phase_names = [p for p in phase_names if p in common_workflow]
+    elif phase_filter == 'top':
+        # Get top 8 most active phases
+        top_phases = BatchPhaseExecution.objects.filter(
+            date_filter
+        ).values(
+            'phase__phase_name'
+        ).annotate(
+            total_count=Count('id')
+        ).order_by('-total_count')[:8]
+        phase_names = [p['phase__phase_name'] for p in top_phases if p['phase__phase_name']]
+    elif phase_filter == 'all':
+        # Limit to top 10 phases to avoid overcrowding
+        phase_names = phase_names[:10]
+    
+    # Collect phase data dynamically
+    phase_data_list = []
+    for phase_name in phase_names:
+        completed = BatchPhaseExecution.objects.filter(
+            date_filter,
+            phase__phase_name=phase_name,
+            status='completed'
+        ).count()
+        
+        in_progress = BatchPhaseExecution.objects.filter(
+            date_filter,
+            phase__phase_name=phase_name,
+            status__in=['pending', 'in_progress']
+        ).count()
+        
+        # Get display name
+        display_name = phase_name.replace('_', ' ').title()
+        
+        phase_data_list.append({
+            'name': phase_name,
+            'display_name': display_name,
+            'completed': completed,
+            'in_progress': in_progress
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'filter': phase_filter,
+        'period': period_filter,
+        'phases': phase_data_list
+    })
+

@@ -730,7 +730,47 @@
                 </div>
                 <div class="col-lg-6 mb-4">
                     <div class="chart-container">
-                        <h5>Phase Status Overview</h5>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0">Phase Status Overview</h5>
+                            <select id="phaseFilterSelect" class="form-select form-select-sm" style="width: auto;">
+                                <option value="top" {% if phase_filter == 'top' %}selected{% endif %}>Top Active Phases</option>
+                                <option value="all" {% if phase_filter == 'all' %}selected{% endif %}>All Phases</option>
+                                <option value="ointment" {% if phase_filter == 'ointment' %}selected{% endif %}>Ointment Phases</option>
+                                <option value="tablet" {% if phase_filter == 'tablet' %}selected{% endif %}>Tablet Phases</option>
+                                <option value="capsule" {% if phase_filter == 'capsule' %}selected{% endif %}>Capsule Phases</option>
+                                <option value="qc" {% if phase_filter == 'qc' %}selected{% endif %}>QC Phases</option>
+                                <option value="common" {% if phase_filter == 'common' %}selected{% endif %}>Workflow Phases</option>
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-alt"></i> 
+                                <span id="phasePeriodLabel">All Time</span>
+                            </small>
+                            <select id="phasePeriodSelect" class="form-select form-select-sm" style="width: auto;">
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="custom">Custom Range</option>
+                                <option value="all" selected>All Time</option>
+                            </select>
+                        </div>
+                        <!-- Custom Date Range Inputs -->
+                        <div id="customDateRange" class="mb-3" style="display: none;">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small">From Date</label>
+                                    <input type="date" id="phaseStartDate" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">To Date</label>
+                                    <input type="date" id="phaseEndDate" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <button id="applyCustomRange" class="btn btn-primary btn-sm mt-2 w-100">
+                                <i class="fas fa-filter"></i> Apply Date Range
+                            </button>
+                        </div>
                         <canvas id="phaseChart"></canvas>
                     </div>
                 </div>
@@ -2211,53 +2251,186 @@ function initCharts() {
 
     // Phase Status Chart
     const phaseCtx = document.getElementById('phaseChart');
+    let phaseChart = null;
+    
     if (phaseCtx) {
-        // Check if a chart instance already exists and destroy it
-        const existingPhaseChart = Chart.getChart(phaseCtx);
-        if (existingPhaseChart) {
-            existingPhaseChart.destroy();
-        }
-        
-        new Chart(phaseCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Mixing', 'Granulation', 'Compression', 'Packing'],
-                datasets: [{
-                    label: 'Completed',
-                    data: [{{ mixing_completed|default:0 }}, {{ granulation_completed|default:0 }}, {{ compression_completed|default:0 }}, {{ packing_completed|default:0 }}],
-                    backgroundColor: '#28a745',
-                    maxBarThickness: 50
-                }, {
-                    label: 'In Progress',
-                    data: [{{ mixing_inprogress|default:0 }}, {{ granulation_inprogress|default:0 }}, {{ compression_inprogress|default:0 }}, {{ packing_inprogress|default:0 }}],
-                    backgroundColor: '#fa709a',
-                    maxBarThickness: 50
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 20,
-                        ticks: {
-                            stepSize: 2
+        // Function to render phase chart
+        function renderPhaseChart(phaseData) {
+            // Destroy existing chart
+            const existingPhaseChart = Chart.getChart(phaseCtx);
+            if (existingPhaseChart) {
+                existingPhaseChart.destroy();
+            }
+            
+            // Extract labels and data
+            const labels = phaseData.map(p => p.display_name);
+            const completedData = phaseData.map(p => p.completed);
+            const inProgressData = phaseData.map(p => p.in_progress);
+            
+            // Determine max value for y-axis
+            const maxValue = Math.max(...completedData, ...inProgressData, 10);
+            const yMax = Math.ceil(maxValue / 10) * 10 + 10; // Round up nicely
+            
+            phaseChart = new Chart(phaseCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Completed',
+                        data: completedData,
+                        backgroundColor: '#28a745',
+                        maxBarThickness: 50
+                    }, {
+                        label: 'In Progress',
+                        data: inProgressData,
+                        backgroundColor: '#fa709a',
+                        maxBarThickness: 50
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: yMax,
+                            ticks: {
+                                stepSize: Math.ceil(yMax / 10)
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
                         }
                     },
-                    x: {
-                        ticks: {
-                            maxRotation: 45
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const total = completedData[context.dataIndex] + inProgressData[context.dataIndex];
+                                    return 'Total: ' + total;
+                                }
+                            }
                         }
                     }
-                },
-                plugins: {
-                    legend: {
-                        position: 'top'
+                }
+            });
+        }
+        
+        // Initial render with server-provided data
+        const initialPhaseData = {{ phase_data_json|safe|default:"[]" }};
+        if (initialPhaseData && initialPhaseData.length > 0) {
+            renderPhaseChart(initialPhaseData);
+        } else {
+            // Show message if no phase data available
+            console.log('No phase data available for chart');
+        }
+        
+        // Handle filter change
+        const phaseFilterSelect = document.getElementById('phaseFilterSelect');
+        const phasePeriodSelect = document.getElementById('phasePeriodSelect');
+        const phasePeriodLabel = document.getElementById('phasePeriodLabel');
+        const customDateRange = document.getElementById('customDateRange');
+        const phaseStartDate = document.getElementById('phaseStartDate');
+        const phaseEndDate = document.getElementById('phaseEndDate');
+        const applyCustomRange = document.getElementById('applyCustomRange');
+        
+        // Set default dates (current month)
+        if (phaseStartDate && phaseEndDate) {
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            phaseStartDate.value = firstDay.toISOString().split('T')[0];
+            phaseEndDate.value = today.toISOString().split('T')[0];
+        }
+        
+        function updatePeriodLabel(period, startDate = null, endDate = null) {
+            const labels = {
+                'today': 'Today',
+                'week': 'This Week',
+                'month': 'This Month',
+                'all': 'All Time',
+                'custom': startDate && endDate ? `${startDate} to ${endDate}` : 'Custom Range'
+            };
+            if (phasePeriodLabel) {
+                phasePeriodLabel.textContent = labels[period] || 'All Time';
+            }
+        }
+        
+        function fetchPhaseData(customStart = null, customEnd = null) {
+            const selectedFilter = phaseFilterSelect ? phaseFilterSelect.value : 'top';
+            const selectedPeriod = phasePeriodSelect ? phasePeriodSelect.value : 'all';
+            
+            // Show loading state
+            phaseCtx.style.opacity = '0.5';
+            
+            // Build URL with parameters
+            let url = `{% url 'dashboards:phase_chart_data_api' %}?filter=${selectedFilter}&period=${selectedPeriod}`;
+            
+            if (selectedPeriod === 'custom' && customStart && customEnd) {
+                url += `&start_date=${customStart}&end_date=${customEnd}`;
+            }
+            
+            // Fetch new data via AJAX
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.phases) {
+                        renderPhaseChart(data.phases);
+                        updatePeriodLabel(selectedPeriod, customStart, customEnd);
+                    } else {
+                        console.error('Failed to load phase data');
+                    }
+                    phaseCtx.style.opacity = '1';
+                })
+                .catch(error => {
+                    console.error('Error fetching phase data:', error);
+                    phaseCtx.style.opacity = '1';
+                });
+        }
+        
+        if (phaseFilterSelect) {
+            phaseFilterSelect.addEventListener('change', function() {
+                fetchPhaseData();
+            });
+        }
+        
+        if (phasePeriodSelect) {
+            phasePeriodSelect.addEventListener('change', function() {
+                // Show/hide custom date range inputs
+                if (customDateRange) {
+                    if (this.value === 'custom') {
+                        customDateRange.style.display = 'block';
+                    } else {
+                        customDateRange.style.display = 'none';
+                        fetchPhaseData();
                     }
                 }
-            }
-        });
+            });
+        }
+        
+        if (applyCustomRange) {
+            applyCustomRange.addEventListener('click', function() {
+                const startDate = phaseStartDate ? phaseStartDate.value : null;
+                const endDate = phaseEndDate ? phaseEndDate.value : null;
+                
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates');
+                    return;
+                }
+                
+                if (new Date(startDate) > new Date(endDate)) {
+                    alert('Start date must be before end date');
+                    return;
+                }
+                
+                fetchPhaseData(startDate, endDate);
+            });
+        }
     }
 }
 
