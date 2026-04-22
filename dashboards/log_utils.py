@@ -24,6 +24,10 @@ class LogAnalyzer:
         'CRITICAL': 'danger'
     }
     
+    # Modules to exclude from log viewer (standard practice)
+    # These are low-level HTTP/server logs that clutter the view
+    EXCLUDED_MODULES = ['basehttp', 'autoreload']
+    
     def __init__(self, log_file_path=None):
         self.log_file_path = log_file_path or os.path.join(settings.BASE_DIR, 'logs', 'django.log')
     
@@ -44,6 +48,10 @@ class LogAnalyzer:
             for line in reversed(lines[-limit*2:]):  # Get more than needed for filtering
                 entry = self._parse_log_line(line.strip())
                 if entry:
+                    # Filter out HTTP request logs and other noise (industry standard)
+                    if entry['module'] in self.EXCLUDED_MODULES:
+                        continue
+                    
                     # Apply filters
                     if level_filter and entry['level'] != level_filter:
                         continue

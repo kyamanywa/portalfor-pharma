@@ -174,6 +174,59 @@ class BatchPhaseExecution(models.Model):
     operator_comments = models.TextField(blank=True)
     qa_comments = models.TextField(blank=True)
     
+    # Template completion tracking - required before phase can start
+    template_section_completed = models.BooleanField(default=False)
+    
+    # Line Clearance approval tracking - multi-role signing workflow
+    LC_STATUS_CHOICES = [
+        ('not_required', 'Not Required'),       # Phases without LC
+        ('not_started', 'Not Started'),         # LC not yet filled
+        ('operator_filled', 'Operator Filled'), # Operator + Supervisor signed, awaiting QA
+        ('qa_approved', 'QA Approved'),         # QA approved - phase can start / complete
+        ('qa_rejected', 'QA Rejected'),         # QA rejected - needs rework
+    ]
+    beginning_lc_status = models.CharField(
+        max_length=20, choices=LC_STATUS_CHOICES, default='not_required',
+        help_text='Beginning LC: Operator fills → Supervisor signs → QA approves → Start activates'
+    )
+    ending_lc_status = models.CharField(
+        max_length=20, choices=LC_STATUS_CHOICES, default='not_required',
+        help_text='Ending LC: After process data filled, same signing flow → Complete activates'
+    )
+    # QA who approved/rejected the Line Clearance
+    beginning_lc_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='beginning_lc_approved_phases'
+    )
+    beginning_lc_approved_date = models.DateTimeField(null=True, blank=True)
+    ending_lc_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ending_lc_approved_phases'
+    )
+    ending_lc_approved_date = models.DateTimeField(null=True, blank=True)
+
+    # Process Form QA signing workflow — operator fills process data → submits for QA signing → QA signs
+    PROCESS_SIGNING_CHOICES = [
+        ('not_required', 'Not Required'),       # Phases without role-gated process signing
+        ('not_started', 'Not Started'),          # Process form not yet submitted for QA
+        ('operator_filled', 'Operator Filled'),  # Operator submitted, awaiting QA signing
+        ('qa_signed', 'QA Signed'),              # QA signed all their columns
+    ]
+    process_signing_status = models.CharField(
+        max_length=20, choices=PROCESS_SIGNING_CHOICES, default='not_required',
+        help_text='Operator fills process tables + signs → submits for QA → QA signs their columns → Complete'
+    )
+    process_signing_submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='process_signing_submitted_phases'
+    )
+    process_signing_submitted_date = models.DateTimeField(null=True, blank=True)
+    process_signing_completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='process_signing_completed_phases'
+    )
+    process_signing_completed_date = models.DateTimeField(null=True, blank=True)
+
     # Machine tracking
     machine_used = models.ForeignKey('Machine', on_delete=models.SET_NULL, null=True, blank=True)
     
@@ -205,6 +258,16 @@ class BatchPhaseExecution(models.Model):
         unique_together = ['bmr', 'phase']
         ordering = ['bmr', 'phase__phase_order']
     
+    @property
+    def lc_ready(self):
+        """Check if Beginning LC is QA-approved or not required — gates the Start button."""
+        return self.beginning_lc_status in ('qa_approved', 'not_required')
+
+    @property
+    def ending_lc_ready(self):
+        """Check if Ending LC is approved or not required — gates the Complete button."""
+        return self.ending_lc_status in ('qa_approved', 'not_required')
+
     def __str__(self):
         return f"{self.bmr.batch_number} - {self.phase.get_phase_name_display()} ({self.status})"
     

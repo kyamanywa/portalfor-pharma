@@ -8,7 +8,7 @@ class BMRCreateForm(forms.ModelForm):
     class Meta:
         model = BMR
         fields = [
-            'product', 'batch_number', 'manufacturing_date'
+            'product', 'batch_number', 'manufacturing_date', 'expiry_date'
         ]
         widgets = {
             'batch_number': forms.TextInput(attrs={
@@ -18,6 +18,11 @@ class BMRCreateForm(forms.ModelForm):
                 'title': 'Enter 7 digits: XXX (batch) + YYYY (year)'
             }),
             'manufacturing_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'placeholder': 'YYYY-MM-DD'
+            }),
+            'expiry_date': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date',
                 'placeholder': 'YYYY-MM-DD'
@@ -49,6 +54,9 @@ class BMRCreateForm(forms.ModelForm):
         )
         self.fields['manufacturing_date'].help_text = (
             "Enter the manufacturing date for this batch"
+        )
+        self.fields['expiry_date'].help_text = (
+            "Enter the expiry date for this batch"
         )
     
     def clean_batch_number(self):

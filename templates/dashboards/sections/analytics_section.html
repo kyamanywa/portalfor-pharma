@@ -112,12 +112,12 @@
                 {% if selected_month_analytics.product_breakdown %}
                     {% for product_type, data in selected_month_analytics.product_breakdown.items %}
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded product-type-card" 
-                             style="cursor: pointer; transition: all 0.3s ease;" 
+                             style="cursor: pointer;" 
                              data-product="{{ product_type }}"
                              data-batches="{{ data.batches }}"
                              data-total-units="{{ data.total_units|floatformat:0 }}"
-                             onmouseover="this.style.backgroundColor='#e3f2fd'; this.style.transform='translateX(5px)';"
-                             onmouseout="this.style.backgroundColor=''; this.style.transform='';">
+                             onmouseover="this.style.backgroundColor='#e3f2fd';"
+                             onmouseout="this.style.backgroundColor='';">>
                             <div>
                                 <strong>{{ product_type|title }}s</strong><br>
                                 <small class="text-muted batch-count">{{ data.batches }} batch{{ data.batches|pluralize:"es" }}</small>

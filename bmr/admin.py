@@ -1,5 +1,11 @@
 from django.contrib import admin
-from .models import BMR, BMRMaterial, BMRSignature, BMRRequest
+from django.urls import path, reverse
+from django.utils.html import format_html
+from .models import (
+    BMR, BMRMaterial, BMRSignature, BMRRequest, BMRTemplate,
+    EquipmentEntry, YieldReconciliationRow, WeightRangeLimit, BMRProcedureStep,
+)
+from .template_admin import BMRTemplateVisualAdmin
 
 @admin.register(BMR)
 class BMRAdmin(admin.ModelAdmin):
@@ -22,6 +28,10 @@ class BMRAdmin(admin.ModelAdmin):
         }),
         ('Status & Approval', {
             'fields': ('status', 'created_by', 'approved_by', 'approved_date')
+        }),
+        ('Template', {
+            'fields': ('template',),
+            'description': 'Select the template structure that should render this BMR'
         }),
         ('Instructions', {
             'fields': ('manufacturing_instructions', 'special_instructions', 
@@ -72,3 +82,53 @@ class BMRRequestAdmin(admin.ModelAdmin):
             'fields': ('approved_by', 'bmr')
         }),
     )
+
+
+@admin.register(BMRTemplate)
+class BMRTemplateAdmin(BMRTemplateVisualAdmin):
+    """BMR Template admin with visual editor - inherits from BMRTemplateVisualAdmin"""
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Product-linked content models
+# ---------------------------------------------------------------------------
+
+@admin.register(EquipmentEntry)
+class EquipmentEntryAdmin(admin.ModelAdmin):
+    list_display = ['product', 'phase', 'order', 'equipment_name', 'equipment_id']
+    list_filter = ['product', 'phase']
+    list_editable = ['order', 'equipment_name', 'equipment_id']
+    ordering = ['product', 'phase', 'order']
+    search_fields = ['product__product_name', 'equipment_name', 'equipment_id']
+
+
+@admin.register(YieldReconciliationRow)
+class YieldReconciliationRowAdmin(admin.ModelAdmin):
+    list_display = ['product', 'phase', 'row_key', 'label', 'order']
+    list_filter = ['product', 'phase']
+    list_editable = ['order', 'row_key', 'label']
+    ordering = ['product', 'phase', 'order']
+    search_fields = ['product__product_name', 'label']
+
+
+@admin.register(WeightRangeLimit)
+class WeightRangeLimitAdmin(admin.ModelAdmin):
+    list_display = ['product', 'phase', 'order', 'category', 'percent_of_target', 'tolerance_code', 'action', 'is_highlighted']
+    list_filter = ['product', 'phase']
+    list_editable = ['order', 'category', 'percent_of_target', 'tolerance_code', 'action', 'is_highlighted']
+    ordering = ['product', 'phase', 'order']
+    search_fields = ['product__product_name', 'category', 'action']
+
+
+@admin.register(BMRProcedureStep)
+class BMRProcedureStepAdmin(admin.ModelAdmin):
+    list_display = ['product', 'phase', 'step_number', 'order', 'description_preview']
+    list_filter = ['product', 'phase']
+    list_editable = ['step_number', 'order']
+    ordering = ['product', 'phase', 'order']
+    search_fields = ['product__product_name', 'step_number', 'description']
+
+    def description_preview(self, obj):
+        return obj.description[:80] + '…' if len(obj.description) > 80 else obj.description
+    description_preview.short_description = 'Description'

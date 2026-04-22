@@ -6,6 +6,115 @@ from datetime import datetime
 import re
 import logging
 from django.contrib.auth import get_user_model
+from django.utils.text import slugify
+import json
+
+# Import template models
+from .template_models import (
+    BMRTemplateSection, BMRTemplateField, BMRTemplateTable, 
+    BMRTemplateTableColumn, BMRFormData
+)
+
+class BMRTemplate(models.Model):
+    """Defines a configurable template structure for the entire BMR document."""
+
+    PRODUCT_TYPE_CHOICES = [
+        ('', 'Universal (all types)'),
+        ('tablet', 'Tablet (Coated / Normal)'),
+        ('tablet_normal', 'Tablet Normal (legacy)'),
+        ('tablet_type_2', 'Tablet Type 2 (Bulk Packing)'),
+        ('ointment', 'Ointment'),
+        ('capsule', 'Capsule'),
+    ]
+
+    name = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140, unique=True, blank=True)
+    description = models.TextField(blank=True)
+
+    # Product-specific override: if set, this template applies ONLY to this product
+    # Priority: product-specific > product_type > universal (is_active)
+    product = models.ForeignKey(
+        'products.Product',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bmr_templates',
+        help_text=(
+            "Link to a specific product. If set, this template is used exclusively "
+            "for that product, overriding the product_type template."
+        )
+    )
+
+    # Product type this template is for (empty = universal fallback)
+    product_type = models.CharField(
+        max_length=20,
+        choices=PRODUCT_TYPE_CHOICES,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text="The product type this template applies to. Leave blank for a universal template."
+    )
+    structure = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="JSON schema defining pages, sections, tables, and placeholders"
+    )
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_active', '-updated_at']
+        verbose_name = 'BMR Template'
+        verbose_name_plural = 'BMR Templates'
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+        if self.is_active:
+            # Only deactivate other templates of the SAME product_type so that
+            # ointment / capsule / tablet templates remain independent.
+            BMRTemplate.objects.filter(
+                product_type=self.product_type
+            ).exclude(pk=self.pk).update(is_active=False)
+
+    @classmethod
+    def get_active_template(cls):
+        return cls.objects.filter(is_active=True).first()
+
+    @classmethod
+    def for_product_type(cls, product_type):
+        """Return the matching template for a specific product type, or None."""
+        return cls.objects.filter(product_type=product_type, product__isnull=True).first()
+
+    @classmethod
+    def for_product(cls, product):
+        """
+        3-tier lookup (industrial standard MFR resolution):
+          1. Product-specific template (product FK matches exactly)
+          2. Product-type template     (matching product_type, no product FK)
+          3. Universal active template (legacy fallback)
+        Returns the first match found.
+        """
+        if product is None:
+            return cls.get_active_template()
+        # Tier 1: exact product match
+        specific = cls.objects.filter(product=product).first()
+        if specific:
+            return specific
+        # Tier 2: product_type match (no product FK set = shared base for this type)
+        by_type = cls.objects.filter(
+            product_type=product.product_type,
+            product__isnull=True
+        ).first()
+        if by_type:
+            return by_type
+        # Tier 3: global active fallback
+        return cls.get_active_template()
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +154,20 @@ class BMR(models.Model):
         blank=False,
         help_text="Enter the manufacturing date for this batch"
     )
+    expiry_date = models.DateField(
+        null=True,
+        blank=False,
+        help_text="Enter the expiry date for this batch"
+    )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    template = models.ForeignKey(
+        BMRTemplate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bmrs',
+        help_text='Template structure used to render this BMR'
+    )
     # Batch size now comes from Product model - these fields are for actual batch size if different from standard
     actual_batch_size = models.DecimalField(
         max_digits=10, 
@@ -128,6 +250,16 @@ class BMR(models.Model):
         """Get batch size unit - actual if specified, otherwise from product"""
         return self.actual_batch_size_unit or self.product.batch_size_unit
     
+    def get_template(self):
+        if self.template:
+            return self.template
+        return BMRTemplate.for_product(self.product)
+
+    @property
+    def template_structure(self):
+        template = self.get_template()
+        return template.structure if template else []
+
     def save(self, *args, **kwargs):
         # Check if this is a status change to approved
         is_new = self.pk is None
@@ -140,6 +272,9 @@ class BMR(models.Model):
             except BMR.DoesNotExist:
                 pass
         
+        if not self.template:
+            self.template = BMRTemplate.get_active_template()
+
         if not self.bmr_number:
             self.bmr_number = self.generate_unique_bmr_number()
         
@@ -430,3 +565,159 @@ class BMRRequest(models.Model):
         ordering = ['-request_date']
         verbose_name = "BMR Request"
         verbose_name_plural = "BMR Requests"
+
+# ---------------------------------------------------------------------------
+# Product-linked content models
+# These store the product-specific data that is displayed in the BMR template.
+# Admin staff can edit these rows per product without touching code.
+# ---------------------------------------------------------------------------
+
+class EquipmentEntry(models.Model):
+    """Equipment / instrument listed in a specific manufacturing phase for a product."""
+
+    PHASE_CHOICES = [
+        ('general',           'General Equipment List (Page 5)'),
+        # ── Ointment ─────────────────────────────────────────────
+        ('dispensing',        'Dispensing'),
+        ('mixing',            'Mixing'),
+        ('tube_filling',      'Tube Filling'),
+        # ── Tablet / Capsule ─────────────────────────────────────
+        ('granulation_1',     'Granulation 1'),
+        ('granulation_2',     'Granulation 2'),
+        ('compression',       'Compression'),
+        ('blending',          'Blending / Lubrication'),
+        ('ipqc_lab',          'IPQC Lab'),
+        ('visual_inspection', 'Visual Inspection & Sorting'),
+        ('blister_packing',   'Blister Packing'),
+        ('strip_packing',     'Strip Packing'),
+        # ── Capsule ──────────────────────────────────────────────
+        ('capsule_filling',   'Capsule Filling'),
+        ('inspection',        'Inspection & Sorting'),
+        ('packaging',         'Packaging / Blistering'),
+    ]
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='equipment_entries',
+    )
+    phase = models.CharField(max_length=40, choices=PHASE_CHOICES, db_index=True)
+    equipment_name = models.CharField(max_length=120)
+    equipment_id = models.CharField(
+        max_length=30,
+        blank=True,
+        default='—',
+        help_text='Equipment ID / mark number (e.g. PN-06)',
+    )
+    order = models.PositiveIntegerField(default=0, help_text='Display order within the phase')
+
+    class Meta:
+        ordering = ['phase', 'order']
+        verbose_name = 'Equipment Entry'
+        verbose_name_plural = 'Equipment Entries'
+
+    def __str__(self):
+        return f'{self.equipment_name} ({self.equipment_id})'
+
+
+class YieldReconciliationRow(models.Model):
+    """A single labelled row in a yield-reconciliation table for a specific phase."""
+
+    PHASE_CHOICES = [
+        ('blending',        'Blending / Lubrication'),
+        ('capsule_filling', 'Capsule Filling'),
+        ('blistering',      'Blistering / Primary Packaging'),
+        ('inspection',      'Inspection & Sorting'),
+    ]
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='yield_rows',
+    )
+    phase = models.CharField(max_length=40, choices=PHASE_CHOICES, db_index=True)
+    row_key = models.CharField(
+        max_length=5,
+        help_text='Short letter key shown in the "Steps" column (e.g. A, B, F.)',
+    )
+    label = models.CharField(max_length=255, help_text='Description shown in the "Descriptions" column')
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['phase', 'order']
+        verbose_name = 'Yield Reconciliation Row'
+        verbose_name_plural = 'Yield Reconciliation Rows'
+
+    def __str__(self):
+        return f'[{self.row_key}] {self.label}'
+
+
+class WeightRangeLimit(models.Model):
+    """One row in the in-process weight-range / tolerance table for a capsule or tablet phase."""
+
+    PHASE_CHOICES = [
+        ('capsule_filling', 'Capsule Filling'),
+        ('compression',     'Tablet Compression'),
+    ]
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='weight_range_limits',
+    )
+    phase = models.CharField(max_length=40, choices=PHASE_CHOICES, default='capsule_filling')
+    category = models.CharField(max_length=30, help_text='Category label, e.g. ">105%"')
+    percent_of_target = models.CharField(max_length=30, help_text='Percentage value, e.g. ">105%"')
+    tolerance_code = models.CharField(max_length=20, help_text='Code shown in Tolerance column, e.g. ">+T2"')
+    action = models.CharField(max_length=30, help_text='Action text, e.g. "Action", "Alert", "Good"')
+    is_highlighted = models.BooleanField(
+        default=False,
+        help_text='Tick for the target/nominal row (rendered with green background)',
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['phase', 'order']
+        verbose_name = 'Weight Range Limit'
+        verbose_name_plural = 'Weight Range Limits'
+
+    def __str__(self):
+        return f'{self.product} – {self.phase}: {self.category} → {self.action}'
+
+
+class BMRProcedureStep(models.Model):
+    """
+    A numbered procedure step for a specific phase of a product's BMR.
+    Supports sub-steps via step_number (e.g. '2', '2a', '2b').
+    """
+
+    PHASE_CHOICES = [
+        ('blending',             'Blending / Lubrication'),
+        ('capsule_filling',      'Capsule Filling'),
+        ('mixing',               'Mixing'),
+        ('tube_filling',         'Tube Filling'),
+        ('inspection',           'Inspection & Sorting'),
+        ('packaging',            'Primary Packaging'),
+        ('secondary_packaging',  'Secondary Packaging'),
+    ]
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='procedure_steps',
+    )
+    phase = models.CharField(max_length=40, choices=PHASE_CHOICES, db_index=True)
+    step_number = models.CharField(
+        max_length=10,
+        help_text='Display step label: "1", "2", "2a", "Step 3" etc.',
+    )
+    description = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['phase', 'order']
+        verbose_name = 'BMR Procedure Step'
+        verbose_name_plural = 'BMR Procedure Steps'
+
+    def __str__(self):
+        return f'Step {self.step_number}: {self.description[:60]}'

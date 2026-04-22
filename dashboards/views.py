@@ -833,6 +833,8 @@ def qa_dashboard(request):
             except Exception as e:
                 messages.error(request, f'Error re-submitting rejected BMR: {str(e)}')
         
+        if action in ['start', 'approve', 'reject']:
+            return redirect(reverse('dashboards:qa_dashboard') + '#section-final-qa')
         return redirect('dashboards:qa_dashboard')
 
     
@@ -883,6 +885,13 @@ def qa_dashboard(request):
         status='rejected'
     ).select_related('product', 'approved_by').order_by('-approved_date')[:10]
     
+    # Get all BMRs for left pane list (limited to recent)
+    all_bmrs = BMR.objects.select_related('product', 'created_by', 'approved_by').order_by('-created_date')[:50]
+    
+    # Get approved and rejected counts
+    approved_bmrs = BMR.objects.filter(status='approved').count()
+    rejected_bmrs = BMR.objects.filter(status='rejected').count()
+    
     # Build operator history for this user: only regulatory approval phases completed by this user
     regulatory_phases = BatchPhaseExecution.objects.filter(
         phase__phase_name='regulatory_approval',
@@ -897,6 +906,861 @@ def qa_dashboard(request):
         for p in regulatory_phases
     ]
 
+    # Pending Line Clearance approvals — operator submitted, awaiting QA sign-off
+    from django.db.models import Q
+    pending_lc_approvals = BatchPhaseExecution.objects.filter(
+        Q(beginning_lc_status='operator_filled') | Q(ending_lc_status='operator_filled')
+    ).exclude(status='completed').select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:20]
+
+    # Pending process form QA signing — per-section items awaiting QA signatures
+    # Build a list of { phase_execution, section_key, section_label } for each section pending QA
+    from dashboards.bmr_form_views import GRANULATION_SECTIONS, BLENDING_SECTIONS
+    _process_signing_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='granulation',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_process_signing = []
+    for pe in _process_signing_phases:
+        sec_statuses = (pe.phase_data or {}).get('granulation', {}).get('section_statuses', {})
+        for sec_key, cfg in GRANULATION_SECTIONS.items():
+            status = sec_statuses.get(sec_key, 'not_started')
+            # Sections that go to QA and are submitted by operator
+            if cfg.get('qa_signs') and status == 'operator_filled':
+                pending_process_signing.append({
+                    'phase_execution': pe,
+                    'bmr': pe.bmr,
+                    'section_key': sec_key,
+                    'section_label': cfg['label'],
+                    'submitted_by': sec_statuses.get(f'{sec_key}_submitted_by', ''),
+                    'submitted_date': sec_statuses.get(f'{sec_key}_submitted_date', ''),
+                })
+            # QA-only sections (LOD report) that need QA to fill — only show if prerequisite met
+            elif cfg.get('qa_only') and status == 'not_started':
+                # QA LOD only shows after final_drying is qa_signed
+                if sec_key == 'qa_lod_report' and sec_statuses.get('final_drying') == 'qa_signed':
+                    pending_process_signing.append({
+                        'phase_execution': pe,
+                        'bmr': pe.bmr,
+                        'section_key': sec_key,
+                        'section_label': cfg['label'] + ' (QA to fill)',
+                        'submitted_by': 'System',
+                        'submitted_date': sec_statuses.get('final_drying_signed_date', ''),
+                    })
+
+    # Build a flat map: section_key -> phase_execution_id for quick template lookup
+    pending_section_map = {}
+    for item in pending_process_signing:
+        if item['section_key'] not in pending_section_map:
+            pending_section_map[item['section_key']] = item['phase_execution'].id
+
+    # ── Blending section pending items ──────────────────────────────────────────
+    _blending_signing_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='blending',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_blending_signing = []
+    for pe in _blending_signing_phases:
+        sec_statuses = (pe.phase_data or {}).get('blending', {}).get('section_statuses', {})
+        for sec_key, cfg in BLENDING_SECTIONS.items():
+            status = sec_statuses.get(sec_key, 'not_started')
+            if cfg.get('qa_signs') and status == 'operator_filled':
+                # Operator-submitted section awaiting QA signature
+                pending_blending_signing.append({
+                    'phase_execution': pe,
+                    'bmr': pe.bmr,
+                    'section_key': sec_key,
+                    'section_label': cfg['label'],
+                    'submitted_by': sec_statuses.get(f'{sec_key}_submitted_by', ''),
+                    'submitted_date': sec_statuses.get(f'{sec_key}_submitted_date', ''),
+                })
+            elif cfg.get('qa_only') and status == 'not_started':
+                # QA sampling only becomes actionable once mixing is qa_signed
+                if sec_key == 'qa_sampling' and sec_statuses.get('mixing') == 'qa_signed':
+                    pending_blending_signing.append({
+                        'phase_execution': pe,
+                        'bmr': pe.bmr,
+                        'section_key': sec_key,
+                        'section_label': cfg['label'] + ' (QA to fill)',
+                        'submitted_by': 'System',
+                        'submitted_date': sec_statuses.get('mixing_signed_date', ''),
+                    })
+
+    # Flat map for sidebar nav: section_key -> phase_execution_id
+    pending_blending_section_map = {}
+    for item in pending_blending_signing:
+        if item['section_key'] not in pending_blending_section_map:
+            pending_blending_section_map[item['section_key']] = item['phase_execution'].id
+
+    # ── Compression section pending items ──────────────────────────────────────
+    from dashboards.bmr_form_views import COMPRESSION_SECTIONS, get_compression_section_statuses
+    _compression_signing_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='compression',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_compression_signing = []
+    for pe in _compression_signing_phases:
+        _pd = pe.phase_data or {}
+        _cs = _pd.get('compression_sections', {})
+        _css = _cs.get('section_statuses', {})
+        sec_statuses = get_compression_section_statuses(_pd)
+        for sec_key, cfg in COMPRESSION_SECTIONS.items():
+            status = sec_statuses.get(sec_key, 'not_started')
+            # Reconciliation (Section 10) is signed by Regulatory, not QA — exclude from QA list
+            if cfg.get('qa_signs') and status == 'operator_filled' and sec_key != 'reconciliation':
+                pending_compression_signing.append({
+                    'phase_execution': pe,
+                    'bmr': pe.bmr,
+                    'section_key': sec_key,
+                    'section_label': cfg['label'],
+                    'submitted_by': _css.get(f'{sec_key}_submitted_by', ''),
+                    'submitted_date': _css.get(f'{sec_key}_submitted_date', ''),
+                })
+
+    pending_compression_section_map = {}
+    for item in pending_compression_signing:
+        if item['section_key'] not in pending_compression_section_map:
+            pending_compression_section_map[item['section_key']] = item['phase_execution'].id
+
+    # ── Compression IPC pages pending QA sign-off (qa1 / qa2 rounds) ───────────
+    from dashboards.bmr_form_views import IPC_PAGES, get_ipc_page_statuses
+    pending_ipc_signing = []
+    for pe in _compression_signing_phases:
+        _pd = pe.phase_data or {}
+        _ipc_statuses = get_ipc_page_statuses(_pd)
+        _ipc_fps = _pd.get('compression_sections', {}).get('ipc_page_statuses', {})
+        for pg in IPC_PAGES:
+            st = _ipc_statuses.get(pg, 'not_started')
+            if st in ('op1_filled', 'op2_filled'):
+                _op_step = 'op1' if st == 'op1_filled' else 'op2'
+                pending_ipc_signing.append({
+                    'phase_execution': pe,
+                    'bmr': pe.bmr,
+                    'page': pg,
+                    'page_num': pg[1:],
+                    'round_label': 'QA Round 1' if st == 'op1_filled' else 'QA Round 2',
+                    'submitted_by': _ipc_fps.get(f'{pg}_{_op_step}_by', ''),
+                    'submitted_date': _ipc_fps.get(f'{pg}_{_op_step}_date', ''),
+                })
+
+    # Map: page -> phase_execution.id (first hit only) for sidebar links
+    pending_ipc_map = {}
+    for item in pending_ipc_signing:
+        if item['page'] not in pending_ipc_map:
+            pending_ipc_map[item['page']] = item['phase_execution'].id
+    # ── END COMPRESSION PENDING ─────────────────────────────────────────────────
+
+    # ── Sorting section pending items ───────────────────────────────────────────
+    from dashboards.bmr_form_views import SORTING_SECTIONS, get_sorting_section_statuses
+    _sorting_signing_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='sorting',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_sorting_signing = []
+    for pe in _sorting_signing_phases:
+        _pd = pe.phase_data or {}
+        _ss_top = _pd.get('sorting_sections', {})
+        _ss = _ss_top.get('section_statuses', {})
+        # inspection_recon awaiting QA verification
+        if _ss.get('inspection_recon') == 'operator_filled':
+            pending_sorting_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'inspection_recon',
+                'section_label': 'Visual Inspection & Reconciliation',
+                'action_type': 'qa_sign',
+                'submitted_by': _ss.get('inspection_recon_submitted_by', ''),
+                'submitted_date': _ss.get('inspection_recon_submitted_date', ''),
+            })
+        # inprocess_qc ready for QA to fill (personnel completed)
+        if _ss.get('personnel') == 'completed' and _ss.get('inprocess_qc', 'not_started') == 'not_started':
+            pending_sorting_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'inprocess_qc',
+                'section_label': 'In-Process QC Report (Page 40) — QA to fill',
+                'action_type': 'qa_fill',
+                'submitted_by': _ss.get('personnel_submitted_by', ''),
+                'submitted_date': _ss.get('personnel_submitted_date', ''),
+            })
+
+    pending_sorting_section_map = {}
+    for item in pending_sorting_signing:
+        if item['section_key'] not in pending_sorting_section_map:
+            pending_sorting_section_map[item['section_key']] = item['phase_execution'].id
+    # ── END SORTING PENDING ──────────────────────────────────────────────────────
+
+    # ── Sorting LC pending flags (for sidebar badges) ───────────────────────────
+    sorting_lc_beginning_pending = any(
+        lc.phase.phase_name == 'sorting' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    sorting_lc_ending_pending = any(
+        lc.phase.phase_name == 'sorting' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    sorting_total_pending = len(pending_sorting_signing) + int(sorting_lc_beginning_pending) + int(sorting_lc_ending_pending)
+
+    # ── Post-Coating Sorting section pending items ──────────────────────────────
+    from dashboards.bmr_form_views import POST_COATING_SORTING_SECTIONS, get_pcs_section_statuses
+    _pcs_signing_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='post_coating_sorting',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_pcs_signing = []
+    for pe in _pcs_signing_phases:
+        _pd = pe.phase_data or {}
+        _ps_top = _pd.get('pcs_sections', {})
+        _ps = _ps_top.get('section_statuses', {})
+        if _ps.get('pcs_inspection_recon') == 'operator_filled':
+            pending_pcs_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'pcs_inspection_recon',
+                'section_label': 'Post-Coating Visual Inspection & Reconciliation',
+                'action_type': 'qa_sign',
+                'submitted_by': _ps.get('pcs_inspection_recon_submitted_by', ''),
+                'submitted_date': _ps.get('pcs_inspection_recon_submitted_date', ''),
+            })
+        if _ps.get('pcs_inprocess_qc') == 'operator_filled':
+            pending_pcs_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'pcs_inprocess_qc',
+                'section_label': 'Post-Coating In-Process QC Report \u2014 QA to sign',
+                'action_type': 'qa_sign',
+                'submitted_by': _ps.get('pcs_inprocess_qc_submitted_by', ''),
+                'submitted_date': _ps.get('pcs_inprocess_qc_submitted_date', ''),
+            })
+
+    pending_pcs_section_map = {}
+    for item in pending_pcs_signing:
+        if item['section_key'] not in pending_pcs_section_map:
+            pending_pcs_section_map[item['section_key']] = item['phase_execution'].id
+
+    pcs_lc_beginning_pending = any(
+        lc.phase.phase_name == 'post_coating_sorting' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    pcs_lc_ending_pending = any(
+        lc.phase.phase_name == 'post_coating_sorting' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    pcs_total_pending = len(pending_pcs_signing) + int(pcs_lc_beginning_pending) + int(pcs_lc_ending_pending)
+    # ── END POST-COATING SORTING PENDING ─────────────────────────────────────────
+
+    # ── Coating Line Clearance pending QA approval ──────────────────────────────
+    coating_lc_beginning_pending = any(
+        lc.phase.phase_name == 'coating' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    coating_lc_ending_pending = any(
+        lc.phase.phase_name == 'coating' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    coating_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'coating' and lc.beginning_lc_status == 'operator_filled'
+    ]
+    coating_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'coating' and lc.ending_lc_status == 'operator_filled'
+    ]
+    coating_lc_total_pending = int(coating_lc_beginning_pending) + int(coating_lc_ending_pending)
+
+    # ── Coating Sections pending QA sign-off (Equipment, IPC, Yield Recon) ──────
+    from dashboards.bmr_form_views import COATING_SECTIONS, get_coating_section_statuses
+    _coating_section_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='coating',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_coating_signing = []
+    for pe in _coating_section_phases:
+        _pd = pe.phase_data or {}
+        _cs_top = _pd.get('coating_sections', {})
+        _cs = _cs_top.get('section_statuses', {})
+        # Equipment: operator submits → operator_filled → QA signs
+        if _cs.get('equipment') == 'operator_filled':
+            pending_coating_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'equipment',
+                'section_label': 'Equipment Settings — QA Verification',
+                'action_type': 'qa_sign',
+                'submitted_by': _cs.get('equipment_submitted_by', ''),
+                'submitted_date': _cs.get('equipment_submitted_date', ''),
+            })
+        # IPC Lots: 8-step workflow — QA acts on op1_filled, op2_filled, op3_filled, op4_filled
+        _ipc_st = _cs.get('ipc_lots', 'not_started')
+        if _ipc_st in ('op1_filled', 'op2_filled', 'op3_filled', 'op4_filled'):
+            _lot_map = {'op1_filled': 1, 'op2_filled': 2, 'op3_filled': 3, 'op4_filled': 4}
+            _ln = _lot_map[_ipc_st]
+            pending_coating_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'ipc_lots',
+                'section_label': f'IPC Lot {_ln} — QA to verify',
+                'action_type': 'qa_fill',
+                'submitted_by': _cs.get(f'ipc_lots_op{_ln}_by', ''),
+                'submitted_date': _cs.get(f'ipc_lots_op{_ln}_date', ''),
+            })
+        # Yield Reconciliation: operator submits → operator_filled → QA signs
+        if _cs.get('yield_recon') == 'operator_filled':
+            pending_coating_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'yield_recon',
+                'section_label': 'Yield Reconciliation — QA Signature',
+                'action_type': 'qa_sign',
+                'submitted_by': _cs.get('yield_recon_submitted_by', ''),
+                'submitted_date': _cs.get('yield_recon_submitted_date', ''),
+            })
+
+    pending_coating_section_map = {}
+    for item in pending_coating_signing:
+        if item['section_key'] not in pending_coating_section_map:
+            pending_coating_section_map[item['section_key']] = item['phase_execution'].id
+    coating_total_pending = coating_lc_total_pending + len(pending_coating_signing)
+    # ── END COATING PENDING ──────────────────────────────────────────────────────
+
+    # ── Packing Line Clearance pending flags (blister_packing / bulk_packing) ────
+    packing_lc_beginning_pending = any(
+        lc.phase.phase_name in ('blister_packing', 'bulk_packing') and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    packing_lc_ending_pending = any(
+        lc.phase.phase_name in ('blister_packing', 'bulk_packing') and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    packing_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name in ('blister_packing', 'bulk_packing') and lc.beginning_lc_status == 'operator_filled'
+    ]
+    packing_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name in ('blister_packing', 'bulk_packing') and lc.ending_lc_status == 'operator_filled'
+    ]
+    packing_lc_total_pending = int(packing_lc_beginning_pending) + int(packing_lc_ending_pending)
+
+    # ── Packing Sections pending QA sign-off (blister/bulk packing) ─────────────
+    _packing_section_phases = BatchPhaseExecution.objects.filter(
+        status__in=('in_progress', 'pending'),
+        phase__phase_name__in=('blister_packing', 'bulk_packing'),
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_packing_signing = []
+    # Ordered list – sections must be processed in sequence.
+    # Only the FIRST pending section for a given phase is surfaced to QA.
+    _packing_sign_order = [
+        ('machine_setup',          'Machine Setup & Parameters',                   'qa_sign'),
+        ('yield_reconciliation',   'Yield Reconciliation',                          'qa_sign'),
+        ('coding_setup',           'Coding Setup & Supervisor Sign',                'qa_sign'),
+        ('coding_reconciliation',  'Coding Reconciliation',                         'qa_sign'),
+        ('ipc_page_47',            'IPC - Appearance of Aluminium Foil (Page 47)', 'qa_sign'),
+        ('ipc_page_48',            'IPC - Leak Test (Page 48)',                    'qa_sign'),
+        ('ipc_page_49',            'IPC - Blister Formation (Page 49)',            'qa_sign'),
+    ]
+    for _ppe in _packing_section_phases:
+        _ppd = _ppe.phase_data or {}
+        _ps_top = _ppd.get('packing_sections', {})
+        _ps = _ps_top.get('section_statuses', {})
+        for _skey, _slabel, _atype in _packing_sign_order:
+            _status = _ps.get(_skey, 'not_started')
+            if _atype == 'qa_sign' and _status == 'operator_filled':
+                # Extra gate: yield_reconciliation only queued once packing_execution is done
+                if _skey == 'yield_reconciliation' and _ps.get('packing_execution') != 'completed':
+                    continue
+                # Extra gate: coding_setup only queued once yield_reconciliation is qa_signed
+                if _skey == 'coding_setup' and _ps.get('yield_reconciliation') != 'qa_signed':
+                    continue
+                # Extra gate: coding_reconciliation only queued once coding_setup is qa_signed
+                if _skey == 'coding_reconciliation' and _ps.get('coding_setup') != 'qa_signed':
+                    continue
+                # Extra gate: ipc_page_47 only unlocked once bulk_transfer is completed
+                if _skey == 'ipc_page_47' and _ps.get('bulk_transfer') != 'completed':
+                    continue
+                # Extra gate: ipc_page_48 only unlocked once ipc_page_47 is qa_signed
+                if _skey == 'ipc_page_48' and _ps.get('ipc_page_47') != 'qa_signed':
+                    continue
+                # Extra gate: ipc_page_49 only unlocked once ipc_page_48 is qa_signed
+                if _skey == 'ipc_page_49' and _ps.get('ipc_page_48') != 'qa_signed':
+                    continue
+                pending_packing_signing.append({
+                    'phase_execution': _ppe,
+                    'bmr': _ppe.bmr,
+                    'section_key': _skey,
+                    'section_label': _slabel,
+                    'action_type': 'qa_sign',
+                    'submitted_by': _ps.get(f'{_skey}_submitted_by', ''),
+                    'submitted_date': _ps.get(f'{_skey}_submitted_date', ''),
+                })
+                break  # only show one pending section per phase at a time
+
+    # ── IPC row-by-row: surface when it's QA's turn to add a row ─────────────
+    _ipc_row_pages = [
+        ('ipc_page_47', 'IPC - Aluminium Foil Appearance (Page 60) — Your turn to add row'),
+        ('ipc_page_48', 'IPC - Leak Test (Page 61) — Your turn to add row'),
+        ('ipc_page_49', 'IPC - Blister Formation (Page 62) — Your turn to add row'),
+    ]
+    for _ppe in _packing_section_phases:
+        _ppd = _ppe.phase_data or {}
+        _ps_top = _ppd.get('packing_sections', {})
+        _ps = _ps_top.get('section_statuses', {})
+        for _ipc_key, _ipc_label in _ipc_row_pages:
+            if _ps.get(_ipc_key) == 'in_progress':
+                _ipc_d = _ps_top.get(_ipc_key, {})
+                if _ipc_d.get('next_turn') == 'qa':
+                    _row_count = len(_ipc_d.get('rows', []))
+                    pending_packing_signing.append({
+                        'phase_execution': _ppe,
+                        'bmr': _ppe.bmr,
+                        'section_key': _ipc_key,
+                        'section_label': f'{_ipc_label} (row {_row_count + 1})',
+                        'action_type': 'ipc_row',
+                        'submitted_by': '',
+                        'submitted_date': '',
+                    })
+
+    packing_sections_total_pending = len(pending_packing_signing)
+
+    # ── Secondary Packaging Sections pending QA sign-off ────────────────────────
+    from dashboards.bmr_form_views import SECONDARY_SECTIONS, get_secondary_section_statuses
+    _secondary_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='secondary_packaging',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_secondary_signing = []
+    _secondary_sign_order = [
+        ('sec_packing_coding',     'Packing Coding Control (Page 22)',                       'qa_sign'),
+        ('sec_inspection_sorting', 'Inspection & Sorting Sign-off (Page 51)',                'qa_sign'),
+        ('sec_packing_procedure',  'Secondary Packing Procedure & Reconciliation (Page 52)', 'qa_sign'),
+        ('sec_shipper_weight',     'Shipper Weight Verification (Page 53)',                  'qa_sign'),
+        ('sec_fp_recon',           'Finished Product Reconciliation (Page 28)',               'qa_sign'),
+    ]
+    for _spe in _secondary_phases:
+        _spd = _spe.phase_data or {}
+        _ss_top = _spd.get('secondary_sections', {})
+        _ss = _ss_top.get('section_statuses', {})
+        _added_for_spe = False
+        for _skey, _slabel, _atype in _secondary_sign_order:
+            if _added_for_spe:
+                break
+            if _skey == 'sec_packing_coding':
+                # Multi-stage: check coding_stage inside section data
+                _cod_d = _ss_top.get('sec_packing_coding', {})
+                _cod_stage = _cod_d.get('coding_stage', 'not_started')
+                if _cod_stage == 'coding_submitted':
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': _skey,
+                        'section_label': 'Packing Coding — Approve Coding (Page 22)',
+                        'action_type': 'qa_sign',
+                        'submitted_by': _cod_d.get('coding_submitted_by', ''),
+                        'submitted_date': _cod_d.get('coding_submitted_date', ''),
+                    })
+                    _added_for_spe = True
+                elif _cod_stage == 'recon_submitted':
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': _skey,
+                        'section_label': 'Packing Coding — Approve Reconciliation (Page 22)',
+                        'action_type': 'qa_sign',
+                        'submitted_by': _cod_d.get('recon_submitted_by', ''),
+                        'submitted_date': _cod_d.get('recon_submitted_date', ''),
+                    })
+                    _added_for_spe = True
+            elif _skey == 'sec_packing_procedure':
+                # Multi-stage: check proc_stage inside section data
+                _proc_d = _ss_top.get('sec_packing_procedure', {})
+                _proc_stage = _proc_d.get('proc_stage', 'not_started')
+                if _proc_stage == 'sigs_submitted':
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': _skey,
+                        'section_label': 'Packing Procedure — Verify Signatures (Page 52)',
+                        'action_type': 'qa_sign',
+                        'submitted_by': _proc_d.get('sec_proc_done_by', ''),
+                        'submitted_date': _proc_d.get('sec_proc_done_date', ''),
+                    })
+                    _added_for_spe = True
+                elif _proc_stage == 'recon_submitted':
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': _skey,
+                        'section_label': 'Packing Procedure — Verify Reconciliation (Page 52)',
+                        'action_type': 'qa_sign',
+                        'submitted_by': _proc_d.get('sec_recon_group_leader_sign', ''),
+                        'submitted_date': _proc_d.get('sec_recon_group_leader_date', ''),
+                    })
+                    _added_for_spe = True
+            elif _skey == 'sec_fp_recon':
+                # Multi-stage: check recon_stage inside section data
+                _fpr_d = _ss_top.get('sec_fp_recon', {})
+                _fpr_stage = _fpr_d.get('recon_stage', 'not_started')
+                if _fpr_stage == 'spv_submitted':
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': _skey,
+                        'section_label': 'Finished Product Reconciliation — QA Verification (Page 28)',
+                        'action_type': 'qa_sign',
+                        'submitted_by': _fpr_d.get('spv_submitted_by', ''),
+                        'submitted_date': _fpr_d.get('spv_submitted_date', ''),
+                    })
+                    _added_for_spe = True
+            else:
+                _status = _ss.get(_skey, 'not_started')
+                if _status == 'operator_filled':
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': _skey,
+                        'section_label': _slabel,
+                        'action_type': 'qa_sign',
+                        'submitted_by': _ss.get(f'{_skey}_submitted_by', ''),
+                        'submitted_date': _ss.get(f'{_skey}_submitted_date', ''),
+                    })
+                    _added_for_spe = True
+
+    # ── Secondary IPC row-by-row: surface when it's QA's turn to add a row ──
+    _sec_ipc_row_pages = [
+        ('sec_ipc_p54', 'Sec IPC — Coding Check (Page 54) — Your turn to add row'),
+        ('sec_ipc_p55', 'Sec IPC — Unit Packing Check (Page 55) — Your turn to add row'),
+        ('sec_ipc_p56', 'Sec IPC — Shipper Carton Check (Page 56) — Your turn to add row'),
+    ]
+    for _spe in _secondary_phases:
+        _spd = _spe.phase_data or {}
+        _ss_top2 = _spd.get('secondary_sections', {})
+        _ss2 = _ss_top2.get('section_statuses', {})
+        for _sipc_key, _sipc_label in _sec_ipc_row_pages:
+            if _ss2.get(_sipc_key) == 'in_progress':
+                _sipc_d = _ss_top2.get(_sipc_key, {})
+                if _sipc_d.get('next_turn') == 'qa':
+                    _sipc_row_count = len(_sipc_d.get('rows', []))
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': _sipc_key,
+                        'section_label': f'{_sipc_label} (row {_sipc_row_count + 1})',
+                        'action_type': 'ipc_row',
+                        'submitted_by': '',
+                        'submitted_date': '',
+                    })
+
+    secondary_sections_total_pending = len(pending_secondary_signing)
+
+    # ── Secondary Packaging LC pending QA approval ──────────────────────────────
+    sec_pkg_lc_beginning_pending = any(
+        lc.phase.phase_name == 'secondary_packaging' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    sec_pkg_lc_ending_pending = any(
+        lc.phase.phase_name == 'secondary_packaging' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    sec_pkg_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'secondary_packaging' and lc.beginning_lc_status == 'operator_filled'
+    ]
+    sec_pkg_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'secondary_packaging' and lc.ending_lc_status == 'operator_filled'
+    ]
+    sec_pkg_lc_total_pending = int(sec_pkg_lc_beginning_pending) + int(sec_pkg_lc_ending_pending)
+
+    # ── Packaging Materials Requisition — QA verification pending ───────────────
+    _pkg_req_phases = BatchPhaseExecution.objects.filter(
+        phase__phase_name='packaging_material_release',
+        status='in_progress',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_pkg_req_approvals = []
+    for _pe in _pkg_req_phases:
+        _req = (_pe.phase_data or {}).get('packaging_req', {})
+        if _req.get('status') == 'store_filled':
+            pending_pkg_req_approvals.append({
+                'phase_execution': _pe,
+                'bmr': _pe.bmr,
+                'submitted_by': _req.get('store_name', _req.get('supervisor_name', '')),
+                'submitted_date': _req.get('store_filled_date', ''),
+            })
+
+    # ── Dynamic template sections pending QA action (ointment / capsule / tablet) ─
+    from dashboards.bmr_form_views import _dyn_requires_qa_sign, _dyn_is_qa_only
+    from bmr.template_models import BMRTemplateSection as _DynSection
+    from bmr.models import BMRTemplate as _DynTemplate
+
+    _DYNAMIC_TYPES = ('ointment', 'capsule', 'tablet', 'tablet_type2')
+    _dynamic_in_progress = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        bmr__product__product_type__in=_DYNAMIC_TYPES,
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:60]
+
+    pending_dynamic_signing = []
+    _tpl_cache = {}
+    # Phases with their own hardcoded sidebar sections — skip from dynamic loop
+    _HARDCODED_SIDEBAR_PHASES = {'tube_filling', 'mixing', 'granulation', 'blending', 'compression', 'sorting', 'coating', 'blister_packing', 'bulk_packing', 'secondary_packaging'}
+    for _pe in _dynamic_in_progress:
+        _pname = _pe.phase.phase_name
+        if _pname in _HARDCODED_SIDEBAR_PHASES:
+            continue
+        _ptype = _pe.bmr.product.product_type
+        _phase_block = (_pe.phase_data or {}).get(_pname, {})
+        _sec_statuses = _phase_block.get('_section_statuses', {})
+        # Cache template lookup per product type
+        if _ptype not in _tpl_cache:
+            _tpl_cache[_ptype] = _DynTemplate.for_product_type(_ptype)
+        _tpl = _tpl_cache[_ptype]
+        if not _tpl:
+            continue
+        _secs = _DynSection.objects.filter(
+            template=_tpl, phase_name=_pname, is_visible=True
+        ).order_by('order')
+        for _sec in _secs:
+            _sk = str(_sec.pk)
+            _status = _sec_statuses.get(_sk, 'not_started')
+            _needs_qa = _dyn_requires_qa_sign(_sec)
+            _qa_only = _dyn_is_qa_only(_sec)
+            if _needs_qa and _status == 'operator_filled':
+                _sdata = _phase_block.get(_sk, {})
+                pending_dynamic_signing.append({
+                    'phase_execution': _pe,
+                    'bmr': _pe.bmr,
+                    'section_pk': _sec.pk,
+                    'section_title': _sec.title,
+                    'phase_name': _pname,
+                    'product_type': _ptype,
+                    'action_type': 'qa_sign',
+                    'submitted_by': _sdata.get('_submitted_by', ''),
+                    'submitted_date': _sdata.get('_submitted_date', ''),
+                })
+            elif _qa_only and _status == 'not_started':
+                # For mixing QA-only sections (IPC Report), only show after
+                # mixing process (Steps 8/9) is QA-approved
+                if _pname == 'mixing' and _sec.section_type == 'qa_report':
+                    _mix_sec_statuses = (_pe.phase_data or {}).get('mixing_sections', {}).get('section_statuses', {})
+                    if _mix_sec_statuses.get('mix_process') != 'qa_approved':
+                        continue
+                    # Skip if IPC already approved
+                    if _mix_sec_statuses.get('mix_qa_ipc') == 'qa_approved':
+                        continue
+                pending_dynamic_signing.append({
+                    'phase_execution': _pe,
+                    'bmr': _pe.bmr,
+                    'section_pk': _sec.pk,
+                    'section_title': _sec.title + ' — QA to fill',
+                    'phase_name': _pname,
+                    'product_type': _ptype,
+                    'action_type': 'qa_fill',
+                    'submitted_by': 'System',
+                    'submitted_date': '',
+                })
+    dynamic_signing_total = len(pending_dynamic_signing)
+    # ── END DYNAMIC PENDING ──────────────────────────────────────────────────────
+
+    # ── Mixing phase LC + process pending (ointment) ────────────────────────────
+    # ── Dispensing SHEETS pending QA approval (ointment) ────────────────────────
+    from workflow.models import BatchPhaseExecution as _BPE
+    pending_dispensing_sheets = _BPE.objects.filter(
+        phase__phase_name='material_dispensing',
+        process_signing_status='operator_filled',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:20]
+    dispensing_sheets_pending = pending_dispensing_sheets.exists()
+    dispensing_sheets_count = pending_dispensing_sheets.count()
+
+    # ── Dispensing LC pending (ointment) ────────────────────────────────────────
+    dispensing_lc_beginning_pending = any(
+        lc.phase.phase_name == 'material_dispensing' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    dispensing_lc_ending_pending = any(
+        lc.phase.phase_name == 'material_dispensing' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    dispensing_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'material_dispensing' and lc.beginning_lc_status == 'operator_filled'
+    ]
+    dispensing_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'material_dispensing' and lc.ending_lc_status == 'operator_filled'
+    ]
+    dispensing_lc_total_pending = int(dispensing_lc_beginning_pending) + int(dispensing_lc_ending_pending) + dispensing_sheets_count
+
+    mixing_lc_beginning_pending = any(
+        lc.phase.phase_name == 'mixing' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    mixing_lc_ending_pending = any(
+        lc.phase.phase_name == 'mixing' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    mixing_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'mixing' and lc.beginning_lc_status == 'operator_filled'
+    ]
+    mixing_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'mixing' and lc.ending_lc_status == 'operator_filled'
+    ]
+    pending_mixing_dynamic = [item for item in pending_dynamic_signing if item['phase_name'] == 'mixing']
+
+    # ── Mixing Step 4 pending QA verification ──────────────────────────────────
+    _mixing_step4_pending_pes = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='mixing',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:20]
+    mixing_step4_pending_executions = [
+        pe for pe in _mixing_step4_pending_pes
+        if (pe.phase_data or {}).get('mixing_sections', {}).get('mix_process', {}).get('step4_status') == 'operator_filled'
+    ]
+    mixing_step4_pending = len(mixing_step4_pending_executions) > 0
+
+    # Mixing process (Steps 8/9) pending QA approval
+    mixing_process_pending_executions = [
+        pe for pe in _mixing_step4_pending_pes
+        if (pe.phase_data or {}).get('mixing_sections', {}).get('section_statuses', {}).get('mix_process') == 'operator_filled'
+    ]
+    mixing_process_pending = len(mixing_process_pending_executions) > 0
+
+    mixing_total_pending = (int(mixing_lc_beginning_pending) + int(mixing_lc_ending_pending)
+        + len(pending_mixing_dynamic) + len(mixing_step4_pending_executions)
+        + len(mixing_process_pending_executions))
+
+    # ── Tube Filling phase LC + process pending (ointment) ──────────────────────
+    tube_filling_lc_beginning_pending = any(
+        lc.phase.phase_name == 'tube_filling' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    tube_filling_lc_ending_pending = any(
+        lc.phase.phase_name == 'tube_filling' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    tube_filling_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'tube_filling' and lc.beginning_lc_status == 'operator_filled'
+    ]
+    tube_filling_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'tube_filling' and lc.ending_lc_status == 'operator_filled'
+    ]
+    pending_tube_filling_dynamic = [item for item in pending_dynamic_signing if item['phase_name'] == 'tube_filling']
+    # Hardcoded tube filling sections pending QA approval
+    _tf_section_pes = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='tube_filling',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+    tf_weight_yield_pending_executions = [
+        pe for pe in _tf_section_pes
+        if (pe.phase_data or {}).get('tube_filling_sections', {}).get('section_statuses', {}).get('tf_weight_yield') == 'operator_filled'
+    ]
+    tf_ipc_pending_executions = []  # tf_ipc is operator-only (no QA approval needed)
+    # QA IPC pending: all 3 operator IPC pages done but QA IPC pages not all completed
+    tf_qa_ipc_pending_executions = []
+    for pe in _tf_section_pes:
+        pd = pe.phase_data or {}
+        tfs = pd.get('tube_filling_sections', {})
+        ipc_ps = tfs.get('tf_ipc_page_statuses', {})
+        qa_ps = tfs.get('tf_qa_ipc_page_statuses', {})
+        if (ipc_ps.get('p1') == 'completed' and ipc_ps.get('p2') == 'completed' and ipc_ps.get('p3') == 'completed'
+                and not (qa_ps.get('qa1') == 'completed' and qa_ps.get('qa2') == 'completed')):
+            tf_qa_ipc_pending_executions.append(pe)
+    tube_filling_total_pending = (int(tube_filling_lc_beginning_pending) + int(tube_filling_lc_ending_pending)
+        + len(pending_tube_filling_dynamic) + len(tf_weight_yield_pending_executions) + len(tf_ipc_pending_executions) + len(tf_qa_ipc_pending_executions))
+
+    # ── Drying phase LC + process pending (capsule) ──────────────────────────────
+    drying_lc_beginning_pending = any(
+        lc.phase.phase_name == 'drying' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    drying_lc_ending_pending = any(
+        lc.phase.phase_name == 'drying' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    drying_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'drying' and lc.beginning_lc_status == 'operator_filled'
+    ]
+    drying_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'drying' and lc.ending_lc_status == 'operator_filled'
+    ]
+    pending_drying_dynamic = [item for item in pending_dynamic_signing if item['phase_name'] == 'drying']
+    drying_total_pending = int(drying_lc_beginning_pending) + int(drying_lc_ending_pending) + len(pending_drying_dynamic)
+
+    # ── Capsule Filling phase LC + process pending (capsule) ────────────────────
+    filling_lc_beginning_pending = any(
+        lc.phase.phase_name == 'filling' and lc.beginning_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    filling_lc_ending_pending = any(
+        lc.phase.phase_name == 'filling' and lc.ending_lc_status == 'operator_filled'
+        for lc in pending_lc_approvals
+    )
+    filling_lc_beginning_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'filling' and lc.beginning_lc_status == 'operator_filled'
+    ]
+    filling_lc_ending_executions = [
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'filling' and lc.ending_lc_status == 'operator_filled'
+    ]
+    pending_filling_dynamic = [item for item in pending_dynamic_signing if item['phase_name'] == 'filling']
+    filling_total_pending = int(filling_lc_beginning_pending) + int(filling_lc_ending_pending) + len(pending_filling_dynamic)
+
+    # ── Grand total of ALL pending QA actions (must match sidebar badge counts) ──
+    grand_total_pending = (
+        len(pending_process_signing)        # Granulation sections
+        + len(pending_blending_signing)     # Blending sections
+        + len(pending_compression_signing)  # Compression sections
+        + len(pending_ipc_signing)          # IPC signing (under compression)
+        + sorting_total_pending             # Sorting LCs + sections
+        + pcs_total_pending                 # Post-Coating Sorting LCs + sections
+        + coating_total_pending              # Coating LCs + sections
+        + len(pending_pkg_req_approvals)    # Packaging requisition approvals
+        + packing_lc_total_pending          # Packing LCs
+        + packing_sections_total_pending    # Packing sections
+        + secondary_sections_total_pending + sec_pkg_lc_total_pending  # Secondary packing
+        + dispensing_lc_total_pending       # Dispensing LCs + sheets
+        + mixing_total_pending              # Mixing LCs + sections
+        + tube_filling_total_pending        # Tube filling LCs + sections
+        + drying_total_pending              # Drying LCs + sections
+        + filling_total_pending             # Filling LCs + sections
+    )
+
+    from django.utils import timezone as _tz
+    today_str = _tz.now().strftime('%Y-%m-%d')
+
+    # ── Tablet FP Reconciliation pending QA verification ─────────────────────
+    _tab_fqa_for_qa = list(
+        BatchPhaseExecution.objects.filter(
+            phase__phase_name='final_qa',
+            status='in_progress',
+            bmr__product__product_type='tablet',
+        ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+    )
+    tab_fp_recon_pending_qa = []
+    for _tpe in _tab_fqa_for_qa:
+        _tpd = _tpe.phase_data or {}
+        _tfr = _tpd.get('tablet_fp_recon', {})
+        if _tfr.get('recon_stage') == 'spv_submitted':
+            tab_fp_recon_pending_qa.append({
+                'phase_execution': _tpe,
+                'bmr': _tpe.bmr,
+                'submitted_by': _tfr.get('spv_submitted_by', ''),
+                'submitted_date': _tfr.get('spv_submitted_date', ''),
+            })
+
     context = {
         'user': request.user,
         'total_bmrs': total_bmrs,
@@ -904,14 +1768,109 @@ def qa_dashboard(request):
         'submitted_bmrs': submitted_bmrs,
         'my_bmrs': my_bmrs,
         'recent_bmrs': recent_bmrs,
+        'all_bmrs': all_bmrs,
+        'approved_bmrs': approved_bmrs,
+        'rejected_bmrs': rejected_bmrs,
         'bmr_requests_pending': bmr_requests_pending,
         'bmr_request_counts': bmr_request_counts,
         'pending_quarantine_samples': pending_quarantine_samples,
         'final_qa_pending': final_qa_pending,
         'final_qa_in_progress': final_qa_in_progress,
-        'rejected_bmrs_for_review': rejected_bmrs_for_review,  # Add rejected BMRs for QA review
+        'rejected_bmrs_for_review': rejected_bmrs_for_review,
+        'pending_lc_approvals': pending_lc_approvals,
+        'pending_process_signing': pending_process_signing,
+        'pending_section_map': pending_section_map,
+        'GRANULATION_SECTIONS': GRANULATION_SECTIONS,
+        'pending_blending_signing': pending_blending_signing,
+        'pending_blending_section_map': pending_blending_section_map,
+        'BLENDING_SECTIONS': BLENDING_SECTIONS,
+        'pending_compression_signing': pending_compression_signing,
+        'pending_compression_section_map': pending_compression_section_map,
+        'COMPRESSION_SECTIONS': COMPRESSION_SECTIONS,
+        'pending_ipc_signing': pending_ipc_signing,
+        'pending_ipc_map': pending_ipc_map,
+        'pending_sorting_signing': pending_sorting_signing,
+        'pending_sorting_section_map': pending_sorting_section_map,
+        'SORTING_SECTIONS': SORTING_SECTIONS,
+        'sorting_lc_beginning_pending': sorting_lc_beginning_pending,
+        'sorting_lc_ending_pending': sorting_lc_ending_pending,
+        'sorting_total_pending': sorting_total_pending,
+        'pending_pcs_signing': pending_pcs_signing,
+        'pending_pcs_section_map': pending_pcs_section_map,
+        'POST_COATING_SORTING_SECTIONS': POST_COATING_SORTING_SECTIONS,
+        'pcs_lc_beginning_pending': pcs_lc_beginning_pending,
+        'pcs_lc_ending_pending': pcs_lc_ending_pending,
+        'pcs_total_pending': pcs_total_pending,
+        'coating_lc_beginning_pending': coating_lc_beginning_pending,
+        'coating_lc_ending_pending': coating_lc_ending_pending,
+        'coating_lc_beginning_executions': coating_lc_beginning_executions,
+        'coating_lc_ending_executions': coating_lc_ending_executions,
+        'coating_lc_total_pending': coating_lc_total_pending,
+        'pending_coating_signing': pending_coating_signing,
+        'pending_coating_section_map': pending_coating_section_map,
+        'COATING_SECTIONS': COATING_SECTIONS,
+        'coating_total_pending': coating_total_pending,
+        'packing_lc_beginning_pending': packing_lc_beginning_pending,
+        'packing_lc_ending_pending': packing_lc_ending_pending,
+        'packing_lc_beginning_executions': packing_lc_beginning_executions,
+        'packing_lc_ending_executions': packing_lc_ending_executions,
+        'packing_lc_total_pending': packing_lc_total_pending,
+        'pending_packing_signing': pending_packing_signing,
+        'packing_sections_total_pending': packing_sections_total_pending,
+        'pending_secondary_signing': pending_secondary_signing,
+        'secondary_sections_total_pending': secondary_sections_total_pending,
+        'sec_pkg_lc_beginning_pending': sec_pkg_lc_beginning_pending,
+        'sec_pkg_lc_ending_pending': sec_pkg_lc_ending_pending,
+        'sec_pkg_lc_beginning_executions': sec_pkg_lc_beginning_executions,
+        'sec_pkg_lc_ending_executions': sec_pkg_lc_ending_executions,
+        'sec_pkg_lc_total_pending': sec_pkg_lc_total_pending,
+        'pending_pkg_req_approvals': pending_pkg_req_approvals,
+        'pending_dynamic_signing': pending_dynamic_signing,
+        'dynamic_signing_total': dynamic_signing_total,
+        'mixing_lc_beginning_pending': mixing_lc_beginning_pending,
+        'mixing_lc_ending_pending': mixing_lc_ending_pending,
+        'mixing_lc_beginning_executions': mixing_lc_beginning_executions,
+        'mixing_lc_ending_executions': mixing_lc_ending_executions,
+        'pending_mixing_dynamic': pending_mixing_dynamic,
+        'mixing_step4_pending': mixing_step4_pending,
+        'mixing_step4_pending_executions': mixing_step4_pending_executions,
+        'mixing_process_pending': mixing_process_pending,
+        'mixing_process_pending_executions': mixing_process_pending_executions,
+        'mixing_total_pending': mixing_total_pending,
+        'dispensing_lc_beginning_pending': dispensing_lc_beginning_pending,
+        'dispensing_lc_ending_pending': dispensing_lc_ending_pending,
+        'dispensing_lc_beginning_executions': dispensing_lc_beginning_executions,
+        'dispensing_lc_ending_executions': dispensing_lc_ending_executions,
+        'dispensing_lc_total_pending': dispensing_lc_total_pending,
+        'pending_dispensing_sheets': pending_dispensing_sheets,
+        'dispensing_sheets_pending': dispensing_sheets_pending,
+        'dispensing_sheets_count': dispensing_sheets_count,
+        'tube_filling_lc_beginning_pending': tube_filling_lc_beginning_pending,
+        'tube_filling_lc_ending_pending': tube_filling_lc_ending_pending,
+        'tube_filling_lc_beginning_executions': tube_filling_lc_beginning_executions,
+        'tube_filling_lc_ending_executions': tube_filling_lc_ending_executions,
+        'pending_tube_filling_dynamic': pending_tube_filling_dynamic,
+        'tf_weight_yield_pending_executions': tf_weight_yield_pending_executions,
+        'tf_ipc_pending_executions': tf_ipc_pending_executions,
+        'tf_qa_ipc_pending_executions': tf_qa_ipc_pending_executions,
+        'tube_filling_total_pending': tube_filling_total_pending,
+        'drying_lc_beginning_pending': drying_lc_beginning_pending,
+        'drying_lc_ending_pending': drying_lc_ending_pending,
+        'drying_lc_beginning_executions': drying_lc_beginning_executions,
+        'drying_lc_ending_executions': drying_lc_ending_executions,
+        'pending_drying_dynamic': pending_drying_dynamic,
+        'drying_total_pending': drying_total_pending,
+        'filling_lc_beginning_pending': filling_lc_beginning_pending,
+        'filling_lc_ending_pending': filling_lc_ending_pending,
+        'filling_lc_beginning_executions': filling_lc_beginning_executions,
+        'filling_lc_ending_executions': filling_lc_ending_executions,
+        'pending_filling_dynamic': pending_filling_dynamic,
+        'filling_total_pending': filling_total_pending,
+        'today_str': today_str,
+        'grand_total_pending': grand_total_pending,
         'dashboard_title': 'Quality Assurance Dashboard',
         'operator_history': operator_history,
+        'tab_fp_recon_pending_qa': tab_fp_recon_pending_qa,
     }
     return render(request, 'dashboards/qa_dashboard.html', context)
 
@@ -1033,7 +1992,7 @@ def regulatory_dashboard(request):
             except Exception as e:
                 messages.error(request, f'Error processing request: {str(e)}')
         
-        return redirect('dashboards:regulatory_dashboard')
+        return redirect(reverse('dashboards:regulatory_dashboard') + '#section-approvals')
     
     # BMRs waiting for regulatory approval (pending regulatory_approval phase) with pagination
     approvals_page = request.GET.get('approvals_page', 1)
@@ -1065,9 +2024,44 @@ def regulatory_dashboard(request):
     except:
         recent_activities = activities_paginator.page(1)
     
+    # Pending compression reconciliation sign-offs (Section 10 — for Production Pharmacist / Regulatory)
+    from dashboards.bmr_form_views import COMPRESSION_SECTIONS as _COMP_SECTIONS_REG, get_compression_section_statuses as _get_css_reg
+    _comp_recon_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='compression',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+
+    pending_reconciliation_signoffs = []
+    for _pe in _comp_recon_phases:
+        _pd = _pe.phase_data or {}
+        _cs = _pd.get('compression_sections', {})
+        _css = _cs.get('section_statuses', {})
+        _sec_statuses = _get_css_reg(_pd)
+        if _sec_statuses.get('reconciliation') == 'operator_filled':
+            _rec = _cs.get('reconciliation', {})
+            pending_reconciliation_signoffs.append({
+                'phase_execution': _pe,
+                'bmr': _pe.bmr,
+                'submitted_by': _css.get('reconciliation_submitted_by', _rec.get('rec_op_sign', '')),
+                'submitted_date': _css.get('reconciliation_submitted_date', _rec.get('rec_op_date', '')),
+            })
+
+    # ── Final QA batches awaiting regulatory approval (Page 29 Batch Release) ──
+    fqa_regulatory_pending = []
+    _fqa_phases = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='final_qa',
+    ).select_related('bmr', 'bmr__product', 'started_by').order_by('-started_date')[:30]
+    for _fp in _fqa_phases:
+        _fqa_data = (_fp.phase_data or {}).get('final_qa_review', {})
+        if _fqa_data.get('fqa_stage') == 'regulatory_pending':
+            fqa_regulatory_pending.append(_fp)
+
     # Statistics
     stats = {
         'pending_approvals': all_pending_approvals.count(),
+        'pending_recon_signoffs': len(pending_reconciliation_signoffs),
+        'pending_fqa_regulatory': len(fqa_regulatory_pending),
         'approved_today': BMR.objects.filter(
             status='approved',
             approved_date__date=timezone.now().date()
@@ -1085,6 +2079,8 @@ def regulatory_dashboard(request):
         'approvals_paginator': approvals_paginator,
         'recent_activities': recent_activities,
         'activities_paginator': activities_paginator,
+        'pending_reconciliation_signoffs': pending_reconciliation_signoffs,
+        'fqa_regulatory_pending': fqa_regulatory_pending,
         'stats': stats,
         'dashboard_title': 'Regulatory Dashboard'
     }
@@ -1381,7 +2377,11 @@ def production_manager_dashboard(request):
     # QUARANTINE DATA - SAME AS ADMIN
     from quarantine.models import QuarantineBatch
     quarantine_records = QuarantineBatch.objects.select_related('bmr', 'bmr__product').order_by('-quarantine_date')[:20]
-    
+
+    # ── Packaging Materials Requisition ──────────────────────────────────────
+    from django.utils import timezone as _tz2
+    pm_today_str = _tz2.now().strftime('%Y-%m-%d')
+
     context = {
         'bmr_request_stats': bmr_request_stats,
         'production_stats': production_stats,
@@ -1430,7 +2430,68 @@ def production_manager_dashboard(request):
         
         # QUARANTINE DATA - SAME AS ADMIN
         'quarantine_records': quarantine_records,
+
+        'today_str': pm_today_str,
     }
+    # All in_progress packaging_material_release phases
+    _all_pkg_phases = list(
+        BatchPhaseExecution.objects.filter(
+            phase__phase_name='packaging_material_release',
+            status='in_progress'
+        ).select_related('bmr', 'bmr__product', 'phase')
+    )
+    # Not started yet — supervisor needs to fill the request
+    context['pkg_req_not_started'] = [
+        p for p in _all_pkg_phases
+        if (p.phase_data or {}).get('packaging_req', {}).get('status', 'not_started') == 'not_started'
+    ]
+    # Supervisor submitted — PM needs to approve
+    context['pkg_req_pending_approval'] = [
+        p for p in _all_pkg_phases
+        if (p.phase_data or {}).get('packaging_req', {}).get('status') == 'supervisor_requested'
+    ]
+
+    # ── FP Reconciliation pending PM approval (recon_stage == qa_approved) ───
+    _sec_pkg_phases = list(
+        BatchPhaseExecution.objects.filter(
+            phase__phase_name='secondary_packaging',
+            status='in_progress',
+        ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+    )
+    context['fp_recon_pending_pm'] = []
+    for _spe in _sec_pkg_phases:
+        _spd = _spe.phase_data or {}
+        _ss_top = _spd.get('secondary_sections', {})
+        _fpr_d = _ss_top.get('sec_fp_recon', {})
+        if _fpr_d.get('recon_stage') == 'qa_approved':
+            context['fp_recon_pending_pm'].append({
+                'phase_execution': _spe,
+                'bmr': _spe.bmr,
+                'qa_approved_by': _fpr_d.get('qa_approved_by', ''),
+                'qa_approved_date': _fpr_d.get('qa_approved_date', ''),
+            })
+
+    # ── Tablet FP Reconciliation pending production fill ─────────────────────
+    # These are final_qa phases (in_progress) for tablet products where
+    # tablet_fp_recon has not yet been submitted.
+    _tab_fqa_phases = list(
+        BatchPhaseExecution.objects.filter(
+            phase__phase_name='final_qa',
+            status='in_progress',
+            bmr__product__product_type='tablet',
+        ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+    )
+    context['tab_fp_recon_pending_fill'] = []
+    for _tpe in _tab_fqa_phases:
+        _tpd = _tpe.phase_data or {}
+        _tfr = _tpd.get('tablet_fp_recon', {})
+        _tfr_stage = _tfr.get('recon_stage', 'not_started')
+        if _tfr_stage in ('not_started', ''):
+            context['tab_fp_recon_pending_fill'].append({
+                'phase_execution': _tpe,
+                'bmr': _tpe.bmr,
+            })
+
     return render(request, 'dashboards/production_manager_dashboard.html', context)
 
 @login_required
@@ -1441,119 +2502,53 @@ def store_dashboard(request):
         return redirect('dashboards:dashboard_home')
     
     if request.method == 'POST':
-        bmr_id = request.POST.get('bmr_id')
+        phase_id = request.POST.get('phase_id')
         action = request.POST.get('action')
         
-        # Get RM/PM checkbox data
-        rm_available = request.POST.get('rm_available') == 'on'
-        pm_available = request.POST.get('pm_available') == 'on'
-        dispense_comments = request.POST.get('dispense_comments', '').strip()
-        
+        if not phase_id:
+            return redirect('dashboards:store_dashboard')
+
         try:
-            bmr = BMR.objects.get(pk=bmr_id)
-            
-            # Get the raw material release phase
-            phase_execution = BatchPhaseExecution.objects.get(
-                bmr=bmr,
-                phase__phase_name='raw_material_release'
-            )
-            
+            phase_execution = BatchPhaseExecution.objects.get(pk=phase_id)
+            phase_name = phase_execution.phase.phase_name
+
+            if phase_name != 'raw_material_release':
+                messages.error(request, 'Invalid phase for store dashboard actions.')
+                return redirect('dashboards:store_dashboard')
+
             if action == 'start':
-                # Store RM/PM data in phase_data JSON field
-                phase_execution.phase_data = {
-                    'rm_available': rm_available,
-                    'pm_available': pm_available,
-                    'materials_check_by': request.user.get_full_name(),
-                    'materials_check_date': timezone.now().isoformat(),
-                }
-                
-                # Build operator comments
-                materials_status = []
-                if rm_available:
-                    materials_status.append("RM: Available")
+                if not phase_execution.template_section_completed:
+                    messages.error(request, 'Complete the BMR template section before starting this phase.')
+                    return redirect('dashboards:store_dashboard')
+
+                if not WorkflowService.can_start_phase(phase_execution.bmr, phase_name):
+                    messages.error(request, f'Cannot start {phase_name} - prerequisites not met.')
+                    return redirect('dashboards:store_dashboard')
+
+                if phase_execution.status == 'pending':
+                    WorkflowService.start_phase(phase_execution.bmr, phase_name, request.user)
+                    messages.success(request, f'{phase_execution.phase.get_phase_name_display()} started for batch {phase_execution.bmr.batch_number}.')
                 else:
-                    materials_status.append("RM: Not Available")
-                    
-                if pm_available:
-                    materials_status.append("PM: Available")
-                else:
-                    materials_status.append("PM: Not Available")
-                
-                comment_parts = [
-                    f"Raw material release started by {request.user.get_full_name()}",
-                    f"Material Status: {', '.join(materials_status)}"
-                ]
-                
-                if dispense_comments:
-                    comment_parts.append(f"Comments: {dispense_comments}")
-                
-                phase_execution.status = 'in_progress'
-                phase_execution.started_by = request.user
-                phase_execution.started_date = timezone.now()
-                phase_execution.operator_comments = ". ".join(comment_parts)
-                phase_execution.save()
-                
-                # Notify admins if materials are not available
-                if not rm_available or not pm_available:
-                    missing_materials = []
-                    if not rm_available:
-                        missing_materials.append("Raw Materials (RM)")
-                    if not pm_available:
-                        missing_materials.append("Primary Packaging Materials (PM)")
-                    
-                    missing_list = " and ".join(missing_materials)
-                    
-                    # Get all admin users
-                    admin_users = CustomUser.objects.filter(role='admin', is_active=True)
-                    for admin in admin_users:
-                        create_notification(
-                            recipient=admin,
-                            notification_type='quality_alert',
-                            title=f'Material Shortage Alert - Batch {bmr.batch_number}',
-                            message=f'{missing_list} not available for {bmr.product.product_name}. Store Manager has noted: {dispense_comments if dispense_comments else "No additional comments"}',
-                            priority='high',
-                            bmr=bmr,
-                            phase_execution=phase_execution
-                        )
-                    
-                    # Also notify Production Manager
-                    production_managers = CustomUser.objects.filter(role='production_manager', is_active=True)
-                    for pm_user in production_managers:
-                        create_notification(
-                            recipient=pm_user,
-                            notification_type='quality_alert',
-                            title=f'Material Shortage - Batch {bmr.batch_number}',
-                            message=f'{missing_list} not available at store. Dispensing started with noted shortage for {bmr.product.product_name}.',
-                            priority='high',
-                            bmr=bmr,
-                            phase_execution=phase_execution
-                        )
-                
-                messages.success(request, f'Raw material release started for batch {bmr.batch_number}.')
-                
+                    messages.info(request, 'Phase already started.')
+
             elif action == 'complete':
-                phase_execution.status = 'completed'
-                phase_execution.completed_by = request.user
-                phase_execution.completed_date = timezone.now()
-                
-                # Update phase_data with completion info
-                if not phase_execution.phase_data:
-                    phase_execution.phase_data = {}
-                phase_execution.phase_data['completed_by'] = request.user.get_full_name()
-                phase_execution.phase_data['completed_date'] = timezone.now().isoformat()
-                
-                phase_execution.operator_comments += f"\nRaw materials released by {request.user.get_full_name()}."
-                phase_execution.save()
-                
-                # Trigger next phase in workflow (material_dispensing)
-                WorkflowService.trigger_next_phase(bmr, phase_execution.phase)
-                
-                messages.success(request, f'Raw materials released for batch {bmr.batch_number}. Material dispensing is now available.')
-                
+                if phase_execution.status != 'in_progress':
+                    messages.error(request, 'Phase must be in progress before completing.')
+                    return redirect('dashboards:store_dashboard')
+
+                WorkflowService.complete_phase(
+                    phase_execution.bmr,
+                    phase_name,
+                    request.user,
+                    comments=f"Completed by {request.user.get_full_name()}"
+                )
+                messages.success(request, f'Raw material release completed for batch {phase_execution.bmr.batch_number}.')
+
+            return redirect('dashboards:store_dashboard')
+
         except Exception as e:
-            messages.error(request, f'Error processing raw material release: {str(e)}')
-    
-        return redirect('dashboards:store_dashboard')
+            messages.error(request, f'Error: {str(e)}')
+            return redirect('dashboards:store_dashboard')
     
     # Get all BMRs
     all_bmrs = BMR.objects.select_related('product', 'created_by').all()
@@ -1563,14 +2558,39 @@ def store_dashboard(request):
     for bmr in all_bmrs:
         # Get both normal and rework phases for this user's role
         user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
-        # Add rework indicator to phases that have been rolled back
+        # Filter out material_dispensing that the store already submitted (store_complete flag)
+        filtered_phases = []
         for phase in user_phases:
+            # DEBUG: Log what phases are returned
+            print(f"[STORE DEBUG] BMR {bmr.batch_number}: Phase {phase.phase.phase_name}, Status: {phase.status}")
+            if phase.phase.phase_name == 'material_dispensing':
+                md_data = (phase.phase_data or {}).get('material_dispensing', {})
+                if md_data.get('store_complete'):
+                    continue  # Hide from store after store section is done
+            filtered_phases.append(phase)
+
+        # Add rework indicator to phases that have been rolled back
+        for phase in filtered_phases:
             if hasattr(phase, 'rework_count') and phase.rework_count > 0:
                 phase.is_rework = True
                 phase.rework_from = phase.rollback_from.phase.phase_name if phase.rollback_from else 'Unknown'
             else:
                 phase.is_rework = False
-        my_phases.extend(user_phases)
+        my_phases.extend(filtered_phases)
+    
+    # Add has_saved_data and lc_submitted flags for DRAFT/CONTINUE/FILLED badge
+    from workflow.line_clearance_items import has_line_clearance
+    for phase in my_phases:
+        phase_name = phase.phase.phase_name
+        pd = phase.phase_data or {}
+        has_process = bool(pd.get(phase_name))
+        has_lc = any(k.endswith('_line_clearance') and pd.get(k) for k in pd)
+        phase.has_saved_data = has_process or has_lc
+        phase.phase_has_lc = has_line_clearance(phase_name)
+        # Ending LC submitted to QA or approved → FILLED badge
+        phase.lc_submitted = phase.ending_lc_status in ('operator_filled', 'qa_approved')
+        # Ending LC QA-approved → gates the Complete button
+        phase.ending_lc_approved = phase.ending_lc_status in ('qa_approved', 'not_required')
     
     # Statistics
     stats = {
@@ -1582,6 +2602,12 @@ def store_dashboard(request):
         ).count(),
         'total_batches': len(set([p.bmr for p in my_phases])),
     }
+    
+    # DEBUG: Log final counts
+    print(f"[STORE DEBUG] Total my_phases: {len(my_phases)}")
+    print(f"[STORE DEBUG] Pending phases: {stats['pending_phases']}")
+    print(f"[STORE DEBUG] In-progress phases: {stats['in_progress_phases']}")
+    print(f"[STORE DEBUG] Status breakdown: {[f'{p.bmr.batch_number}:{p.status}' for p in my_phases]}")
     
     # Get recently completed releases (last 7 days)
     recently_completed = BatchPhaseExecution.objects.filter(
@@ -1624,9 +2650,16 @@ def operator_dashboard(request):
                 phase_execution = get_object_or_404(BatchPhaseExecution, pk=phase_id)
                 
                 if action == 'start':
-                    # Check if machine selection is required for this phase
-                    machine_required_phases = ['granulation', 'blending', 'compression', 'coating', 'blister_packing', 'bulk_packing', 'filling']
                     phase_name = phase_execution.phase.phase_name
+
+                    # Check Beginning LC approval for phases that require it
+                    if not phase_execution.lc_ready:
+                        messages.error(request, f'Cannot start {phase_name} - Beginning Line Clearance must be approved by QA first.')
+                        return redirect(request.path)
+
+                    # For phases without detailed forms, use original logic
+                    # Check if machine selection is required for this phase
+                    machine_required_phases = ['blending', 'compression', 'coating', 'blister_packing', 'bulk_packing', 'filling']
                     
                     # For capsule filling, only require machine for filling phase
                     if phase_name == PHASE_NAMES['FILLING'] and not is_capsule(phase_execution.bmr.product.product_type):
@@ -1665,6 +2698,11 @@ def operator_dashboard(request):
                     messages.success(request, f'Phase {phase_execution.phase.phase_name}{machine_info} started for batch {phase_execution.bmr.batch_number}.')
                     
                 elif action == 'complete':
+                    # Gate: ending LC must be QA-approved before completing (for phases that have LC)
+                    if not phase_execution.ending_lc_ready:
+                        messages.error(request, 'Cannot complete phase: Ending Line Clearance must be QA-approved first.')
+                        return redirect('dashboards:operator_dashboard')
+                    
                     phase_execution.status = 'completed'
                     phase_execution.completed_by = request.user
                     phase_execution.completed_date = timezone.now()
@@ -1779,7 +2817,7 @@ def operator_dashboard(request):
         'filling_operator': ['filling'],
         'tube_filling_operator': ['tube_filling'],
         'packing_operator': ['blister_packing', 'bulk_packing', 'secondary_packaging'],
-        'sorting_operator': ['sorting'],
+        'sorting_operator': ['sorting', 'post_coating_sorting'],
     }
     
     allowed_phases = role_phase_mapping.get(request.user.role, [])
@@ -1838,6 +2876,46 @@ def operator_dashboard(request):
                 'timer_status': timer_status,
                 'timing_config_missing': timing_config_missing
             }
+    
+    # packaging_store only sees packaging_material_release once PM has approved
+    def _pkg_req_visible(phase, role):
+        if phase.phase.phase_name != 'packaging_material_release':
+            return True
+        req_status = (phase.phase_data or {}).get('packaging_req', {}).get('status', 'not_started')
+        if role == 'packaging_store':
+            return req_status == 'manager_approved'
+        return True
+    my_phases = [p for p in my_phases if _pkg_req_visible(p, request.user.role)]
+
+    # Add has_saved_data, phase_has_lc, lc_submitted flags for DRAFT/CONTINUE/FILLED badge and Start button logic
+    from workflow.line_clearance_items import has_line_clearance
+    for phase in my_phases:
+        phase_name = phase.phase.phase_name
+        pd = phase.phase_data or {}
+        has_process = bool(pd.get(phase_name))
+        has_lc = any(k.endswith('_line_clearance') and pd.get(k) for k in pd)
+        phase.has_saved_data = has_process or has_lc
+        phase.phase_has_lc = has_line_clearance(phase_name)
+        # Ending LC submitted to QA or approved → FILLED badge
+        phase.lc_submitted = phase.ending_lc_status in ('operator_filled', 'qa_approved')
+        # Ending LC QA-approved → gates the Complete button
+        phase.ending_lc_approved = phase.ending_lc_status in ('qa_approved', 'not_required')
+        # Display-friendly phase label
+        phase.display_phase_name = phase.phase.get_phase_name_display()
+        # PCS section progress for post_coating_sorting phases
+        if phase_name == 'post_coating_sorting':
+            pcs_top = pd.get('pcs_sections', {})
+            ss = pcs_top.get('section_statuses', {})
+            done = 0
+            if ss.get('pcs_inspection_recon') == 'qa_signed':
+                done += 1
+            if ss.get('pcs_personnel') == 'completed':
+                done += 1
+            if ss.get('pcs_inprocess_qc') == 'qa_filled':
+                done += 1
+            phase.pcs_progress = {'done': done, 'total': 3, 'percent': int(done / 3 * 100)}
+        else:
+            phase.pcs_progress = None
     
     # Statistics
     stats = {
@@ -2105,26 +3183,37 @@ def qc_dashboard(request):
     for bmr in all_bmrs:
         user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
         my_phases.extend(user_phases)
-    
+
+    # Separate into actionable buckets
+    pending_phases    = [p for p in my_phases if p.status == 'pending']
+    inprogress_phases = [p for p in my_phases if p.status == 'in_progress']
+
     # Statistics
     stats = {
-        'pending_tests': len([p for p in my_phases if p.status == 'pending']),
-        'in_testing': len([p for p in my_phases if p.status == 'in_progress']),
+        'pending_tests':    len(pending_phases),
+        'in_testing':       len(inprogress_phases),
         'passed_today': BatchPhaseExecution.objects.filter(
-            completed_by=request.user,
             completed_date__date=timezone.now().date(),
-            status='completed'
+            status='completed',
+            phase__phase_name__in=['post_compression_qc', 'post_mixing_qc', 'post_blending_qc'],
         ).count(),
         'failed_this_week': BatchPhaseExecution.objects.filter(
-            completed_by=request.user,
             completed_date__date__gte=timezone.now().date() - timedelta(days=7),
-            status='failed'
+            status='failed',
+            phase__phase_name__in=['post_compression_qc', 'post_mixing_qc', 'post_blending_qc'],
         ).count(),
-        'total_batches': len(set([p.bmr for p in my_phases])),
+        'total_batches': len(set(p.bmr for p in my_phases)),
     }
-    
+
     daily_progress = min(100, (stats['passed_today'] / max(1, stats['pending_tests'] + stats['passed_today'])) * 100)
-    
+
+    # Recent completed/failed QC test results (last 30 days)
+    recent_results = BatchPhaseExecution.objects.filter(
+        status__in=['completed', 'failed'],
+        completed_date__isnull=False,
+        phase__phase_name__in=['post_compression_qc', 'post_mixing_qc', 'post_blending_qc'],
+    ).select_related('bmr', 'bmr__product', 'phase', 'completed_by').order_by('-completed_date')[:20]
+
     # Get quarantine samples waiting for QC testing
     from quarantine.models import SampleRequest
     quarantine_samples = SampleRequest.objects.filter(
@@ -2135,13 +3224,16 @@ def qc_dashboard(request):
     context = {
         'user': request.user,
         'my_phases': my_phases,
-        'qc_phases': my_phases,  # Add this for template compatibility
-        'quarantine_samples': quarantine_samples,  # Add quarantine samples for QC
+        'qc_phases': my_phases,
+        'pending_phases': pending_phases,
+        'inprogress_phases': inprogress_phases,
+        'quarantine_samples': quarantine_samples,
+        'recent_results': recent_results,
         'stats': stats,
         'daily_progress': daily_progress,
-        'dashboard_title': 'Quality Control Dashboard'
+        'dashboard_title': 'Quality Control Dashboard',
     }
-    
+
     return render(request, 'dashboards/qc_dashboard.html', context)
 
 @login_required
@@ -2208,6 +3300,16 @@ def packaging_dashboard(request):
     for bmr in all_bmrs:
         user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
         my_phases.extend(user_phases)
+
+    # Annotate each packaging_material_release phase with requisition data
+    from products.models import PackagingMaterial as _PKM
+    for _ph in my_phases:
+        if _ph.phase.phase_name == 'packaging_material_release':
+            _ph.req = (_ph.phase_data or {}).get('packaging_req', {})
+            _ph.packaging_materials = list(_PKM.objects.filter(product=_ph.bmr.product))
+        else:
+            _ph.req = None
+            _ph.packaging_materials = []
     
     # Add timing information to active phases
     from workflow.models import PhaseTimingSetting, ProductMachineTimingSetting
@@ -2281,6 +3383,7 @@ def packaging_dashboard(request):
         'daily_progress': daily_progress,
         'dashboard_title': 'Packaging Store Dashboard',
         'operator_history': operator_history,
+        'today_str': timezone.now().strftime('%Y-%m-%d'),
     }
     
     # Get next phase info for notification
@@ -2330,6 +3433,11 @@ def packing_dashboard(request):
                 phase_execution = get_object_or_404(BatchPhaseExecution, pk=phase_id)
                 
                 if action == 'start':
+                    # Check Beginning LC approval for phases that require it
+                    if not phase_execution.lc_ready:
+                        messages.error(request, f'Cannot start packing for batch {phase_execution.bmr.batch_number} - Beginning Line Clearance must be approved by QA first.')
+                        return redirect('dashboards:packing_dashboard')
+                    
                     # Validate that the phase can actually be started
                     if not WorkflowService.can_start_phase(phase_execution.bmr, phase_execution.phase.phase_name):
                         messages.error(request, f'Cannot start packing for batch {phase_execution.bmr.batch_number} - prerequisites not met.')
@@ -2354,6 +3462,11 @@ def packing_dashboard(request):
                     messages.success(request, f'Packing started for batch {phase_execution.bmr.batch_number}.')
                     
                 elif action == 'complete':
+                    # Gate: ending LC must be QA-approved before completing
+                    if not phase_execution.ending_lc_ready:
+                        messages.error(request, 'Cannot complete packing: Ending Line Clearance must be QA-approved first.')
+                        return redirect('dashboards:packing_dashboard')
+                    
                     # Handle breakdown tracking
                     breakdown_occurred = request.POST.get('breakdown_occurred') == 'on'
                     if breakdown_occurred:
@@ -2437,7 +3550,20 @@ def packing_dashboard(request):
             phase.progress_percent = min(100, (elapsed_hours / expected_hours) * 100)
             phase.timing_configured = timing_configured
             phase.timing_warning = warning_msg if not timing_configured else None
-    
+
+    # Annotate phases with LC flags for Draft/Start/Complete button logic
+    from workflow.line_clearance_items import has_line_clearance as _has_lc
+    for phase in my_phases:
+        pname = phase.phase.phase_name
+        pd = phase.phase_data or {}
+        phase.has_saved_data = bool(pd.get(pname)) or any(
+            k.endswith('_line_clearance') and pd.get(k) for k in pd
+        )
+        phase.phase_has_lc = _has_lc(pname)
+        phase.lc_submitted = phase.ending_lc_status in ('operator_filled', 'qa_approved')
+        # Ending LC QA-approved → gates the Complete button
+        phase.ending_lc_approved = phase.ending_lc_status in ('qa_approved', 'not_required')
+
     # Statistics
     stats = {
         'pending_phases': len([p for p in my_phases if p.status == 'pending']),

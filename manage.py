@@ -3,6 +3,9 @@
 import os
 import sys
 
+# Import compatibility shim for Python 3.14+ before Django imports
+import pkgutil_compat
+
 
 def main():
     """Run administrative tasks."""

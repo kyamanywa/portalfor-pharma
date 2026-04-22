@@ -16,6 +16,18 @@
     <!-- Modern Theme System -->
     <link href="{% static 'css/modern-theme.css' %}" rel="stylesheet">
     <style>
+        /* GLOBAL: DISABLE ALL ANIMATIONS AND TRANSITIONS SYSTEM-WIDE */
+        /* Remove all shaking, floating, sliding effects */
+        *, *::before, *::after {
+            animation: none !important;
+            transition: none !important;
+        }
+        
+        /* Prevent transform effects (scale, translate, rotate) on hover */
+        *:hover {
+            transform: none !important;
+        }
+        
         /* Fix for text cursor issue across the system */
         body, p, h1, h2, h3, h4, h5, h6, div, span, a, li, td, th, label, i,
         .text-muted, .card-title, .card-text, .text-center, .text-primary, .text-success, 
@@ -165,6 +177,24 @@
         .bg-danger {
             background-color: #dc3545 !important;
         }
+
+        {% if request.GET.print == '1' or request.GET.document == '1' %}
+        body {
+            padding-top: 0 !important;
+            background: #f1f5f9 !important;
+        }
+
+        nav.navbar,
+        .navbar,
+        .navbar-nav,
+        .navbar-text,
+        #userDropdown,
+        .theme-toggle,
+        #theme-icon,
+        .toast-container {
+            display: none !important;
+        }
+        {% endif %}
     </style>
 </head>
 <body>

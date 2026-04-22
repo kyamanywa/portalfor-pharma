@@ -1,0 +1,118 @@
+%% Kampala Pharmaceutical Industries - Visual Workflow
+%% Paste this at https://mermaid.live to generate visual diagram
+
+graph TD
+    Start([System Start]) --> PM[Production Manager<br/>Requests BMR]
+    PM --> BMRReq[BMR Request<br/>Created]
+    BMRReq --> QAReview{QA Reviews<br/>Request}
+    
+    QAReview -->|Approve| QACreate[QA Creates<br/>BMR Draft]
+    QAReview -->|Reject| ReqRejected([Request Rejected])
+    
+    QACreate --> RegReview{Regulatory<br/>Reviews BMR}
+    RegReview -->|Approve| BMRApproved[BMR Approved<br/>Workflow Initiated]
+    RegReview -->|Reject| BMRRejected([BMR Rejected])
+    
+    BMRApproved --> ProductType{Product Type<br/>Selection}
+    
+    ProductType -->|Ointment| Ointment[OINTMENT WORKFLOW<br/>9 Phases]
+    ProductType -->|Tablet Normal| TabletNormal[TABLET NORMAL<br/>15 Phases - Coated]
+    ProductType -->|Tablet Type 2| TabletType2[TABLET TYPE 2<br/>13 Phases - Bulk]
+    ProductType -->|Capsule| Capsule[CAPSULE WORKFLOW<br/>13 Phases]
+    
+    %% Ointment Flow
+    Ointment --> ODispense[1. Dispensing<br/>Dispensing Manager]
+    ODispense --> OMixing[2. Mixing<br/>Mixing Operator]
+    OMixing --> OQC1{3. QC Test}
+    OQC1 -->|Pass| OFilling[4. Tube Filling<br/>Filling Operator]
+    OQC1 -->|Fail| OMixing
+    OFilling --> OPacking[5. Secondary Packing<br/>Packing Operator]
+    OPacking --> OFinalQC{6. Final QC}
+    OFinalQC -->|Pass| OFinalQA[7. Final QA Review]
+    OFinalQC -->|Fail| OMixing
+    OFinalQA --> OFGS[8. Finished Goods Store]
+    
+    %% Tablet Normal Flow
+    TabletNormal --> TDispense[1. Dispensing<br/>Dispensing Manager]
+    TDispense --> TGran[2. Granulation<br/>Granulation Operator]
+    TGran --> TQC1{3. QC Test}
+    TQC1 -->|Pass| TBlend[4. Blending<br/>Blending Operator]
+    TQC1 -->|Fail| TGran
+    TBlend --> TQC2{5. QC Test}
+    TQC2 -->|Pass| TCompress[6. Compression<br/>Compression Operator]
+    TQC2 -->|Fail| TBlend
+    TCompress --> TQC3{7. QC Test}
+    TQC3 -->|Pass| TCoating[8. Coating<br/>Coating Operator]
+    TQC3 -->|Fail| TCompress
+    TCoating --> TQC4{9. QC Test}
+    TQC4 -->|Pass| TBlister[10. Blister Packing<br/>Packing Operator]
+    TQC4 -->|Fail| TCoating
+    TBlister --> TSecondary[11. Secondary Packing<br/>Packing Operator]
+    TSecondary --> TFinalQC{12. Final QC}
+    TFinalQC -->|Pass| TFinalQA[13. Final QA Review]
+    TFinalQC -->|Fail| TCoating
+    TFinalQA --> TFGS[14. Finished Goods Store]
+    
+    %% Tablet Type 2 Flow (No Coating, Bulk Pack)
+    TabletType2 --> T2Dispense[1. Dispensing]
+    T2Dispense --> T2Gran[2. Granulation]
+    T2Gran --> T2QC1{3. QC Test}
+    T2QC1 -->|Pass| T2Blend[4. Blending]
+    T2QC1 -->|Fail| T2Gran
+    T2Blend --> T2QC2{5. QC Test}
+    T2QC2 -->|Pass| T2Compress[6. Compression]
+    T2QC2 -->|Fail| T2Blend
+    T2Compress --> T2QC3{7. QC Test}
+    T2QC3 -->|Pass| T2Bulk[8. Bulk Packing<br/>No Coating]
+    T2QC3 -->|Fail| T2Compress
+    T2Bulk --> T2Secondary[9. Secondary Packing]
+    T2Secondary --> T2FinalQC{10. Final QC}
+    T2FinalQC -->|Pass| T2FinalQA[11. Final QA Review]
+    T2FinalQC -->|Fail| T2Compress
+    T2FinalQA --> T2FGS[12. Finished Goods Store]
+    
+    %% Capsule Flow
+    Capsule --> CDispense[1. Dispensing]
+    CDispense --> CDrying[2. Drying<br/>Drying Operator]
+    CDrying --> CQC1{3. QC Test}
+    CQC1 -->|Pass| CBlend[4. Blending<br/>Blending Operator]
+    CQC1 -->|Fail| CDrying
+    CBlend --> CQC2{5. QC Test}
+    CQC2 -->|Pass| CFilling[6. Filling<br/>Filling Operator]
+    CQC2 -->|Fail| CBlend
+    CFilling --> CQC3{7. QC Test}
+    CQC3 -->|Pass| CBlister[8. Blister Packing]
+    CQC3 -->|Fail| CFilling
+    CBlister --> CSecondary[9. Secondary Packing]
+    CSecondary --> CFinalQC{10. Final QC}
+    CFinalQC -->|Pass| CFinalQA[11. Final QA Review]
+    CFinalQC -->|Fail| CFilling
+    CFinalQA --> CFGS[12. Finished Goods Store]
+    
+    %% All FGS converge
+    OFGS --> End([Production Complete])
+    TFGS --> End
+    T2FGS --> End
+    CFGS --> End
+    
+    %% Failed batches
+    OFinalQA -->|Reject| Quarantine[Quarantine<br/>Investigation]
+    TFinalQA -->|Reject| Quarantine
+    T2FinalQA -->|Reject| Quarantine
+    CFinalQA -->|Reject| Quarantine
+    Quarantine --> QuarEnd([Destroyed or<br/>Re-processed])
+    
+    %% Styling
+    classDef userRole fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    classDef phase fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    classDef qc fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    classDef decision fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    classDef fgs fill:#00BCD4,stroke:#006064,stroke-width:2px,color:#fff
+    classDef reject fill:#F44336,stroke:#B71C1C,stroke-width:2px,color:#fff
+    
+    class PM,QACreate,RegReview,ODispense,TDispense,T2Dispense,CDispense userRole
+    class OMixing,OFilling,TGran,TBlend,TCompress,TCoating,T2Gran,T2Blend,T2Compress,CDrying,CBlend,CFilling phase
+    class OQC1,TQC1,TQC2,TQC3,TQC4,T2QC1,T2QC2,T2QC3,CQC1,CQC2,CQC3,OFinalQC,TFinalQC,T2FinalQC,CFinalQC qc
+    class QAReview,RegReview,ProductType decision
+    class OFGS,TFGS,T2FGS,CFGS fgs
+    class ReqRejected,BMRRejected,Quarantine,QuarEnd reject

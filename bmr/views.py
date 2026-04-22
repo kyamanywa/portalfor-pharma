@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, permissions
+﻿from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
@@ -6,20 +6,157 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from django.contrib.staticfiles import finders
+from django.conf import settings
 import logging
+import os
+import re
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
-from .models import BMR, BMRMaterial, BMRRequest
+from .models import BMR, BMRMaterial, BMRRequest, BMRTemplate
+from .template_models import BMRTemplateSection, BMRFormData
 from .serializers import (
     BMRCreateSerializer, BMRDetailSerializer, BMRListSerializer,
     BMRMaterialSerializer, ProductSerializer
 )
 from .forms import BMRCreateForm, BMRRequestForm
-from products.models import Product
+from products.models import Product, PackagingMaterial
 from workflow.services import WorkflowService
 from workflow.constants import (
     PRODUCT_TYPES, TABLET_TYPES, is_tablet, is_tablet_type_2
 )
+
+
+def _pdf_link_callback(uri, rel):
+    """Resolve static/media paths for xhtml2pdf asset loading."""
+    if uri.startswith(settings.STATIC_URL):
+        static_rel = uri.replace(settings.STATIC_URL, '', 1)
+        found = finders.find(static_rel)
+        if found:
+            return found
+    if settings.MEDIA_URL and uri.startswith(settings.MEDIA_URL):
+        media_rel = uri.replace(settings.MEDIA_URL, '', 1)
+        return os.path.join(settings.MEDIA_ROOT, media_rel)
+    return uri
+
+
+def _build_basic_bmr_pdf(context, filename):
+    """Fallback PDF renderer for complex templates that xhtml2pdf cannot layout."""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+    except Exception:
+        return None
+
+    bmr = context.get('bmr')
+    phase_map = context.get('phase_executions', {}) or {}
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    y = height - 40
+
+    def line(text, size=10, gap=14):
+        nonlocal y
+        if y < 50:
+            pdf.showPage()
+            y = height - 40
+        pdf.setFont('Helvetica', size)
+        pdf.drawString(40, y, text)
+        y -= gap
+
+    line('Kampala Pharmaceutical Industries', size=12)
+    line('Batch Manufacturing Record (PDF Export)', size=12)
+    y -= 4
+
+    if bmr is not None:
+        line(f"BMR Number: {getattr(bmr, 'bmr_number', '')}")
+        line(f"Batch Number: {getattr(bmr, 'batch_number', '')}")
+        product = getattr(getattr(bmr, 'product', None), 'product_name', '')
+        line(f"Product: {product}")
+        line(f"Status: {getattr(bmr, 'status', '')}")
+        created_date = getattr(bmr, 'created_date', None)
+        if created_date:
+            line(f"Created: {created_date:%d/%m/%Y %H:%M}")
+
+    y -= 4
+    line('Phase Summary', size=11)
+    if phase_map:
+        for phase_name, execution in phase_map.items():
+            if not execution:
+                continue
+            status_val = getattr(execution, 'status', 'pending')
+            started = getattr(execution, 'started_date', None)
+            completed = getattr(execution, 'completed_date', None)
+            started_txt = started.strftime('%d/%m/%Y %H:%M') if started else '-'
+            completed_txt = completed.strftime('%d/%m/%Y %H:%M') if completed else '-'
+            line(f"- {phase_name}: {status_val} | Start: {started_txt} | End: {completed_txt}")
+    else:
+        line('- No phase data available')
+
+    line('')
+    line('Note: This export was generated using fallback PDF rendering for compatibility.', size=9)
+
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _sanitize_pdf_html(html):
+    # xhtml2pdf cannot reliably handle the app's full CSS, JS, percentage widths,
+    # or radio inputs inside deeply nested tables.
+    html = re.sub(r'(?is)<script[^>]*>.*?</script>', '', html)
+    html = re.sub(r'(?is)<link[^>]*rel=["\']?stylesheet["\']?[^>]*>', '', html)
+    html = re.sub(r'\s+onerror=("[^"]*"|\'[^\']*\')', '', html)
+    html = re.sub(r'width\s*:\s*\d+(?:\.\d+)?%;?', 'width:auto;', html, flags=re.IGNORECASE)
+    html = re.sub(r'\swidth=("\d+(?:\.\d+)?%"|\'\d+(?:\.\d+)?%\')', ' width="auto"', html, flags=re.IGNORECASE)
+
+    def _clean_style_block(match):
+        css = match.group(1)
+        css = re.sub(r'[^{}]*:not\([^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
+        css = re.sub(r'[^{}]*\[contenteditable[^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
+        css = re.sub(r'[^{}]*calc\([^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
+        return f'<style>{css}</style>'
+
+    html = re.sub(r'(?is)<style[^>]*>(.*?)</style>', _clean_style_block, html)
+
+    def _replace_radio(match):
+        attrs = match.group(1) or ''
+        return '[x]' if 'checked' in attrs.lower() else '[ ]'
+
+    html = re.sub(r'(?is)<input([^>]*type=["\']radio["\'][^>]*)>', _replace_radio, html)
+    return html
+
+
+def _try_render_pdf(template_name, context, request, filename):
+    """Render template as downloadable PDF; returns None on failure."""
+    try:
+        from xhtml2pdf import pisa
+    except Exception:
+        return None
+
+    html = _sanitize_pdf_html(render_to_string(template_name, context, request=request))
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    try:
+        pdf = pisa.CreatePDF(html, dest=response, link_callback=_pdf_link_callback, encoding='utf-8')
+    except Exception:
+        logger.exception('PDF render failed for BMR template')
+        return _build_basic_bmr_pdf(context, filename)
+
+    if pdf.err:
+        logger.error('PDF render had errors for BMR template: %s', filename)
+        return _build_basic_bmr_pdf(context, filename)
+    return response
+
 
 @login_required
 def create_bmr_view(request):
@@ -183,10 +320,27 @@ def bmr_list_view(request):
         'status_filter': status_filter
     })
 
+def _build_revision_history(product, combined_data):
+    """Return revision history entries with dates overlaid from phase_data if model is blank."""
+    revs = list(product.revision_history.all())
+    fqa = combined_data.get('final_qa_review', {})
+    rd = fqa.get('revision_dates', {})
+    if rd:
+        for rev in revs:
+            if not rev.effective_date and rd.get(str(rev.id)):
+                rev.effective_date = rd[str(rev.id)]
+    return revs
+
+
 @login_required
 def bmr_detail_view(request, bmr_id):
-    """Detail view for a specific BMR with workflow information"""
+    """
+    Detailed view of a single BMR - Now shows comprehensive phase-based BMR document
+    """
     bmr = get_object_or_404(BMR.objects.select_related('product', 'created_by', 'approved_by'), id=bmr_id)
+    is_printing = request.GET.get('print', '').lower() in {'1', 'true', 'yes'}
+    document_mode = request.GET.get('document', '1') != '0'
+    download_pdf = request.GET.get('download', '').lower() == 'pdf'
     
     # Check permissions - Admin, QA, Regulatory, and QC can view all BMRs
     # Other users can view BMRs in production states (approved, in_production, completed)
@@ -194,9 +348,264 @@ def bmr_detail_view(request, bmr_id):
     if not (request.user.is_staff or request.user.role in ['qa', 'regulatory', 'qc'] or bmr.status in allowed_statuses_for_operators):
         messages.error(request, 'You do not have permission to view this BMR')
         return redirect('home')
+
+    filename = f"BMR_{bmr.batch_number}.pdf"
     
-    # Get related materials
+    # Get related materials from BMRMaterial
     materials = BMRMaterial.objects.filter(bmr=bmr)
+    
+    # Get ingredients from ProductIngredient for material dispensing table
+    from products.models import ProductIngredient
+    from decimal import Decimal
+    
+    base_ingredients = ProductIngredient.objects.filter(
+        product=bmr.product
+    ).exclude(ingredient_type='coating').select_related('product').order_by('id')
+    
+    coating_ingredients_qs = ProductIngredient.objects.filter(
+        product=bmr.product, ingredient_type='coating'
+    ).select_related('product').order_by('id')
+    
+    # Get material dispensing phase execution data
+    from workflow.models import BatchPhaseExecution, ProductionPhase
+    material_dispensing_phase = ProductionPhase.objects.filter(
+        product_type=bmr.product.product_type,
+        phase_name='material_dispensing'
+    ).first()
+    
+    material_dispensing_execution = None
+    weighing_times = {}
+    rm_available = False
+    pm_available = False
+    material_availability_comments = ""
+    material_dispensing_data = {}
+    
+    # Get granulation phase execution data
+    granulation_phase = ProductionPhase.objects.filter(
+        product_type=bmr.product.product_type,
+        phase_name='granulation'
+    ).first()
+    
+    granulation_execution = None
+    granulation_data = {}
+    granulation_steps = []
+    
+    if granulation_phase:
+        granulation_execution = BatchPhaseExecution.objects.filter(
+            bmr=bmr,
+            phase=granulation_phase
+        ).first()
+        
+        if granulation_execution and granulation_execution.phase_data:
+            granulation_data = granulation_execution.phase_data.get('granulation', {})
+            granulation_steps = granulation_data.get('steps', [])
+
+    # Fetch compression and blending executions for view-mode template rendering
+    compression_execution = BatchPhaseExecution.objects.filter(
+        bmr=bmr, phase__phase_name='compression'
+    ).first()
+    blending_execution = BatchPhaseExecution.objects.filter(
+        bmr=bmr, phase__phase_name='blending'
+    ).first()
+    
+    if material_dispensing_phase:
+        material_dispensing_execution = BatchPhaseExecution.objects.filter(
+            bmr=bmr,
+            phase=material_dispensing_phase
+        ).first()
+        
+        # Load CUMULATIVE data from ALL phases of this BMR 
+        combined_data = {}
+        
+        # Get ALL phase executions for this BMR to build complete data picture
+        all_phase_executions = BatchPhaseExecution.objects.filter(bmr=bmr)
+        
+        for execution in all_phase_executions:
+            if execution.phase_data:
+                # Merge data from each phase
+                for key, value in execution.phase_data.items():
+                    if key not in combined_data:
+                        combined_data[key] = value
+                    elif isinstance(value, dict) and isinstance(combined_data[key], dict):
+                        combined_data[key].update(value)
+                    else:
+                        combined_data[key] = value
+        
+        # Extract material dispensing data and store AR numbers from combined data
+        md_data = combined_data.get('material_dispensing', {})
+        store_ar_data = combined_data.get('raw_material_release', {}).get('ar_numbers', {})
+        
+        weighing_times = {
+            'weighing_started_date': md_data.get('weighing_started_date', ''),
+            'weighing_started_time': md_data.get('weighing_started_time', ''),
+            'weighing_stopped_date': md_data.get('weighing_stopped_date', ''),
+            'weighing_stopped_time': md_data.get('weighing_stopped_time', ''),
+        }
+        rm_available = md_data.get('rm_available', False)
+        pm_available = md_data.get('pm_available', False)
+        material_availability_comments = md_data.get('material_availability_comments', '')
+        material_dispensing_data = md_data.get('ingredients', {})
+    
+    # Build ingredient table with BMR calculations and saved data
+    total_unit_quantity = Decimal('0.00')
+    total_quantity = Decimal('0.00')
+    total_batch_quantity = Decimal('0.00')
+    ingredient_table = []
+    for idx, ingredient in enumerate(base_ingredients, start=1):
+        # Get batch size from BMR — use Decimal() to handle "500000.00" properly
+        try:
+            batch_size = int(Decimal(str(bmr.batch_size or 800000)))
+        except Exception:
+            batch_size = 800000
+        
+        # BMR calculations
+        unit_qty = ingredient.quantity_per_unit
+        overage = ingredient.overage  # use actual overage from product data
+        total_qty = unit_qty + overage
+        # For ingredients measured in 'units' (e.g. capsule shells), the
+        # quantity_per_unit IS the total batch count — no mg→kg conversion needed.
+        if ingredient.unit_of_measure == 'units':
+            total_batch_kg = unit_qty  # stored as total units directly
+        else:
+            total_batch_kg = (total_qty * batch_size) / 1000000
+
+        # Only include mg-type ingredients in the running totals (not units like capsule shells)
+        if ingredient.unit_of_measure != 'units':
+            total_unit_quantity += unit_qty
+            total_quantity += total_qty
+            total_batch_quantity += Decimal(str(round(total_batch_kg, 3)))
+        
+        # Get saved data for this ingredient
+        ing_id = str(ingredient.id)
+        saved_ing_data = material_dispensing_data.get(ing_id, {})
+        saved_lots = saved_ing_data.get('lots', {})
+        store_lots = store_ar_data.get(ing_id, {})
+        
+        # Build lots per ingredient respecting lot_count from the product data
+        num_lots = max(1, ingredient.lot_count)
+        lots = []
+        for lot_num in range(1, num_lots + 1):
+            lot_key = f"lot_{lot_num}"
+            saved_lot = saved_lots.get(lot_key, {})
+            ar_value = saved_lot.get('ar_number', '') or store_lots.get(lot_key, '')
+            # Default qty per lot: total batch qty divided equally among lots
+            default_lot_qty = str(round(total_batch_kg / num_lots, 3))
+            lots.append({
+                'lot_number': lot_num,
+                'ar_number': ar_value,
+                'quantity_per_lot': saved_lot.get('quantity_per_lot') or default_lot_qty,
+                'tare_weight': saved_lot.get('tare_weight', ''),
+                'gross_weight': saved_lot.get('gross_weight', ''),
+                'net_weight': saved_lot.get('net_weight', ''),
+                'scale_id': saved_lot.get('scale_id', ''),
+                'weighed_by': saved_lot.get('weighed_by', ''),
+                'checked_by': saved_lot.get('checked_by', ''),
+                'received_by': saved_lot.get('received_by', ''),
+            })
+        
+        # Load dynamically added lots (lot 5, 6, 7, etc.)
+        existing_lot_numbers = [lot['lot_number'] for lot in lots]
+        for lot_key, lot_data in saved_lots.items():
+            if lot_data.get('dynamic', False):
+                try:
+                    lot_num = int(lot_key.split('_')[1])
+                    if lot_num not in existing_lot_numbers:
+                        lots.append({
+                            'lot_number': lot_num,
+                            'ar_number': lot_data.get('ar_number', ''),
+                            'quantity_per_lot': lot_data.get('quantity_per_lot', ''),
+                            'tare_weight': lot_data.get('tare_weight', ''),
+                            'gross_weight': lot_data.get('gross_weight', ''),
+                            'net_weight': lot_data.get('net_weight', ''),
+                            'scale_id': lot_data.get('scale_id', ''),
+                            'weighed_by': lot_data.get('weighed_by', ''),
+                            'checked_by': lot_data.get('checked_by', ''),
+                            'received_by': lot_data.get('received_by', ''),
+                            'dynamic': True
+                        })
+                except (ValueError, IndexError):
+                    continue
+        
+        ingredient_table.append({
+            'sr_no': idx,
+            'description': ingredient.ingredient_name,
+            'item_code': ingredient.item_code,
+            'unit_quantity': str(unit_qty),
+            'unit_measure': ingredient.unit_of_measure,
+            'overage': str(overage),
+            'total_quantity': str(total_qty),
+            'total_quantity_per_unit': str(total_qty),
+            'total_batch_quantity': str(round(total_batch_kg, 3)),
+            'lots': lots,
+            'ingredient_id': ingredient.id,
+            'ingredient_type': ingredient.ingredient_type,
+        })
+
+    ingredient_table_totals = {
+        'label': 'TOTAL',
+        'total_unit_quantity': str(total_unit_quantity),
+        'total_overage': str(total_quantity - total_unit_quantity),
+        'total_quantity': str(total_quantity),
+        'total_batch_quantity': str(round(total_batch_quantity, 3)),
+    }
+    ingredient_table_totals_rows = [ingredient_table_totals]
+    
+    # Build coating ingredient table (separate dispensing pages for coated tablets)
+    coating_ingredient_table = []
+    coating_total_unit_qty = Decimal('0.00')
+    coating_total_qty = Decimal('0.00')
+    coating_total_batch_qty = Decimal('0.00')
+    for idx, ingredient in enumerate(coating_ingredients_qs, start=len(ingredient_table) + 1):
+        try:
+            batch_size = int(Decimal(str(bmr.batch_size or 800000)))
+        except Exception:
+            batch_size = 800000
+        unit_qty = ingredient.quantity_per_unit
+        overage = ingredient.overage
+        total_qty = unit_qty + overage
+        total_batch_kg = (total_qty * batch_size) / 1000000
+        coating_total_unit_qty += unit_qty
+        coating_total_qty += total_qty
+        coating_total_batch_qty += Decimal(str(round(total_batch_kg, 3)))
+        num_lots = max(1, ingredient.lot_count)
+        ing_id = str(ingredient.id)
+        saved_ing_data = material_dispensing_data.get(ing_id, {})
+        saved_lots = saved_ing_data.get('lots', {})
+        store_lots = store_ar_data.get(ing_id, {})
+        lots = []
+        for lot_num in range(1, num_lots + 1):
+            lot_key = f"lot_{lot_num}"
+            saved_lot = saved_lots.get(lot_key, {})
+            ar_value = saved_lot.get('ar_number', '') or store_lots.get(lot_key, '')
+            default_lot_qty = str(round(total_batch_kg / num_lots, 3))
+            lots.append({
+                'lot_number': lot_num,
+                'ar_number': ar_value,
+                'quantity_per_lot': saved_lot.get('quantity_per_lot') or default_lot_qty,
+                'tare_weight': saved_lot.get('tare_weight', ''),
+                'gross_weight': saved_lot.get('gross_weight', ''),
+                'net_weight': saved_lot.get('net_weight', ''),
+                'scale_id': saved_lot.get('scale_id', ''),
+                'weighed_by': saved_lot.get('weighed_by', ''),
+                'checked_by': saved_lot.get('checked_by', ''),
+                'received_by': saved_lot.get('received_by', ''),
+            })
+        coating_ingredient_table.append({
+            'sr_no': idx,
+            'description': ingredient.ingredient_name,
+            'item_code': ingredient.item_code,
+            'unit_quantity': str(unit_qty),
+            'overage': str(overage),
+            'total_quantity': str(total_qty),
+            'total_batch_quantity': str(round(total_batch_kg, 3)),
+            'lots': lots,
+            'ingredient_id': ingredient.id,
+        })
+    coating_ingredient_totals = {
+        'total_unit_quantity': str(coating_total_unit_qty),
+        'total_quantity': str(coating_total_qty),
+        'total_batch_quantity': str(round(coating_total_batch_qty, 3)),
+    }
     
     # Get workflow status
     workflow_status = WorkflowService.get_workflow_status(bmr)
@@ -232,7 +641,6 @@ def bmr_detail_view(request, bmr_id):
         total_production_hours = total_duration.total_seconds() / 3600
     elif first_started_phase:
         # For in-progress batches, calculate from first start to now
-        from django.utils import timezone
         total_duration = timezone.now() - first_started_phase.started_date
         total_production_hours = total_duration.total_seconds() / 3600
     
@@ -269,18 +677,223 @@ def bmr_detail_view(request, bmr_id):
     # Get electronic signatures
     from bmr.models import BMRSignature
     signatures = BMRSignature.objects.filter(bmr=bmr).select_related('signed_by').order_by('signed_date')
+    signature_rows = [
+        {
+            'store_in_charge': '',
+            'dispensing_supervisor': '',
+            'qa_officer': ''
+        }
+    ]
     
-    return render(request, 'bmr/bmr_detail.html', {
+    bmr_template = bmr.get_template()
+    template_structure = bmr.template_structure
+    template_sections = []
+    form_data_map = {}
+    if bmr_template:
+        template_sections = BMRTemplateSection.objects.filter(
+            template=bmr_template,
+            is_visible=True
+        ).prefetch_related('fields', 'tables__columns').order_by('page_number', 'order')
+
+        form_data_qs = BMRFormData.objects.filter(
+            bmr=bmr,
+            field__section__template=bmr_template
+        ).select_related('field')
+        for entry in form_data_qs:
+            if entry.value:
+                form_data_map[entry.field_id] = entry.value
+            elif entry.file_value:
+                try:
+                    form_data_map[entry.field_id] = entry.file_value.url
+                except Exception:
+                    form_data_map[entry.field_id] = ''
+
+    # Build combined LC data from all phases for view mode
+    lc_data = {}
+    for key, value in combined_data.items():
+        if key.endswith('_line_clearance') and isinstance(value, dict):
+            lc_data.update(value)
+
+    # Extract per-phase data from combined_data for view-mode rendering
+    from dashboards.bmr_form_views import (
+        GRANULATION_SECTIONS, get_section_statuses, all_sections_complete,
+        BLENDING_SECTIONS, get_blending_section_statuses, all_blending_sections_complete,
+        COMPRESSION_SECTIONS, get_compression_section_statuses, all_compression_sections_complete,
+        IPC_PAGES, get_ipc_page_statuses,
+        SORTING_SECTIONS, get_sorting_section_statuses, all_sorting_sections_complete,
+        COATING_SECTIONS, get_coating_section_statuses, all_coating_sections_complete,
+        PACKING_SECTIONS, get_packing_section_statuses, all_packing_sections_complete,
+        MIXING_SECTIONS, get_mixing_section_statuses, all_mixing_sections_complete,
+        TUBE_FILLING_SECTIONS, get_tube_filling_section_statuses, all_tube_filling_sections_complete,
+        get_tf_ipc_page_statuses, get_tf_qa_ipc_page_statuses,
+        SECONDARY_SECTIONS, get_secondary_section_statuses, all_secondary_sections_complete,
+        POST_COATING_SORTING_SECTIONS, get_pcs_section_statuses, all_pcs_sections_complete,
+        _get_pkg_materials,
+    )
+    _blending_data   = combined_data.get('blending', {})
+    _compression_data = combined_data.get('compression_sections', {}).get('setup', {})
+    _sorting_data    = combined_data.get('sorting', {})
+    _sorting_sections_data = combined_data.get('sorting_sections', {})
+    _packing_data    = (combined_data.get('blister_packing') or
+                        combined_data.get('bulk_packing') or
+                        combined_data.get('secondary_packaging') or {})
+    _gran_theoretical_kg = combined_data.get('granulation', {}).get('yield_reconciliation', {}).get('a_qty', '')
+    _section_statuses = get_section_statuses(combined_data)
+    _blending_section_statuses = get_blending_section_statuses(combined_data)
+    _compression_section_statuses = get_compression_section_statuses(combined_data)
+    _ipc_page_statuses = get_ipc_page_statuses(combined_data)
+
+    # ── Ointment-specific view-mode context ──
+    _phase_exec_dict = {pe.phase.phase_name: pe for pe in phase_executions}
+    _mix_process_data = combined_data.get('mixing_sections', {}).get('mix_process', {})
+    _mix_qa_ipc_data = combined_data.get('mixing_sections', {}).get('mix_qa_ipc', {})
+
+    # ── Template routing by product type ──────────────────────────────────────
+    # Tablets (coated and uncoated) → bmr_detail_new.html
+    # Ointments → bmr_ointment.html
+    # Capsules → bmr_capsule.html
+    _ptype = bmr.product.product_type
+    _ctype = getattr(bmr.product, 'coating_type', '')
+    if _ptype == 'ointment':
+        _bmr_template_name = 'bmr/bmr_ointment.html'
+    elif _ptype == 'capsule':
+        _bmr_template_name = 'bmr/bmr_capsule.html'
+    elif _ptype == 'tablet':
+        _bmr_template_name = 'bmr/bmr_detail_new.html'
+    else:
+        return render(request, 'bmr/bmr_not_available.html', {
+            'bmr': bmr,
+            'product': bmr.product,
+            'product_type_display': bmr.product.get_product_type_display(),
+            'coating_type': _ctype,
+        })
+    context = {
         'bmr': bmr,
+        'product': bmr.product,
         'materials': materials,
+        'ingredient_table': ingredient_table,
+        'ingredient_table_totals': ingredient_table_totals,
+        'ingredient_table_totals_rows': ingredient_table_totals_rows,
+        'coating_ingredient_table': coating_ingredient_table,
+        'coating_ingredient_totals': coating_ingredient_totals,
+        'weighing_started_date': weighing_times.get('weighing_started_date', ''),
+        'weighing_started_time': weighing_times.get('weighing_started_time', ''),
+        'weighing_stopped_date': weighing_times.get('weighing_stopped_date', ''),
+        'weighing_stopped_time': weighing_times.get('weighing_stopped_time', ''),
+        'rm_available': rm_available,
+        'pm_available': pm_available,
+        'material_availability_comments': material_availability_comments,
         'workflow_status': workflow_status,
         'user_phases': user_phases,
         'signatures': signatures,
+        'signature_rows': signature_rows,
         'total_production_time': total_production_time,
         'production_status': production_status,
         'total_production_hours': total_production_hours,
-        'title': f'BMR Details - {bmr.bmr_number}'
-    })
+        'granulation_execution': granulation_execution,
+        'compression_execution': compression_execution,
+        'blending_execution': blending_execution,
+        'granulation_data': granulation_data,
+        'granulation_steps': granulation_steps,
+        'gran_theoretical_kg': _gran_theoretical_kg,
+        'blending_data': _blending_data,
+        'compression_data': _compression_data,
+        'sorting_data': _sorting_data,
+        'packing_data': _packing_data,
+        # Section statuses for view-mode badges
+        'section_statuses': _section_statuses,
+        'GRANULATION_SECTIONS': GRANULATION_SECTIONS,
+        'all_sections_complete': all_sections_complete(combined_data),
+        'blending_section_statuses': _blending_section_statuses,
+        'BLENDING_SECTIONS': BLENDING_SECTIONS,
+        'all_blending_sections_complete': all_blending_sections_complete(combined_data),
+        'compression_section_statuses': _compression_section_statuses,
+        'COMPRESSION_SECTIONS': COMPRESSION_SECTIONS,
+        'all_compression_sections_complete': all_compression_sections_complete(combined_data),
+        'compression_ipc_page_statuses': _ipc_page_statuses,
+        'all_ipc_complete': all(v == 'qa_signed' for v in _ipc_page_statuses.values()) if _ipc_page_statuses else False,
+        'sorting_section_statuses': get_sorting_section_statuses(combined_data),
+        'SORTING_SECTIONS': SORTING_SECTIONS,
+        'all_sorting_sections_complete': all_sorting_sections_complete(combined_data),
+        'sorting_sections_data': _sorting_sections_data,
+        # Coating sections (film coating)
+        'coating_section_statuses': get_coating_section_statuses(combined_data),
+        'COATING_SECTIONS': COATING_SECTIONS,
+        'all_coating_sections_complete': all_coating_sections_complete(combined_data),
+        'coating_sections_data': combined_data.get('coating_sections', {}),
+        # Post-coating sorting sections
+        'pcs_section_statuses': get_pcs_section_statuses(combined_data),
+        'POST_COATING_SORTING_SECTIONS': POST_COATING_SORTING_SECTIONS,
+        'all_pcs_sections_complete': all_pcs_sections_complete(combined_data),
+        'pcs_sections_data': combined_data.get('pcs_sections', {}),
+        # Packing sections (blister_packing / bulk_packing)
+        'packing_section_statuses': get_packing_section_statuses(combined_data),
+        'PACKING_SECTIONS': PACKING_SECTIONS,
+        'all_packing_sections_complete': all_packing_sections_complete(combined_data),
+        'packing_sections_data': combined_data.get('packing_sections', {}),
+        # Ointment context variables
+        'phase_executions': _phase_exec_dict,
+        'dispensing_data': combined_data.get('material_dispensing', {}),
+        'store_data': combined_data.get('raw_material_release', {}),
+        'mixing_data': combined_data.get('mixing', {}),
+        'mix_process_data': _mix_process_data,
+        'mix_qa_ipc_data': _mix_qa_ipc_data,
+        'step4_status': _mix_process_data.get('step4_status', 'not_started'),
+        'tube_filling_data': combined_data.get('tube_filling', {}),
+        'mixing_section_statuses': get_mixing_section_statuses(combined_data),
+        'MIXING_SECTIONS': MIXING_SECTIONS,
+        'all_mixing_sections_complete': all_mixing_sections_complete(combined_data),
+        'mixing_sections_data': combined_data.get('mixing_sections', {}),
+        'tube_filling_section_statuses': get_tube_filling_section_statuses(combined_data),
+        'TUBE_FILLING_SECTIONS': TUBE_FILLING_SECTIONS,
+        'all_tube_filling_sections_complete': all_tube_filling_sections_complete(combined_data),
+        'tube_filling_sections_data': combined_data.get('tube_filling_sections', {}),
+        'tf_ipc_page_statuses': get_tf_ipc_page_statuses(combined_data),
+        'tf_qa_ipc_page_statuses': get_tf_qa_ipc_page_statuses(combined_data),
+        'tube_filling_qa_ipc_data': combined_data.get('tube_filling_sections', {}).get('tf_qa_ipc', {}),
+        'page_shifts': combined_data.get('page_shifts', {}),
+        'page_dates': combined_data.get('page_dates', {}),
+        # Keep print output in strict view-mode so templates render saved values,
+        # not editable controls intended for workflow roles.
+        'edit_mode': 'view',
+        'is_printing': is_printing,
+        'user_role': request.user.role,
+        'title': f'BMR - {bmr.bmr_number}',
+        'bmr_template': bmr_template,
+        'bmr_template_structure': template_structure,
+        'bmr_template_sections': template_sections,
+        'bmr_form_data': form_data_map,
+        'lc_data': lc_data,
+        'has_line_clearance': True,  # Show LC sections in view mode
+        # Packaging Materials Requisition (Page 41) — read from combined phase data
+        'packaging_req_data': combined_data.get('packaging_req', {}),
+        'packaging_materials': _get_pkg_materials(bmr.product),
+        'today_str': timezone.now().strftime('%Y-%m-%d'),
+        # Secondary Packaging sections (Pages 21-28)
+        'secondary_sections_data': combined_data.get('secondary_sections', {}),
+        'secondary_section_statuses': get_secondary_section_statuses(combined_data),
+        'SECONDARY_SECTIONS': SECONDARY_SECTIONS,
+        'all_secondary_sections_complete': all_secondary_sections_complete(combined_data),
+        # Final QA (Pages 29-30)
+        'final_qa_data': combined_data.get('final_qa_review', {}),
+        # Revision History (Page 30) from backend — overlay dates from phase_data if model is blank
+        'revision_history': _build_revision_history(bmr.product, combined_data),
+        # Document-only mode hides app chrome so the BMR looks like the source document.
+        'document_mode': document_mode,
+    }
+
+    if download_pdf:
+        pdf_response = _try_render_pdf(
+            _bmr_template_name,
+            context,
+            request,
+            filename,
+        )
+        if pdf_response is not None:
+            return pdf_response
+        messages.error(request, 'PDF generation failed. Showing document view instead.')
+
+    return render(request, _bmr_template_name, context)
 
 class BMRViewSet(viewsets.ModelViewSet):
     """ViewSet for BMR operations"""
@@ -453,7 +1066,7 @@ def start_phase_view(request, bmr_id, phase_name):
     elif request.user.role == 'finished_goods_store':
         return redirect('dashboards:finished_goods_dashboard')
     else:
-        return redirect('dashboards:operator_dashboard')
+        return redirect('dashboards:qa_dashboard')
 
 @login_required
 def complete_phase_view(request, bmr_id, phase_name):
@@ -465,6 +1078,12 @@ def complete_phase_view(request, bmr_id, phase_name):
     
     if not user_phases.filter(phase__phase_name=phase_name, status='in_progress').exists():
         messages.error(request, f'You cannot complete the {phase_name} phase at this time.')
+        return redirect('bmr:detail', bmr_id)
+    
+    # Gate: ending LC must be QA-approved (for phases that have LC)
+    phase_execution = user_phases.filter(phase__phase_name=phase_name).first()
+    if phase_execution and not phase_execution.ending_lc_ready:
+        messages.error(request, 'Cannot complete phase: Ending Line Clearance must be QA-approved first.')
         return redirect('bmr:detail', bmr_id)
     
     # Get comments from request
@@ -519,7 +1138,7 @@ def complete_phase_view(request, bmr_id, phase_name):
     elif request.user.role == 'finished_goods_store':
         return redirect('dashboards:finished_goods_dashboard')
     else:
-        return redirect('dashboards:operator_dashboard')
+        return redirect('dashboards:qa_dashboard')
 
 @login_required
 def reject_phase_view(request, bmr_id, phase_name):
@@ -806,3 +1425,63 @@ def reject_bmr_request(request, request_id):
         'bmr_request': bmr_request,
         'title': f'Reject BMR Request: {bmr_request.product.product_name}'
     })
+
+@login_required
+def save_granulation_data(request, bmr_id):
+    """Save granulation phase data"""
+    if request.method != 'POST':
+        return redirect('bmr:detail', bmr_id)
+    
+    bmr = get_object_or_404(BMR, id=bmr_id)
+    
+    # Get granulation phase
+    from workflow.models import BatchPhaseExecution, ProductionPhase
+    granulation_phase = ProductionPhase.objects.filter(
+        product_type=bmr.product.product_type,
+        phase_name='granulation'
+    ).first()
+    
+    if not granulation_phase:
+        messages.error(request, 'Granulation phase not found for this product type.')
+        return redirect('bmr:detail', bmr_id)
+    
+    # Get or create phase execution
+    granulation_execution, created = BatchPhaseExecution.objects.get_or_create(
+        bmr=bmr,
+        phase=granulation_phase,
+        defaults={'status': 'in_progress', 'started_by': request.user, 'started_date': timezone.now()}
+    )
+    
+    # Collect form data
+    granulation_data = {
+        'step_1_start_time': request.POST.get('step_1_start_time', ''),
+        'step_1_end_time': request.POST.get('step_1_end_time', ''),
+        'step_1_done_by': request.POST.get('step_1_done_by', ''),
+        'step_1_checked_by': request.POST.get('step_1_checked_by', ''),
+        'step_2_speed': request.POST.get('step_2_speed', ''),
+        'step_2_time': request.POST.get('step_2_time', ''),
+        'step_2_done_by': request.POST.get('step_2_done_by', ''),
+        'step_2_checked_by': request.POST.get('step_2_checked_by', ''),
+        'step_3_quantity': request.POST.get('step_3_quantity', ''),
+        'step_3_done_by': request.POST.get('step_3_done_by', ''),
+        'step_3_checked_by': request.POST.get('step_3_checked_by', ''),
+        'step_4_speed': request.POST.get('step_4_speed', ''),
+        'step_4_time': request.POST.get('step_4_time', ''),
+        'step_4_done_by': request.POST.get('step_4_done_by', ''),
+        'step_4_checked_by': request.POST.get('step_4_checked_by', ''),
+        'step_5_temperature': request.POST.get('step_5_temperature', ''),
+        'step_5_drying_time': request.POST.get('step_5_drying_time', ''),
+        'step_5_done_by': request.POST.get('step_5_done_by', ''),
+        'step_5_checked_by': request.POST.get('step_5_checked_by', ''),
+        'granulation_comments': request.POST.get('granulation_comments', ''),
+    }
+    
+    # Update phase data
+    if not granulation_execution.phase_data:
+        granulation_execution.phase_data = {}
+    
+    granulation_execution.phase_data['granulation'] = granulation_data
+    granulation_execution.save()
+    
+    messages.success(request, 'Granulation data saved successfully!')
+    return redirect('bmr:detail', bmr_id)

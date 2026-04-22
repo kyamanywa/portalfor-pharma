@@ -1,0 +1,339 @@
+{% comment %}
+templates/dashboards/forms/packaging_requisition_form.html
+Context: phase, req, packaging_materials, user_role, today_str
+{% endcomment %}
+{% load static %}
+{% load dashboard_filters %}
+
+{% with req_status=req.status|default:"not_started" %}
+
+{# ── STEP 1 ── Production Supervisor submits the request ───────────────────── #}
+{% if req_status == "not_started" and user_role in "production_supervisor,production_manager,packaging_store" %}
+<div class="card border-warning mt-3">
+  <div class="card-header bg-warning text-dark fw-bold">
+    <i class="fas fa-clipboard-list me-2"></i>
+    Packaging Materials Requisition — Step 1: Supervisor Request
+    <span class="badge bg-secondary float-end">Batch: {{ phase.bmr.batch_number }}</span>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'dashboards:packaging_req_action' phase.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="req_supervisor">
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Pack Size</label>
+          <select name="pack_size_selected" class="form-select" required>
+            <option value="">— Select pack size —</option>
+            {% if phase.bmr.product.pack_size_1_description %}
+              <option value="{{ phase.bmr.product.pack_size_1_code }} – {{ phase.bmr.product.pack_size_1_description }}">
+                {{ phase.bmr.product.pack_size_1_code }} – {{ phase.bmr.product.pack_size_1_description }}
+              </option>
+            {% endif %}
+            {% if phase.bmr.product.pack_size_2_description %}
+              <option value="{{ phase.bmr.product.pack_size_2_code }} – {{ phase.bmr.product.pack_size_2_description }}">
+                {{ phase.bmr.product.pack_size_2_code }} – {{ phase.bmr.product.pack_size_2_description }}
+              </option>
+            {% endif %}
+            {% if phase.bmr.product.pack_size_3_description %}
+              <option value="{{ phase.bmr.product.pack_size_3_code }} – {{ phase.bmr.product.pack_size_3_description }}">
+                {{ phase.bmr.product.pack_size_3_code }} – {{ phase.bmr.product.pack_size_3_description }}
+              </option>
+            {% endif %}
+            {% if phase.bmr.product.pack_size_4_description %}
+              <option value="{{ phase.bmr.product.pack_size_4_code }} – {{ phase.bmr.product.pack_size_4_description }}">
+                {{ phase.bmr.product.pack_size_4_code }} – {{ phase.bmr.product.pack_size_4_description }}
+              </option>
+            {% endif %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Supervisor Name</label>
+          <input type="text" name="supervisor_name" class="form-control" value="{{ user.get_full_name|default:user.username }}" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Date</label>
+          <input type="date" name="supervisor_sign_date" class="form-control" value="{{ today_str }}" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-warning">
+        <i class="fas fa-paper-plane me-1"></i> Submit Requisition Request
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+
+{# ── STEP 2 ── Production Manager approves ─────────────────────────────────── #}
+{% if req_status == "supervisor_requested" %}
+<div class="card border-primary mt-3">
+  <div class="card-header bg-primary text-white fw-bold">
+    <i class="fas fa-user-check me-2"></i>
+    Packaging Materials Requisition — Step 2: Manager Approval
+    <span class="badge bg-light text-dark float-end">Batch: {{ phase.bmr.batch_number }}</span>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-info py-2 mb-3">
+      <strong>Submitted by:</strong> {{ req.supervisor_name }} &nbsp;|&nbsp;
+      <strong>Date:</strong> {{ req.supervisor_sign_date }} &nbsp;|&nbsp;
+      <strong>Pack size:</strong> {{ req.pack_size_selected }}
+    </div>
+
+    {% if user_role == "production_manager" or request.user.is_staff %}
+    <form method="post" action="{% url 'dashboards:packaging_req_action' phase.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="req_manager_approve">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Production Manager Name</label>
+          <input type="text" name="manager_name" class="form-control" value="{{ user.get_full_name|default:user.username }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Approval Date</label>
+          <input type="date" name="manager_sign_date" class="form-control" value="{{ today_str }}" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-check-circle me-1"></i> Approve Requisition
+      </button>
+    </form>
+    {% else %}
+    <div class="alert alert-warning py-2 mb-0">
+      <i class="fas fa-hourglass-half me-1"></i> Awaiting Production Manager approval.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+
+{# ── STEP 3 ── Packaging Store fills AR numbers ─────────────────────────────── #}
+{% if req_status == "manager_approved" or req_status == "store_filled" %}
+<div class="card border-success mt-3">
+  <div class="card-header bg-success text-white fw-bold">
+    <i class="fas fa-warehouse me-2"></i>
+    Packaging Materials Requisition — Step 3: Store Issue
+    <span class="badge bg-light text-dark float-end">Batch: {{ phase.bmr.batch_number }}</span>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-secondary py-2 mb-3">
+      <strong>Approved by:</strong> {{ req.manager_name }} &nbsp;|&nbsp;
+      <strong>Date:</strong> {{ req.manager_sign_date }} &nbsp;|&nbsp;
+      <strong>Pack size:</strong> {{ req.pack_size_selected }}
+    </div>
+
+    {% if req_status == "manager_approved" and user_role == "packaging_store" %}
+    <form method="post" action="{% url 'dashboards:packaging_req_action' phase.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="req_store_fill">
+
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-sm">
+          <thead class="table-dark">
+            <tr>
+              <th>#</th>
+              <th>Item Code</th>
+              <th>Description</th>
+              <th>Units</th>
+              <th>AR Number</th>
+              <th>Total Batch Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mat in packaging_materials %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ mat.item_code }}</td>
+              <td>{{ mat.item_description }}</td>
+              <td>{{ mat.units }}</td>
+              <td>
+                <input type="text" name="item_{{ mat.id }}_ar_no" class="form-control form-control-sm"
+                       placeholder="AR-XXXX" required>
+              </td>
+              <td>
+                <input type="number" name="item_{{ mat.id }}_qty" class="form-control form-control-sm"
+                       placeholder="0" step="0.001" required>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted">No packaging materials configured for this product.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Store In-charge Name</label>
+          <input type="text" name="store_incharge_sign" class="form-control" value="{{ user.get_full_name|default:user.username }}" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Store In-charge Date</label>
+          <input type="date" name="store_incharge_date" class="form-control" value="{{ today_str }}" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Packaging Supervisor Name</label>
+          <input type="text" name="packaging_supervisor_sign" class="form-control" placeholder="Name of supervisor witnessing" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Packaging Supervisor Date</label>
+          <input type="date" name="packaging_supervisor_date" class="form-control" value="{{ today_str }}" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success">
+        <i class="fas fa-boxes me-1"></i> Submit to QA for Verification
+      </button>
+    </form>
+
+    {% elif req_status == "store_filled" %}
+    {# Read-only view of what was filled #}
+    <div class="alert alert-info py-2 mb-3">
+      <i class="fas fa-check me-1"></i> Submitted to QA. Awaiting QA verification.
+    </div>
+    <div class="table-responsive mb-2">
+      <table class="table table-bordered table-sm">
+        <thead class="table-secondary">
+          <tr><th>#</th><th>Item Code</th><th>Description</th><th>Units</th><th>AR Number</th><th>Total Batch Qty</th></tr>
+        </thead>
+        <tbody>
+          {% for mat in packaging_materials %}
+          {% with sid=mat.id|stringformat:"s" %}
+          {% with item_entry=req.items|dict_get:sid %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ mat.item_code }}</td>
+            <td>{{ mat.item_description }}</td>
+            <td>{{ mat.units }}</td>
+            <td>{{ item_entry.ar_no|default:"—" }}</td>
+            <td>{{ item_entry.total_batch_qty|default:"—" }}</td>
+          </tr>
+          {% endwith %}
+          {% endwith %}
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted">No materials configured.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="mb-0"><strong>Store In-charge:</strong> {{ req.store_incharge_sign }} ({{ req.store_incharge_date }}) &nbsp;|&nbsp;
+    <strong>Packaging Supervisor:</strong> {{ req.packaging_supervisor_sign }} ({{ req.packaging_supervisor_date }})</p>
+
+    {% else %}
+    {# manager_approved but not packaging_store — waiting for store #}
+    <div class="alert alert-warning py-2 mb-0">
+      <i class="fas fa-hourglass-half me-1"></i> Awaiting Packaging Store to fill AR numbers.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+
+{# ── STEP 4 ── QA verifies ──────────────────────────────────────────────────── #}
+{% if req_status == "store_filled" and user_role == "qa" %}
+<div class="card border-danger mt-3">
+  <div class="card-header bg-danger text-white fw-bold">
+    <i class="fas fa-microscope me-2"></i>
+    Packaging Materials Requisition — Step 4: QA Verification
+    <span class="badge bg-light text-dark float-end">Batch: {{ phase.bmr.batch_number }}</span>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-secondary py-2 mb-3">
+      <strong>Store In-charge:</strong> {{ req.store_incharge_sign }} ({{ req.store_incharge_date }}) &nbsp;|&nbsp;
+      <strong>Packaging Supervisor:</strong> {{ req.packaging_supervisor_sign }} ({{ req.packaging_supervisor_date }})
+    </div>
+
+    <div class="table-responsive mb-3">
+      <table class="table table-bordered table-sm">
+        <thead class="table-dark">
+          <tr><th>#</th><th>Item Code</th><th>Description</th><th>Units</th><th>AR Number</th><th>Total Batch Qty</th></tr>
+        </thead>
+        <tbody>
+          {% for mat in packaging_materials %}
+          {% with sid=mat.id|stringformat:"s" %}
+          {% with item_entry=req.items|dict_get:sid %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ mat.item_code }}</td>
+            <td>{{ mat.item_description }}</td>
+            <td>{{ mat.units }}</td>
+            <td>{{ item_entry.ar_no|default:"—" }}</td>
+            <td>{{ item_entry.total_batch_qty|default:"—" }}</td>
+          </tr>
+          {% endwith %}
+          {% endwith %}
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted">No materials configured.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <form method="post" action="{% url 'dashboards:packaging_req_action' phase.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="req_qa_verify">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">QA Name</label>
+          <input type="text" name="qa_sign" class="form-control" value="{{ user.get_full_name|default:user.username }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Verification Date</label>
+          <input type="date" name="qa_sign_date" class="form-control" value="{{ today_str }}" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-stamp me-1"></i> Verify &amp; Approve Materials Release
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+
+{# ── COMPLETE: QA verified — show summary ──────────────────────────────────── #}
+{% if req_status == "qa_verified" %}
+<div class="card border-success mt-3">
+  <div class="card-header bg-success text-white fw-bold">
+    <i class="fas fa-check-double me-2"></i>
+    Packaging Materials Requisition — Completed &amp; QA Verified
+    <span class="badge bg-light text-dark float-end">Batch: {{ phase.bmr.batch_number }}</span>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4">
+        <small class="text-muted">Pack Size</small>
+        <div class="fw-semibold">{{ req.pack_size_selected|default:"—" }}</div>
+      </div>
+      <div class="col-md-4">
+        <small class="text-muted">Supervisor</small>
+        <div class="fw-semibold">{{ req.supervisor_name|default:"—" }} ({{ req.supervisor_sign_date|default:"" }})</div>
+      </div>
+      <div class="col-md-4">
+        <small class="text-muted">Manager Approved</small>
+        <div class="fw-semibold">{{ req.manager_name|default:"—" }} ({{ req.manager_sign_date|default:"" }})</div>
+      </div>
+    </div>
+    <hr class="my-2">
+    <div class="row">
+      <div class="col-md-4">
+        <small class="text-muted">Store In-charge</small>
+        <div class="fw-semibold">{{ req.store_incharge_sign|default:"—" }} ({{ req.store_incharge_date|default:"" }})</div>
+      </div>
+      <div class="col-md-4">
+        <small class="text-muted">Packaging Supervisor</small>
+        <div class="fw-semibold">{{ req.packaging_supervisor_sign|default:"—" }} ({{ req.packaging_supervisor_date|default:"" }})</div>
+      </div>
+      <div class="col-md-4">
+        <small class="text-muted">QA Verified By</small>
+        <div class="fw-semibold text-success">{{ req.qa_sign|default:"—" }} ({{ req.qa_sign_date|default:"" }})</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endwith %}

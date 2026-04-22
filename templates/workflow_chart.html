@@ -9,15 +9,12 @@
     <style>
         .workflow-card { margin-bottom: 20px; }
         .phase-completed { background-color: #d4edda; border-color: #c3e6cb; }
-        .phase-current { background-color: #cce7ff; border-color: #4dabf7; animation: pulse 2s infinite; }
+        .phase-current { background-color: #cce7ff; border-color: #4dabf7; }
+        /* Removed pulse animation */
         .phase-pending { background-color: #f8f9fa; border-color: #dee2e6; }
         .phase-rollback { background-color: #f8d7da; border-color: #f5c6cb; }
         
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
-        }
+        /* Animations removed */
         
         .arrow { font-size: 1.5em; color: #007bff; margin: 10px 0; }
     </style>

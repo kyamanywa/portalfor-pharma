@@ -11,6 +11,7 @@ from .utils import (
     product_is_capsule_like, product_is_ointment_like,
     get_packing_phase_for_product as util_get_packing_phase_for_product
 )
+from .line_clearance_items import has_line_clearance
 
 logger = logging.getLogger('workflow')
 
@@ -56,6 +57,14 @@ class WorkflowService:
                         continue  # Skip this phase
                     else:
                         logger.info(f"Including coating phase for coated tablet: {bmr.product.product_name}")
+                
+                # POST-COATING SORTING LOGIC: Skip for uncoated tablets (only needed after coating)
+                if product_is_tablet_like(bmr.product) and template_phase.phase_name == PHASE_NAMES['POST_COATING_SORTING']:
+                    if not product_requires_coating(bmr.product):
+                        logger.info(f"Skipping post_coating_sorting for uncoated tablet: {bmr.product.product_name}")
+                        continue
+                    else:
+                        logger.info(f"Including post_coating_sorting for coated tablet: {bmr.product.product_name}")
                 
                 # PACKING LOGIC: Skip wrong packing phase for tablet types
                 if product_is_tablet_like(bmr.product) and template_phase.phase_name in [PHASE_NAMES['BLISTER_PACKING'], PHASE_NAMES['BULK_PACKING']]:
@@ -104,11 +113,24 @@ class WorkflowService:
                     initial_status = PHASE_STATUSES['NOT_READY']
                 
                 # Create the batch phase execution
+                # Set LC status for phases that have line clearance
+                phase_has_lc = has_line_clearance(template_phase.phase_name)
+                lc_defaults = {}
+                if phase_has_lc:
+                    lc_defaults['beginning_lc_status'] = 'not_started'
+                    lc_defaults['ending_lc_status'] = 'not_started'
+                
+                # Phases with role-gated process form QA signing
+                PHASES_WITH_PROCESS_SIGNING = ['granulation', 'material_dispensing']
+                if template_phase.phase_name in PHASES_WITH_PROCESS_SIGNING:
+                    lc_defaults['process_signing_status'] = 'not_started'
+                
                 BatchPhaseExecution.objects.get_or_create(
                     bmr=bmr,
                     phase=phase,
                     defaults={
-                        'status': initial_status
+                        'status': initial_status,
+                        **lc_defaults,
                     }
                 )
 
@@ -200,6 +222,14 @@ class WorkflowService:
                 bmr=bmr,
                 phase__phase_name=phase_name
             )
+            
+            # Gate: ending LC must be QA-approved (or not required) before completing
+            if not execution.ending_lc_ready:
+                logger.warning(
+                    f"Cannot complete phase {phase_name} for BMR {bmr.bmr_number} "
+                    f"— ending LC status is '{execution.ending_lc_status}', needs 'qa_approved'"
+                )
+                return None
             
             # Mark current phase as completed
             execution.status = 'completed'
@@ -465,20 +495,30 @@ class WorkflowService:
     def trigger_next_phase(cls, bmr, current_phase):
         """Trigger the next phase in the workflow after completing current phase"""
         try:
+            logger.info(f"[WORKFLOW DEBUG] trigger_next_phase called for BMR {bmr.batch_number}, phase: {current_phase.phase_name}")
+            
             current_execution = BatchPhaseExecution.objects.get(
                 bmr=bmr,
                 phase=current_phase
             )
             
+            logger.info(f"[WORKFLOW DEBUG] Current execution status: {current_execution.status}, phase_order: {current_execution.phase.phase_order}")
+            
             # QUARANTINE LOGIC: Check if this phase should go to quarantine
             phases_that_bypass_quarantine = [
                 'bmr_creation', 'regulatory_approval',  # Administrative phases
-                'raw_material_release', 'material_dispensing', 'packaging_material_release',  # Material handling
+                'raw_material_release', 'material_dispensing', 'Raw_Material_Release', 'Material_Dispensing',  # Material handling (case variations)
+                'packaging_material_release', 'Packaging_Material_Release',  # Material handling
                 'blister_packing', 'bulk_packing', 'secondary_packaging',  # All packing phases bypass quarantine
                 'final_qa', 'finished_goods_store'  # Final phases
             ]
             
-            if current_execution.phase.phase_name not in phases_that_bypass_quarantine:
+            current_phase_name_lower = current_execution.phase.phase_name.lower()
+            bypass_quarantine = any(phase.lower() == current_phase_name_lower for phase in phases_that_bypass_quarantine)
+            
+            logger.info(f"[WORKFLOW DEBUG] Phase '{current_phase_name_lower}' bypass_quarantine: {bypass_quarantine}")
+            
+            if not bypass_quarantine:
                 logger.info(f"Phase {current_execution.phase.phase_name} completed for BMR {bmr.batch_number}, sending to quarantine")
                 return cls._send_to_quarantine(bmr, current_execution)
             
@@ -515,11 +555,15 @@ class WorkflowService:
                     return True
             
             # STANDARD LOGIC: For all other phases, activate next in sequence
+            logger.info(f"[WORKFLOW DEBUG] Looking for next phase after phase_order {current_execution.phase.phase_order}")
+            
             next_phase = BatchPhaseExecution.objects.filter(
                 bmr=bmr,
                 phase__phase_order__gt=current_execution.phase.phase_order,
                 status='not_ready'
             ).order_by('phase__phase_order').first()
+            
+            logger.info(f"[WORKFLOW DEBUG] Found next_phase: {next_phase.phase.phase_name if next_phase else 'None'}, status: {next_phase.status if next_phase else 'N/A'}")
             
             if next_phase:
                 # Check prerequisites BEFORE changing status
@@ -528,21 +572,26 @@ class WorkflowService:
                     phase__phase_order__lt=next_phase.phase.phase_order
                 )
                 
+                logger.info(f"[WORKFLOW DEBUG] Checking {prerequisite_phases.count()} prerequisite phases")
+                
                 # Check if all prerequisite phases are completed or skipped
                 prerequisites_met = True
                 for prereq in prerequisite_phases:
                     if prereq.status not in ['completed', 'skipped']:
                         prerequisites_met = False
+                        logger.warning(f"[WORKFLOW DEBUG] Prerequisite NOT met: {prereq.phase.phase_name} (status: {prereq.status})")
                         break
                 
                 if prerequisites_met:
                     next_phase.status = 'pending' 
                     next_phase.save()
-                    logger.info(f"Activated next sequential phase: {next_phase.phase.phase_name} for BMR {bmr.batch_number}")
+                    logger.info(f"[WORKFLOW DEBUG] ✓ Activated next sequential phase: {next_phase.phase.phase_name} for BMR {bmr.batch_number}")
                     return True
                 else:
                     logger.warning(f"Cannot activate {next_phase.phase.phase_name} for BMR {bmr.batch_number} - prerequisites not met")
                     return False
+            else:
+                logger.warning(f"[WORKFLOW DEBUG] No next phase found for BMR {bmr.batch_number}")
             
             logger.info(f"No more phases to trigger for BMR {bmr.batch_number} - workflow complete")
             return False
@@ -611,7 +660,7 @@ class WorkflowService:
         role_phase_mapping = {
             'qa': ['bmr_creation', 'final_qa'],
             'regulatory': ['regulatory_approval'],
-            'store_manager': ['raw_material_release'],  # Store Manager handles raw material release
+            'store_manager': ['raw_material_release'],
             'dispensing_operator': ['material_dispensing'],  # Dispensing Operator handles material dispensing
             'packaging_store': ['packaging_material_release'],  # Packaging store handles packaging material release
             'finished_goods_store': ['finished_goods_store'],  # Finished Goods Store only handles finished goods storage
@@ -625,7 +674,7 @@ class WorkflowService:
             'filling_operator': ['filling'],
             'tube_filling_operator': ['tube_filling'],
             'packing_operator': ['blister_packing', 'bulk_packing', 'secondary_packaging'],
-            'sorting_operator': ['sorting'],
+            'sorting_operator': ['sorting', 'post_coating_sorting'],
         }
         
         allowed_phases = role_phase_mapping.get(user_role, [])

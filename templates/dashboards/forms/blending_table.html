@@ -1,0 +1,368 @@
+<!-- Blending/Lubrication Process Table Component -->
+<!-- This table shows the blending process steps for the BMR (Page 17) -->
+<!-- Supports edit_mode: 'edit' (fillable form) or 'read' (view only) -->
+
+{% if edit_mode == 'edit' %}
+<style>
+    .blending-input {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+        font-size: 11px;
+        background-color: #e3f2fd;
+    }
+    .blending-input:focus {
+        border-color: #007bff;
+        background-color: #bbdefb;
+        outline: none;
+    }
+    .blending-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .blending-signature {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+        font-size: 11px;
+        background-color: #e3f2fd;
+    }
+</style>
+{% endif %}
+
+<!-- 1. Equipment Used for Sifting and Blending -->
+<div style="margin-bottom: 10px; font-weight: bold;">1. Equipment used for Sifting and Blending</div>
+<table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 20px; font-size: 11px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #000; padding: 5px; text-align: left; width: 40%;">Equipment Name</th>
+            <th style="border: 1px solid #000; padding: 5px; text-align: left; width: 30%;">Equipment ID No.</th>
+            <th style="border: 1px solid #000; padding: 5px; text-align: left; width: 30%;">Mark (Equipment used)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="border: 1px solid #000; padding: 5px;">Double Cone Blender</td>
+            <td style="border: 1px solid #000; padding: 5px;">T-04</td>
+            <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                {% if edit_mode == 'edit' %}
+                <input type="checkbox" name="equip_dcb_t04" class="blending-checkbox" {% if blending_data.equip_dcb_t04 %}checked{% endif %}>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #000; padding: 5px;">Double Cone Blender</td>
+            <td style="border: 1px solid #000; padding: 5px;">T-09</td>
+            <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                {% if edit_mode == 'edit' %}
+                <input type="checkbox" name="equip_dcb_t09" class="blending-checkbox" {% if blending_data.equip_dcb_t09 %}checked{% endif %}>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #000; padding: 5px;">Double Cone Blender</td>
+            <td style="border: 1px solid #000; padding: 5px;">T-17</td>
+            <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                {% if edit_mode == 'edit' %}
+                <input type="checkbox" name="equip_dcb_t17" class="blending-checkbox" {% if blending_data.equip_dcb_t17 %}checked{% endif %}>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #000; padding: 5px;">Vibrosifter</td>
+            <td style="border: 1px solid #000; padding: 5px;">T-66</td>
+            <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                {% if edit_mode == 'edit' %}
+                <input type="checkbox" name="equip_vs_t66" class="blending-checkbox" {% if blending_data.equip_vs_t66 %}checked{% endif %}>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #000; padding: 5px;">Vibrosifter</td>
+            <td style="border: 1px solid #000; padding: 5px;">T-79</td>
+            <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                {% if edit_mode == 'edit' %}
+                <input type="checkbox" name="equip_vs_t79" class="blending-checkbox" {% if blending_data.equip_vs_t79 %}checked{% endif %}>
+                {% endif %}
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- 2. Sifting Instructions -->
+<div style="margin-bottom: 5px;">2. Sift using Mechanical Sifter with sieves indicated in the table below then transfer into Double Cone Blender.</div>
+<div style="margin-bottom: 5px; padding-left: 20px;">a. 
+    {% if edit_mode == 'edit' %}
+    <input type="text" name="dried_granules_kg" class="blending-input" style="width: 100px; display: inline-block;" 
+           placeholder="Kg" value="{{ blending_data.dried_granules_kg|default:'' }}">
+    {% else %}
+    <span style="text-decoration: underline;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+    {% endif %}
+    Kg of Dried Granules.
+</div>
+<div style="margin-bottom: 20px; padding-left: 20px;">b. {{ bmr.product.magnesium_stearate_qty|default:"256gm" }} of Magnesium Stearate.</div>
+
+<!-- 3. Recoveries -->
+<div style="margin-bottom: 5px;">3. Add the Recoveries, if any (indicate quantities and batch Numbers)</div>
+<table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 20px; font-size: 11px;">
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px; width: 15%; font-weight: bold;">Batch No.</td>
+        <td style="border: 1px solid #000; padding: 5px; width: 28%;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="recovery_batch_1" class="blending-input" value="{{ blending_data.recovery_batch_1|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px; width: 28%;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="recovery_batch_2" class="blending-input" value="{{ blending_data.recovery_batch_2|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px; width: 29%;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="recovery_batch_3" class="blending-input" value="{{ blending_data.recovery_batch_3|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px; font-weight: bold;">Quantity</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="recovery_qty_1" class="blending-input" value="{{ blending_data.recovery_qty_1|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="recovery_qty_2" class="blending-input" value="{{ blending_data.recovery_qty_2|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="recovery_qty_3" class="blending-input" value="{{ blending_data.recovery_qty_3|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- Ingredient Sifting Table -->
+<table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 20px; font-size: 11px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #000; padding: 5px; width: 5%;">S/N</th>
+            <th style="border: 1px solid #000; padding: 5px; width: 20%;">Ingredient</th>
+            <th style="border: 1px solid #000; padding: 5px; width: 10%;">Sift through<br>mesh size</th>
+            <th style="border: 1px solid #000; padding: 5px; width: 10%;">Qty added<br>(Kg)</th>
+            <th style="border: 1px solid #000; padding: 5px; width: 18%;">Added by<br>Operator<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 5px; width: 18%;">Checked by<br>Supervisor<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 5px; width: 19%;">Verified by QA<br>(Sign & Date)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Row 1: Dried Granules -->
+        <tr>
+            <td style="border: 1px solid #000; padding: 8px; text-align: center;">1</td>
+            <td style="border: 1px solid #000; padding: 8px;">Dried Granules</td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing1_mesh_size" class="blending-input" value="{{ blending_data.ing1_mesh_size|default:'' }}">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing1_qty" class="blending-input" value="{{ blending_data.ing1_qty|default:'' }}">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing1_added_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing1_added_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing1_checked_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing1_checked_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing1_qa" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing1_qa_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+        </tr>
+        <!-- Row 2: Magnesium Stearate -->
+        <tr>
+            <td style="border: 1px solid #000; padding: 8px; text-align: center;">2</td>
+            <td style="border: 1px solid #000; padding: 8px;">Magnesium Stearate</td>
+            <td style="border: 1px solid #000; padding: 8px;">{{ bmr.product.sieve_size_lubrication|default:"#40" }}</td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing2_qty" class="blending-input" value="{{ blending_data.ing2_qty|default:'' }}">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing2_added_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing2_added_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing2_checked_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing2_checked_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing2_qa" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing2_qa_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+        </tr>
+        <!-- Row 3: Recoveries -->
+        <tr>
+            <td style="border: 1px solid #000; padding: 8px; text-align: center;">3</td>
+            <td style="border: 1px solid #000; padding: 8px;">Recoveries</td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing3_mesh_size" class="blending-input" value="{{ blending_data.ing3_mesh_size|default:'' }}">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing3_qty" class="blending-input" value="{{ blending_data.ing3_qty|default:'' }}">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing3_added_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing3_added_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing3_checked_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing3_checked_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="ing3_qa" class="blending-signature" placeholder="Sign">
+                <input type="date" name="ing3_qa_date" class="blending-input" style="margin-top: 2px;">
+                {% endif %}
+            </td>
+        </tr>
+        <!-- Total Row -->
+        <tr>
+            <td colspan="3" style="border: 1px solid #000; padding: 8px; font-weight: bold;">Total Weight of dry ingredients added</td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                {% if edit_mode == 'edit' %}
+                <input type="text" name="total_dry_weight" class="blending-input" value="{{ blending_data.total_dry_weight|default:'' }}">
+                {% endif %}
+            </td>
+            <td colspan="3" style="border: 1px solid #000; padding: 8px;"></td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- 4. Mixing -->
+<div style="margin-bottom: 5px;">4. After all ingredients have been added to the double cone blender, mix for {{ bmr.product.blending_time|default:"20 minutes" }}.</div>
+<table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 10px; font-size: 11px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #000; padding: 5px;">Start time</th>
+            <th style="border: 1px solid #000; padding: 5px;">Completion<br>time</th>
+            <th style="border: 1px solid #000; padding: 5px;">Time<br>taken</th>
+            <th style="border: 1px solid #000; padding: 5px;">Specifications</th>
+            <th style="border: 1px solid #000; padding: 5px;">Deviation</th>
+            <th style="border: 1px solid #000; padding: 5px;">Done by<br>Operator<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 5px;">Checked by<br>Supervisor<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 5px;">Verified by<br>QA (Sign &<br>Date)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            {% if edit_mode == 'edit' %}
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="time" name="mix_start_time" class="blending-input" value="{{ blending_data.mix_start_time|default:'' }}">
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="time" name="mix_end_time" class="blending-input" value="{{ blending_data.mix_end_time|default:'' }}">
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="text" name="mix_time_taken" class="blending-input" placeholder="mins" value="{{ blending_data.mix_time_taken|default:'' }}">
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="text" name="mix_specifications" class="blending-input" value="{{ blending_data.mix_specifications|default:'' }}">
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="text" name="mix_deviation" class="blending-input" value="{{ blending_data.mix_deviation|default:'' }}">
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="text" name="mix_done_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="mix_done_date" class="blending-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="text" name="mix_checked_by" class="blending-signature" placeholder="Sign">
+                <input type="date" name="mix_checked_date" class="blending-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 8px;">
+                <input type="text" name="mix_qa" class="blending-signature" placeholder="Sign">
+                <input type="date" name="mix_qa_date" class="blending-input" style="margin-top: 2px;">
+            </td>
+            {% else %}
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            <td style="border: 1px solid #000; padding: 20px;"></td>
+            {% endif %}
+        </tr>
+    </tbody>
+</table>
+
+<div style="margin-bottom: 20px; font-size: 11px;">NB: If recoveries are added, Calculate the new batch size:</div>
+
+<!-- Final Signatures -->
+<table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 11px;">
+    <tr>
+        <td style="border: 1px solid #000; padding: 10px; font-weight: bold; width: 33%;">Done by Operator (Sign & Date)</td>
+        <td style="border: 1px solid #000; padding: 10px; font-weight: bold; width: 33%;">Checked by Supervisor (Sign & Date)</td>
+        <td style="border: 1px solid #000; padding: 10px; font-weight: bold; width: 34%;">Verified by QA (Sign & Date)</td>
+    </tr>
+    <tr>
+        {% if edit_mode == 'edit' %}
+        <td style="border: 1px solid #000; padding: 10px;">
+            <input type="text" name="final_done_by" class="blending-signature" placeholder="Operator Sign">
+            <input type="date" name="final_done_date" class="blending-input" style="margin-top: 2px;">
+        </td>
+        <td style="border: 1px solid #000; padding: 10px;">
+            <input type="text" name="final_checked_by" class="blending-signature" placeholder="Supervisor Sign">
+            <input type="date" name="final_checked_date" class="blending-input" style="margin-top: 2px;">
+        </td>
+        <td style="border: 1px solid #000; padding: 10px;">
+            <input type="text" name="final_qa" class="blending-signature" placeholder="QA Sign">
+            <input type="date" name="final_qa_date" class="blending-input" style="margin-top: 2px;">
+        </td>
+        {% else %}
+        <td style="border: 1px solid #000; padding: 20px;"></td>
+        <td style="border: 1px solid #000; padding: 20px;"></td>
+        <td style="border: 1px solid #000; padding: 20px;"></td>
+        {% endif %}
+    </tr>
+</table>
+
+{% if edit_mode == 'edit' %}
+<!-- Blending Comments -->
+<div style="margin-top: 10px;">
+    <strong>Comments:</strong>
+    <textarea name="blending_comments" class="blending-input" style="width: 100%; min-height: 50px; text-align: left; resize: vertical;" 
+              placeholder="Enter any additional comments...">{{ blending_data.blending_comments|default:'' }}</textarea>
+</div>
+{% endif %}

@@ -1,0 +1,95 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block object-tools-items %}
+{{ block.super }}
+{% if original %}
+<li>
+    <a href="{{ visual_editor_url }}" class="viewsitelink" target="_blank" 
+       style="background: #007cba; color: white; padding: 10px 15px; border-radius: 4px; text-decoration: none; margin-right: 10px;">
+        🎨 Visual Editor
+    </a>
+</li>
+<li>
+    <a href="{{ preview_url }}" class="viewsitelink" target="_blank"
+       style="background: #28a745; color: white; padding: 10px 15px; border-radius: 4px; text-decoration: none;">
+        👁️ Preview Template
+    </a>
+</li>
+{% endif %}
+{% endblock %}
+
+{% block field_sets %}
+{{ block.super }}
+
+{% if original %}
+<div class="module aligned" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+    <h2>💡 Template Building</h2>
+    <div style="margin-bottom: 15px;">
+        <p><strong>Visual Editor:</strong> Build your BMR template using drag-and-drop interface instead of JSON code.</p>
+        <ul style="margin-left: 20px; color: #666;">
+            <li>Add sections, fields, and tables visually</li>
+            <li>Organize content across multiple pages</li>
+            <li>Configure data sources and validation</li>
+            <li>Preview exactly how operators will see the forms</li>
+        </ul>
+    </div>
+    
+    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+        <a href="{{ visual_editor_url }}" class="button" target="_blank"
+           style="background: #007cba; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+            🎨 <span>Open Visual Editor</span>
+        </a>
+        
+        <a href="{{ preview_url }}" class="button" target="_blank"
+           style="background: #28a745; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+            👁️ <span>Preview Template</span>
+        </a>
+        
+        <div style="padding: 12px; background: white; border: 1px solid #ddd; border-radius: 6px;">
+            <strong>Sections:</strong> {{ original.sections.count|default:"0" }} |
+            <strong>Fields:</strong> 
+            {% with original.sections.all as sections %}
+                {% if sections %}
+                    {{ sections|length|add:sections.0.fields.count|default:"0" }}
+                {% else %}
+                    0
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+</div>
+
+{% if original.structure %}
+<div class="module aligned" style="margin-top: 20px;">
+    <h2>⚙️ Advanced (JSON Structure)</h2>
+    <div class="form-row">
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <strong>⚠️ Legacy JSON Format:</strong> This template still has JSON structure data. 
+            Use the Visual Editor above to recreate the template in the new format, 
+            then this legacy data will be automatically replaced.
+        </div>
+        <textarea readonly style="width: 100%; height: 200px; font-family: monospace; background: #f8f9fa; border: 1px solid #ddd; padding: 10px;">{{ original.structure|pprint }}</textarea>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="module aligned" style="margin-top: 20px; padding: 20px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #007cba;">
+    <h2>📝 Next Steps</h2>
+    <p>After saving this template, you'll be able to use the <strong>Visual Editor</strong> to build your BMR pages with drag-and-drop interface.</p>
+    <p><em>💡 Tip: Give your template a descriptive name and make sure to check "Is active" if you want to use it immediately.</em></p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block submit_buttons_bottom %}
+{{ block.super }}
+{% if original %}
+<div style="text-align: center; margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 6px;">
+    <p style="margin: 0; color: #007cba; font-weight: bold;">
+        💡 Remember to use the Visual Editor above to build your template content!
+    </p>
+</div>
+{% endif %}
+{% endblock %}

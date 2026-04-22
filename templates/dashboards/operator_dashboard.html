@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'dashboards/dashboard_base.html' %}
 
 {% block title %}{{ dashboard_title }} - Kampala Pharmaceutical Industries{% endblock %}
 
@@ -9,6 +9,95 @@
     .bg-expired { background-color: #fd7e14 !important; }
     .bg-overrun { background-color: #dc3545 !important; }
     
+    /* Sidebar Styling */
+    .bmr-sidebar {
+        max-height: 450px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    .bmr-sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .bmr-sidebar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .bmr-sidebar::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    .bmr-sidebar::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    
+    .bmr-list-item {
+        border: 1px solid #e0e0e0;
+        border-left: 4px solid #007bff;
+        border-radius: 4px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        background: white;
+    }
+    
+    .bmr-list-item:hover {
+        background: #f8f9fa;
+        border-left-color: #0056b3;
+    }
+    
+    .bmr-list-item.active {
+        background: #e7f3ff;
+        border-left-color: #0056b3;
+        border-left-width: 5px;
+    }
+    
+    /* Filter Buttons */
+    .sidebar-filter-btn {
+        text-align: left;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #495057;
+        font-weight: 500;
+    }
+    
+    .sidebar-filter-btn:hover {
+        background: #f8f9fa;
+        border-color: #007bff;
+        color: #007bff;
+    }
+    
+    .sidebar-filter-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        border-color: #667eea;
+        font-weight: 600;
+    }
+    
+    .sidebar-filter-btn i {
+        width: 20px;
+    }
+    
+    /* Cards - No Animation */
+    .card.shadow-sm {
+        /* Static - no animations */
+    }
+    
+    .card.shadow-sm:hover {
+        /* Static - no animations */
+    }
+    
+    /* Statistics Cards - No Animation */
+    .bg-primary, .bg-success, .bg-info, .bg-warning {
+        /* Static - no animations */
+    }
+    
+    .bg-primary:hover, .bg-success:hover, .bg-info:hover, .bg-warning:hover {
+        /* Static - no animations */
+    }
 
 </style>
 {% endblock %}
@@ -16,7 +105,7 @@
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Header -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -33,84 +122,166 @@
         </div>
     </div>
 
-    <!-- Quick Navigation -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-center">
-                        <nav class="btn-group" role="group">
-                            <a href="{% url 'dashboards:dashboard_home' %}" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-home me-1"></i>Dashboard
-                            </a>
-                            <a href="{% url 'reports:timeline_list' %}" class="btn btn-outline-info btn-sm">
-                                <i class="fas fa-project-diagram me-1"></i>Visual Timeline
-                            </a>
-                            <a href="{% url 'reports:comments_report' %}" class="btn btn-outline-success btn-sm">
-                                <i class="fas fa-comments me-1"></i>Comments
-                            </a>
-                            <a href="{% url 'bmr:list' %}" class="btn btn-outline-warning btn-sm">
-                                <i class="fas fa-file-medical me-1"></i>BMRs
-                            </a>
-                        </nav>
+    <!-- Main Layout: Sidebar + Content -->
+    <div class="row">
+        <!-- LEFT SIDEBAR -->
+        <div class="col-md-3 mb-4">
+            <!-- Quick Navigation -->
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0"><i class="fas fa-bars me-2"></i>Quick Navigation</h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'dashboards:dashboard_home' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                        <a href="{% url 'reports:timeline_list' %}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-project-diagram me-1"></i>Visual Timeline
+                        </a>
+                        <a href="{% url 'reports:comments_report' %}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-comments me-1"></i>Comments
+                        </a>
+                        <a href="{% url 'bmr:list' %}" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-file-medical me-1"></i>All BMRs
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filter by Status</h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="?" class="btn btn-sm sidebar-filter-btn {% if not request.GET.status and not request.GET.filter %}active{% endif %}">
+                            <i class="fas fa-list me-2"></i>All Tasks
+                        </a>
+                        <a href="?status=pending" class="btn btn-sm sidebar-filter-btn {% if request.GET.status == 'pending' %}active{% endif %}">
+                            <i class="fas fa-clock me-2"></i>Pending
+                        </a>
+                        <a href="?status=in_progress" class="btn btn-sm sidebar-filter-btn {% if request.GET.status == 'in_progress' %}active{% endif %}">
+                            <i class="fas fa-spinner me-2"></i>In Progress
+                        </a>
+                        <a href="?status=completed" class="btn btn-sm sidebar-filter-btn {% if request.GET.status == 'completed' %}active{% endif %}">
+                            <i class="fas fa-check-circle me-2"></i>Completed
+                        </a>
+                        <a href="?filter=total_batches" class="btn btn-sm sidebar-filter-btn {% if request.GET.filter == 'total_batches' %}active{% endif %}">
+                            <i class="fas fa-boxes me-2"></i>All Batches
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- BMR List -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>My BMRs <span class="badge bg-light text-dark">{{ my_phases|length }}</span></h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="bmr-sidebar">
+                        {% if my_phases %}
+                            {% for phase in my_phases %}
+                            <div class="bmr-list-item" onclick="scrollToPhase('phase-{{ phase.id }}')">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <div>
+                                        <strong class="text-primary" style="font-size: 0.9rem;">{{ phase.bmr.batch_number }}</strong>
+                                    </div>
+                                    <div>
+                                        {% if phase.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">Pending</span>
+                                        {% elif phase.status == 'in_progress' %}
+                                            <span class="badge bg-info" style="font-size: 0.7rem;">Working</span>
+                                        {% else %}
+                                            <span class="badge bg-success" style="font-size: 0.7rem;">Done</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block" style="font-size: 0.75rem;">{{ phase.bmr.product.product_name|truncatewords:3 }}</small>
+                                {% if phase.phase.phase_name == 'post_coating_sorting' %}
+                                <small class="text-info d-block" style="font-size: 0.7rem; font-weight:600;">
+                                    <i class="fas fa-sort-amount-down me-1"></i>Post-Coating Sorting
+                                </small>
+                                {% endif %}
+                                <small class="text-muted" style="font-size: 0.7rem;">
+                                    <i class="fas fa-weight me-1"></i>{{ phase.bmr.batch_size|floatformat:0 }} {{ phase.bmr.product.batch_size_unit }}
+                                </small>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                <small>No BMRs assigned</small>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <a href="?filter=total_batches" class="text-decoration-none">
-                <div class="card text-white bg-primary mb-3">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="fas fa-clipboard-list"></i> Total Batches</h6>
-                        <h3 class="card-text">{{ stats.total_batches }}</h3>
-                    </div>
+        <!-- RIGHT CONTENT AREA -->
+        <div class="col-md-9">
+            <!-- Statistics Cards Row -->
+            <div class="row mb-3">
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <a href="?filter=total_batches" class="text-decoration-none">
+                        <div class="card text-white bg-primary h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                                <h3 class="mb-1">{{ stats.total_batches }}</h3>
+                                <small>Total Batches</small>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="?filter=completed_today" class="text-decoration-none">
-                <div class="card text-white bg-success mb-3">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="fas fa-check-circle"></i> Completed Today</h6>
-                        <h3 class="card-text">{{ stats.completed_today }}</h3>
-                    </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <a href="?filter=completed_today" class="text-decoration-none">
+                        <div class="card text-white bg-success h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                <h3 class="mb-1">{{ stats.completed_today }}</h3>
+                                <small>Completed Today</small>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="?filter=in_progress" class="text-decoration-none">
-                <div class="card text-white bg-info mb-3">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="fas fa-spinner"></i> In Progress</h6>
-                        <h3 class="card-text">{{ stats.in_progress_phases }}</h3>
-                    </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <a href="?filter=in_progress" class="text-decoration-none">
+                        <div class="card text-white bg-info h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <i class="fas fa-spinner fa-2x mb-2"></i>
+                                <h3 class="mb-1">{{ stats.in_progress_phases }}</h3>
+                                <small>In Progress</small>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="?filter=pending" class="text-decoration-none">
-                <div class="card text-white bg-warning mb-3">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="fas fa-exclamation-circle"></i> Pending</h6>
-                        <h3 class="card-text">{{ stats.pending_phases }}</h3>
-                    </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <a href="?filter=pending" class="text-decoration-none">
+                        <div class="card text-white bg-warning h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
+                                <h3 class="mb-1">{{ stats.pending_phases }}</h3>
+                                <small>Pending</small>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </a>
-        </div>
-    </div>
+            </div>
 
-    <!-- Active Phase Tasks -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
+            <!-- Active Phase Tasks -->
+            <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-tasks me-2"></i>My {{ phase_name|title }} Tasks
                     </h5>
+                    {% for phase in my_phases %}
+                        {% if phase.phase.phase_name == 'post_coating_sorting' %}
+                        <small class="text-white-50 ms-2">Includes Post-Coating Sorting</small>
+                        {% endif %}
+                    {% endfor %}
                 </div>
                 <div class="card-body">
                     {% if my_phases %}
@@ -120,23 +291,36 @@
                                     <tr>
                                         <th>BMR Number</th>
                                         <th>Product</th>
-                                        <th>Product Type</th>
+                                        <th>Phase</th>
                                         <th>Batch Size</th>
                                         <th>Status</th>
                                         <th>Started / Timer</th>
                                         <th>Priority</th>
+                                        <th>BMR Template</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for phase in my_phases %}
-                                    <tr>
+                                    <tr id="phase-{{ phase.id }}">
                                         <td>
                                             <strong class="text-primary">{{ phase.bmr.batch_number }}</strong>
                                         </td>
                                         <td>{{ phase.bmr.product.product_name }}</td>
                                         <td>
-                                            <span class="badge bg-secondary">{{ phase.bmr.product.get_product_type_display }}</span>
+                                            {% if phase.phase.phase_name == 'post_coating_sorting' %}
+                                                <span class="badge bg-info"><i class="fas fa-sort-amount-down me-1"></i>Post-Coating Sorting</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ phase.display_phase_name }}</span>
+                                            {% endif %}
+                                            {% if phase.pcs_progress %}
+                                            <div class="mt-1">
+                                                <div class="progress" style="height: 5px;">
+                                                    <div class="progress-bar {% if phase.pcs_progress.percent == 100 %}bg-success{% elif phase.pcs_progress.percent > 0 %}bg-info{% else %}bg-secondary{% endif %}" style="width: {{ phase.pcs_progress.percent }}%"></div>
+                                                </div>
+                                                <small class="text-muted" style="font-size:0.7rem;">Sections: {{ phase.pcs_progress.done }}/{{ phase.pcs_progress.total }}</small>
+                                            </div>
+                                            {% endif %}
                                         </td>
                                         <td>{{ phase.bmr.batch_size|floatformat:0 }} {{ phase.bmr.product.batch_size_unit }}</td>
                                         <td>
@@ -194,21 +378,73 @@
                                             {% endif %}
                                         </td>
                                         <td>
+                                            {% if phase.status != 'completed' and phase.status != 'rejected' %}
+                                                {% if phase.phase.phase_name == 'material_dispensing' %}
+                                                <a href="{% url 'dashboards:phase_form_selector' phase.id %}" 
+                                                   class="btn btn-sm {% if phase.phase_has_lc and phase.lc_submitted %}btn-success{% elif phase.template_section_completed %}btn-success{% elif phase.has_saved_data %}btn-info{% else %}btn-warning{% endif %}">
+                                                    <i class="fas fa-file-alt"></i> 
+                                                    {% if phase.phase_has_lc and phase.lc_submitted %}FILLED{% elif phase.template_section_completed %}FILLED{% elif phase.has_saved_data %}CONTINUE{% else %}DRAFT{% endif %}
+                                                </a>
+                                                {% else %}
+                                                <a href="{% url 'dashboards:phase_form' phase.id %}" 
+                                                   class="btn btn-sm {% if phase.phase_has_lc and phase.lc_submitted %}btn-success{% elif phase.template_section_completed %}btn-success{% elif phase.has_saved_data %}btn-info{% else %}btn-warning{% endif %}">
+                                                    <i class="fas fa-file-alt"></i> 
+                                                    {% if phase.phase_has_lc and phase.lc_submitted %}FILLED{% elif phase.template_section_completed %}FILLED{% elif phase.has_saved_data %}CONTINUE{% else %}DRAFT{% endif %}
+                                                </a>
+                                                {% endif %}
+                                            {% else %}
+                                            <span class="text-muted small">
+                                                {% if phase.status == 'completed' %}✓ Completed{% elif phase.status == 'rejected' %}✗ Rejected{% endif %}
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
                                             <div class="btn-group btn-group-sm">
-                                                <a href="{% url 'bmr:detail' phase.bmr.pk %}" 
+                                                <a href="{% url 'bmr:detail' phase.bmr.pk %}{% if phase.phase.phase_name == 'post_coating_sorting' %}?scroll_to=post_coating_sorting{% endif %}" 
                                                    class="btn btn-outline-primary btn-sm">
                                                     <i class="fas fa-eye"></i> View
                                                 </a>
                                                 {% if phase.status == 'pending' %}
+                                                {% if phase.phase_has_lc and phase.lc_ready %}
+                                                {# LC phases: Start enabled once QA approves Beginning LC #}
                                                 <button class="btn btn-outline-success btn-sm"
                                                         onclick="startPhase('{{ phase.id }}', '{{ phase.phase.phase_name }}', '{{ phase.bmr.batch_number }}')">
                                                     <i class="fas fa-play"></i> Start
                                                 </button>
-                                                {% elif phase.status == 'in_progress' %}
-                                                <button class="btn btn-outline-warning btn-sm"
-                                                        onclick="completePhase('{{ phase.id }}', '{{ phase.phase.phase_name }}', '{{ phase.bmr.batch_number }}')">
-                                                    <i class="fas fa-check"></i> Complete
+                                                {% elif phase.phase_has_lc and not phase.lc_ready %}
+                                                <button class="btn btn-outline-success btn-sm disabled"
+                                                        title="Beginning Line Clearance must be QA-approved first">
+                                                    <i class="fas fa-play"></i> Start
                                                 </button>
+                                                {% elif not phase.phase_has_lc and phase.template_section_completed %}
+                                                {# Non-LC phases: Start enabled once BMR form is completed #}
+                                                <button class="btn btn-outline-success btn-sm"
+                                                        onclick="startPhase('{{ phase.id }}', '{{ phase.phase.phase_name }}', '{{ phase.bmr.batch_number }}')">
+                                                    <i class="fas fa-play"></i> Start
+                                                </button>
+                                                {% else %}
+                                                <button class="btn btn-outline-success btn-sm disabled"
+                                                        title="Complete the BMR template section first">
+                                                    <i class="fas fa-play"></i> Start
+                                                </button>
+                                                {% endif %}
+                                                {% elif phase.status == 'in_progress' %}
+                                                    {% if phase.phase_has_lc and phase.ending_lc_approved %}
+                                                    <button class="btn btn-outline-warning btn-sm"
+                                                            onclick="completePhase('{{ phase.id }}', '{{ phase.phase.phase_name }}', '{{ phase.bmr.batch_number }}')">
+                                                        <i class="fas fa-check"></i> Complete
+                                                    </button>
+                                                    {% elif not phase.phase_has_lc and phase.template_section_completed %}
+                                                    <button class="btn btn-outline-warning btn-sm"
+                                                            onclick="completePhase('{{ phase.id }}', '{{ phase.phase.phase_name }}', '{{ phase.bmr.batch_number }}')">
+                                                        <i class="fas fa-check"></i> Complete
+                                                    </button>
+                                                    {% else %}
+                                                    <button class="btn btn-outline-secondary btn-sm disabled"
+                                                            title="{% if phase.phase_has_lc %}Ending Line Clearance must be QA-approved first{% else %}Complete the BMR form first{% endif %}">
+                                                        <i class="fas fa-check"></i> Complete
+                                                    </button>
+                                                    {% endif %}
                                                 {% endif %}
                                             </div>
                                         </td>
@@ -226,16 +462,14 @@
                     {% endif %}
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Operator Dashboard Section (Dynamic) -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
+            <!-- Operator Dashboard Section -->
+            <div class="card shadow-sm mt-3">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <span><i class="fas fa-user-cog"></i> Operator Dashboard</span>
-                    <button class="btn btn-outline-light btn-sm" onclick="downloadHistory()"><i class="fas fa-download"></i> Download History</button>
+                    <span><i class="fas fa-user-cog me-2"></i>Operator Performance</span>
+                    <button class="btn btn-outline-light btn-sm" onclick="downloadHistory()">
+                        <i class="fas fa-download me-1"></i> Download History
+                    </button>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -288,13 +522,9 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Phase Instructions -->
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
+            <!-- Phase Instructions -->
+            <div class="card shadow-sm mt-3">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-book me-2"></i>{{ phase_name|title }} Instructions
@@ -329,6 +559,30 @@
                             <li>Check coating uniformity</li>
                             <li>Document weight gain</li>
                         </ul>
+                    {% elif phase_name == 'sorting' %}
+                        <h6>Sorting Process Guidelines:</h6>
+                        <ul>
+                            <li>Follow standard operating procedures for tablet sorting</li>
+                            <li>Verify equipment is clean and calibrated</li>
+                            <li>Document all process parameters</li>
+                            <li>Take required samples for testing</li>
+                            <li>Report any deviations immediately</li>
+                        </ul>
+                        {% for phase in my_phases %}
+                        {% if phase.phase.phase_name == 'post_coating_sorting' %}
+                        <hr>
+                        <h6><i class="fas fa-sort-amount-down me-1 text-info"></i>Post-Coating Sorting Guidelines:</h6>
+                        <ul>
+                            <li><strong>Section A</strong> &mdash; Visual Inspection &amp; Reconciliation: Inspect coated tablets for defects, record quantities</li>
+                            <li><strong>Section B</strong> &mdash; Personnel Names: Record all operators involved in sorting</li>
+                            <li><strong>Section C</strong> &mdash; In-Process QC Report: QA fills quality control parameters</li>
+                            <li>Complete Beginning Line Clearance before starting</li>
+                            <li>Submit each section in order (A &rarr; B &rarr; C)</li>
+                            <li>QA must sign Section A and fill Section C</li>
+                            <li>Complete Ending Line Clearance after all sections are done</li>
+                        </ul>
+                        {% endif %}
+                        {% endfor %}
                     {% else %}
                         <h6>{{ phase_name|title }} Process Guidelines:</h6>
                         <ul>
@@ -342,38 +596,11 @@
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-chart-line me-2"></i>Today's Progress
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="progress mb-3">
-                        <div class="progress-bar" role="progressbar" 
-                             style="width: {{ daily_progress }}%" 
-                             aria-valuenow="{{ daily_progress }}" 
-                             aria-valuemin="0" aria-valuemax="100">
-                            {{ daily_progress }}%
-                        </div>
-                    </div>
-                    <p class="text-muted">Daily tasks completion</p>
-                    
-                    <hr>
-                    
-                    <h6>Quick Stats:</h6>
-                    <ul class="list-unstyled">
-                        <li><i class="fas fa-play text-info"></i> {{ stats.in_progress_phases }} In Progress</li>
-                        <li><i class="fas fa-check text-success"></i> {{ stats.completed_today }} Completed</li>
-                        <li><i class="fas fa-clock text-warning"></i> {{ stats.pending_phases }} Pending</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+        <!-- Close RIGHT CONTENT AREA (col-md-9) -->
     </div>
+    <!-- Close Main Layout Row -->
 </div>
+<!-- Close container-fluid -->
 
 <!-- Phase Action Modal -->
 <div class="modal fade" id="phaseModal" tabindex="-1">
@@ -626,5 +853,18 @@ function sendOverrunNotification(phaseId) {
 // Start countdown updates
 updateCountdowns();
 setInterval(updateCountdowns, 60000); // Update every minute
+
+// Sidebar scroll to phase function
+function scrollToPhase(phaseId) {
+    const element = document.getElementById(phaseId);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Highlight the row briefly
+        element.style.backgroundColor = '#fff3cd';
+        setTimeout(() => {
+            element.style.backgroundColor = '';
+        }, 2000);
+    }
+}
 </script>
 {% endblock content %}

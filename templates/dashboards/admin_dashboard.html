@@ -3280,55 +3280,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Download BMR as PDF functionality
+    // Download BMR as PDF functionality - direct file download
     document.querySelectorAll('.download-bmr-btn').forEach(button => {
         button.addEventListener('click', function() {
             const bmrId = this.dataset.bmrId;
-            const bmrNumber = this.dataset.bmrNumber;
             const originalHTML = this.innerHTML;
             
             // Show loading state
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
             this.disabled = true;
             
-            // Open print view in hidden iframe and trigger print to PDF
-            const printUrl = `/reports/bmr-print/${bmrId}/`;
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
+            // Trigger direct attachment download endpoint.
+            const downloadUrl = `/bmr/${bmrId}/?print=1&document=1&download=pdf`;
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             
-            iframe.onload = function() {
-                setTimeout(() => {
-                    try {
-                        // Trigger print dialog with "Save as PDF" option
-                        iframe.contentWindow.print();
-                        
-                        // Reset button after delay
-                        setTimeout(() => {
-                            button.innerHTML = originalHTML;
-                            button.disabled = false;
-                            document.body.removeChild(iframe);
-                        }, 1000);
-                    } catch (e) {
-                        console.error('Print error:', e);
-                        // Fallback: open in new window
-                        window.open(printUrl, '_blank');
-                        button.innerHTML = originalHTML;
-                        button.disabled = false;
-                        document.body.removeChild(iframe);
-                    }
-                }, 500);
-            };
-            
-            iframe.src = printUrl;
-            
-            // Fallback timeout
+            // Reset button state
             setTimeout(() => {
-                if (button.disabled) {
-                    button.innerHTML = originalHTML;
-                    button.disabled = false;
-                }
-            }, 5000);
+                this.innerHTML = originalHTML;
+                this.disabled = false;
+            }, 1200);
         });
     });
 });

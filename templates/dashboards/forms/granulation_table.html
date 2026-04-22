@@ -1,0 +1,342 @@
+<!-- Granulation Process Table Component -->
+<!-- This table shows the granulation/mixing process steps for the BMR -->
+<!-- Supports edit_mode: 'read' (view only) or 'edit' (fillable form) -->
+
+{% if edit_mode == 'edit' %}
+<style>
+    .granulation-input-box {
+        width: 100%;
+        margin-bottom: 4px;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+        font-size: 12px;
+    }
+    .granulation-textarea {
+        width: 100%;
+        min-height: 50px;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        resize: vertical;
+        font-size: 12px;
+    }
+    .step-number {
+        font-weight: bold;
+        font-size: 14px;
+    }
+    .signature-cell {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: center;
+        min-height: 40px;
+        vertical-align: middle;
+    }
+</style>
+{% endif %}
+
+<!-- Granulation Process Steps Table -->
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 15px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #000; padding: 6px; width: 5%; background-color: #f0f0f0;">Step</th>
+            <th style="border: 1px solid #000; padding: 6px; width: 50%; background-color: #f0f0f0;">Operation / Activity</th>
+            <th style="border: 1px solid #000; padding: 6px; width: 25%; background-color: #f0f0f0;">Observation / Parameter</th>
+            <th style="border: 1px solid #000; padding: 6px; width: 10%; background-color: #f0f0f0;">Done By</th>
+            <th style="border: 1px solid #000; padding: 6px; width: 10%; background-color: #f0f0f0;">Checked By</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if edit_mode == 'edit' %}
+            <!-- Editable Mode - Form inputs -->
+                
+                <!-- Step 1: Load materials -->
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        <div class="step-number">1</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Load dispensed materials into the mixer/granulator.
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        <input type="time" name="step_1_start_time" class="granulation-input-box" 
+                               placeholder="Start Time" value="{{ granulation_data.step_1_start_time }}">
+                        <input type="time" name="step_1_end_time" class="granulation-input-box" 
+                               placeholder="End Time" value="{{ granulation_data.step_1_end_time }}">
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_1_done_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_1_done_by }}">
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_1_checked_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_1_checked_by }}">
+                    </td>
+                </tr>
+                
+                <!-- Step 2: Dry mixing -->
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        <div class="step-number">2</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Mix dry materials (Dry Mixing).
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Speed: <input type="number" name="step_2_speed" class="granulation-input-box" 
+                                     placeholder="RPM" value="{{ granulation_data.step_2_speed }}" style="width: 80px;"> RPM<br>
+                        Time: <input type="number" name="step_2_time" class="granulation-input-box" 
+                                    placeholder="Minutes" value="{{ granulation_data.step_2_time }}" style="width: 80px;"> Mins
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_2_done_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_2_done_by }}">
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_2_checked_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_2_checked_by }}">
+                    </td>
+                </tr>
+                
+                <!-- Step 3: Add binding solution -->
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        <div class="step-number">3</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Add binding solution/solvent.
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Quantity Added: <input type="text" name="step_3_quantity" class="granulation-input-box" 
+                                              placeholder="Amount" value="{{ granulation_data.step_3_quantity }}">
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_3_done_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_3_done_by }}">
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_3_checked_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_3_checked_by }}">
+                    </td>
+                </tr>
+                
+                <!-- Step 4: Wet mixing -->
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        <div class="step-number">4</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Wet Mixing / Massing.
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Speed: <input type="number" name="step_4_speed" class="granulation-input-box" 
+                                     placeholder="RPM" value="{{ granulation_data.step_4_speed }}" style="width: 80px;"> RPM<br>
+                        Time: <input type="number" name="step_4_time" class="granulation-input-box" 
+                                    placeholder="Minutes" value="{{ granulation_data.step_4_time }}" style="width: 80px;"> Mins
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_4_done_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_4_done_by }}">
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_4_checked_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_4_checked_by }}">
+                    </td>
+                </tr>
+                
+                <!-- Step 5: Granule drying -->
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        <div class="step-number">5</div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Granule drying (if required).
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        Temperature: <input type="number" name="step_5_temperature" class="granulation-input-box" 
+                                           placeholder="°C" value="{{ granulation_data.step_5_temperature }}" style="width: 70px;"> °C<br>
+                        Time: <input type="number" name="step_5_drying_time" class="granulation-input-box" 
+                                    placeholder="Hours" value="{{ granulation_data.step_5_drying_time }}" style="width: 70px;"> Hours
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_5_done_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_5_done_by }}">
+                    </td>
+                    <td class="signature-cell">
+                        <input type="text" name="step_5_checked_by" class="granulation-input-box" 
+                               placeholder="Signature" value="{{ granulation_data.step_5_checked_by }}">
+                    </td>
+                </tr>
+                
+                <!-- Additional Comments Row -->
+                <tr>
+                    <td colspan="5" style="border: 1px solid #000; padding: 8px;">
+                        <strong>Process Comments/Observations:</strong><br>
+                        <textarea name="granulation_comments" class="granulation-textarea" 
+                                  placeholder="Enter any observations, deviations, or additional notes...">{{ granulation_data.granulation_comments }}</textarea>
+                    </td>
+                </tr>
+            
+        {% else %}
+            <!-- Read-Only Mode - Display saved data -->
+            <tr>
+                <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                    <div class="step-number">1</div>
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Load dispensed materials into the mixer/granulator.
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Start: {{ granulation_data.step_1_start_time|default:"_______" }}<br>
+                    End: {{ granulation_data.step_1_end_time|default:"_______" }}
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_1_done_by|default:"_______" }}
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_1_checked_by|default:"_______" }}
+                </td>
+            </tr>
+            
+            <tr>
+                <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                    <div class="step-number">2</div>
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Mix dry materials (Dry Mixing).
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Speed: {{ granulation_data.step_2_speed|default:"___" }} RPM<br>
+                    Time: {{ granulation_data.step_2_time|default:"___" }} Mins
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_2_done_by|default:"_______" }}
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_2_checked_by|default:"_______" }}
+                </td>
+            </tr>
+            
+            <tr>
+                <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                    <div class="step-number">3</div>
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Add binding solution/solvent.
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Quantity: {{ granulation_data.step_3_quantity|default:"_______" }}
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_3_done_by|default:"_______" }}
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_3_checked_by|default:"_______" }}
+                </td>
+            </tr>
+            
+            <tr>
+                <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                    <div class="step-number">4</div>
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Wet Mixing / Massing.
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Speed: {{ granulation_data.step_4_speed|default:"___" }} RPM<br>
+                    Time: {{ granulation_data.step_4_time|default:"___" }} Mins
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_4_done_by|default:"_______" }}
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_4_checked_by|default:"_______" }}
+                </td>
+            </tr>
+            
+            <tr>
+                <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                    <div class="step-number">5</div>
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Granule drying (if required).
+                </td>
+                <td style="border: 1px solid #000; padding: 8px;">
+                    Temp: {{ granulation_data.step_5_temperature|default:"___" }}°C<br>
+                    Time: {{ granulation_data.step_5_drying_time|default:"___" }} Hours
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_5_done_by|default:"_______" }}
+                </td>
+                <td class="signature-cell">
+                    {{ granulation_data.step_5_checked_by|default:"_______" }}
+                </td>
+            </tr>
+            
+            {% if granulation_data.granulation_comments %}
+            <tr>
+                <td colspan="5" style="border: 1px solid #000; padding: 8px;">
+                    <strong>Process Comments:</strong><br>
+                    {{ granulation_data.granulation_comments }}
+                </td>
+            </tr>
+            {% endif %}
+        {% endif %}
+    </tbody>
+</table>
+
+{% if edit_mode == 'edit' %}
+<!-- Form validation script -->
+<script>
+// Validate granulation form before submission
+function validateGranulationForm() {
+    const requiredFields = [
+        'step_1_done_by', 'step_1_checked_by',
+        'step_2_speed', 'step_2_time', 'step_2_done_by', 'step_2_checked_by',
+        'step_3_quantity', 'step_3_done_by', 'step_3_checked_by',
+        'step_4_speed', 'step_4_time', 'step_4_done_by', 'step_4_checked_by',
+        'step_5_done_by', 'step_5_checked_by'
+    ];
+    
+    for (let field of requiredFields) {
+        const input = document.querySelector(`[name="${field}"]`);
+        if (input && !input.value.trim()) {
+            alert(`Please fill in ${field.replace(/_/g, ' ')}`);
+            input.focus();
+            return false;
+        }
+    }
+    return true;
+}
+
+// Auto-calculate mixing time based on batch size if needed
+document.addEventListener('DOMContentLoaded', function() {
+    const speedInputs = document.querySelectorAll('input[name$="_speed"]');
+    speedInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            if (this.value && this.value < 0) {
+                this.value = 0;
+            }
+        });
+    });
+});
+</script>
+{% endif %}
+
+<!-- Process Parameters Summary -->
+{% if granulation_execution %}
+<div style="margin-top: 20px; padding: 10px; border: 1px solid #ddd; background-color: #f8f9fa;">
+    <h6 style="margin-bottom: 10px; font-weight: bold;">Granulation Phase Status:</h6>
+    <div style="display: flex; gap: 20px; font-size: 14px;">
+        <span><strong>Status:</strong> {{ granulation_execution.get_status_display }}</span>
+        {% if granulation_execution.started_date %}
+        <span><strong>Started:</strong> {{ granulation_execution.started_date|date:"d/m/Y H:i" }}</span>
+        {% endif %}
+        {% if granulation_execution.completed_date %}
+        <span><strong>Completed:</strong> {{ granulation_execution.completed_date|date:"d/m/Y H:i" }}</span>
+        {% endif %}
+        {% if granulation_execution.started_by %}
+        <span><strong>Operator:</strong> {{ granulation_execution.started_by.get_full_name|default:granulation_execution.started_by.username }}</span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

@@ -100,7 +100,7 @@
                                 <div class="text-danger">{{ form.batch_number.errors }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <label class="form-label">
                                 <span class="text-danger">*</span> Manufacturing Date
                             </label>
@@ -108,6 +108,16 @@
                             <div class="form-text">{{ form.manufacturing_date.help_text }}</div>
                             {% if form.manufacturing_date.errors %}
                                 <div class="text-danger">{{ form.manufacturing_date.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">
+                                <span class="text-danger">*</span> Expiry Date
+                            </label>
+                            {{ form.expiry_date }}
+                            <div class="form-text">{{ form.expiry_date.help_text }}</div>
+                            {% if form.expiry_date.errors %}
+                                <div class="text-danger">{{ form.expiry_date.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-3">

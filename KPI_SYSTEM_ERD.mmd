@@ -1,0 +1,245 @@
+%% Kampala Pharmaceutical Industries - System ERD (Mermaid Format)
+%% Visit https://mermaid.live and paste this code to generate visual diagram
+%% Or install Mermaid extension in VS Code to preview
+
+erDiagram
+    %% USER MANAGEMENT
+    CustomUser ||--o{ BMRRequest : "requests"
+    CustomUser ||--o{ BMR : "creates/approves"
+    CustomUser ||--o{ BMRSignature : "signs"
+    CustomUser ||--o{ BatchPhaseExecution : "starts/completes"
+    CustomUser ||--o{ MaterialDispensing : "dispenses"
+    CustomUser ||--o{ FinishedGoods : "receives"
+    CustomUser ||--o{ QuarantineBatch : "quarantines"
+    CustomUser ||--o{ UserSession : "logs in"
+    
+    CustomUser {
+        int id PK
+        string username UK
+        string email
+        string role "qa, production_manager, qc, operators"
+        string employee_id UK
+        string department
+        string phone_number
+        image signature
+        boolean is_active_operator
+        timestamp date_joined
+    }
+    
+    UserSession {
+        int id PK
+        int user_id FK
+        timestamp login_time
+        timestamp logout_time
+        string ip_address
+    }
+    
+    %% PRODUCT MANAGEMENT
+    Product ||--o{ BMR : "manufactured as"
+    Product ||--o{ BMRRequest : "requested for"
+    Product ||--o{ QuarantineBatch : "quarantined"
+    Product ||--o{ FinishedGoods : "stored as"
+    
+    Product {
+        int id PK
+        string product_name
+        string product_code UK
+        string product_type "tablet, capsule, ointment"
+        string dosage_form
+        string strength
+        decimal batch_size
+        string batch_size_unit
+        string tablet_type "normal, tablet_type_2"
+        boolean is_coated
+        string packaging_type
+        json behavior_tags
+        boolean is_active
+        timestamp created_date
+    }
+    
+    %% BMR MANAGEMENT
+    BMRRequest ||--|| BMR : "generates"
+    
+    BMRRequest {
+        int id PK
+        int product_id FK
+        int requested_by_id FK
+        int approved_by_id FK
+        int bmr_id FK
+        timestamp request_date
+        date required_date
+        string status "pending, approved, rejected"
+        string priority "low, medium, high, urgent"
+        text reason
+        int quantity_required
+        string quantity_unit
+        text notes
+        text rejection_reason
+    }
+    
+    BMR ||--|{ BMRSignature : "has signatures"
+    BMR ||--|{ BatchPhaseExecution : "has phases"
+    BMR ||--o{ MaterialDispensing : "requires materials"
+    BMR ||--o| FinishedGoods : "produces"
+    BMR ||--o| QuarantineBatch : "may enter"
+    
+    BMR {
+        int id PK
+        string bmr_number UK
+        string batch_number
+        date manufacturing_date
+        int product_id FK
+        decimal actual_batch_size
+        string actual_batch_size_unit
+        timestamp created_date
+        timestamp planned_start_date
+        timestamp actual_start_date
+        timestamp actual_completion_date
+        string status "draft, approved, in_production, completed"
+        int created_by_id FK
+        int approved_by_id FK
+        timestamp approved_date
+        text manufacturing_instructions
+        text qa_comments
+        text regulatory_comments
+    }
+    
+    BMRSignature {
+        int id PK
+        int bmr_id FK
+        string signature_type "created, approved, qc_approved"
+        int signed_by_id FK
+        timestamp signed_date
+        text comments
+    }
+    
+    MaterialDispensing {
+        int id PK
+        int bmr_id FK
+        string material_name
+        string material_code
+        decimal quantity_required
+        decimal quantity_dispensed
+        string unit
+        string batch_number
+        int dispensed_by_id FK
+        timestamp dispensed_date
+        string status "pending, dispensed"
+    }
+    
+    %% WORKFLOW ENGINE
+    WorkflowTemplate ||--|{ WorkflowTemplatePhase : "contains"
+    WorkflowTemplatePhase ||--o{ ProductionPhase : "creates"
+    
+    WorkflowTemplate {
+        int id PK
+        string name
+        string product_type "tablet, capsule, ointment"
+        text description
+        boolean is_active
+        timestamp created_date
+    }
+    
+    WorkflowTemplatePhase {
+        int id PK
+        int template_id FK
+        string phase_name
+        int phase_order
+        text description
+        boolean is_mandatory
+        boolean requires_approval
+        decimal estimated_duration_hours
+    }
+    
+    ProductionPhase ||--|{ BatchPhaseExecution : "executed as"
+    ProductionPhase ||--o| ProductionPhase : "rollback_to"
+    
+    ProductionPhase {
+        int id PK
+        string product_type
+        string phase_name
+        int phase_order
+        text description
+        boolean is_mandatory
+        boolean requires_approval
+        int can_rollback_to_id FK
+        int qa_can_rollback_to_id FK
+        decimal estimated_duration_hours
+    }
+    
+    Machine ||--o{ BatchPhaseExecution : "used in"
+    
+    BatchPhaseExecution {
+        int id PK
+        int bmr_id FK
+        int phase_id FK
+        string status "pending, in_progress, completed, failed"
+        int started_by_id FK
+        int completed_by_id FK
+        timestamp started_date
+        timestamp completed_date
+        json phase_data
+        text operator_comments
+        text qa_comments
+        int machine_used_id FK
+        boolean breakdown_occurred
+        timestamp breakdown_start_time
+        boolean changeover_occurred
+        boolean qc_approved
+        int qc_approved_by_id FK
+        boolean materials_dispensed
+    }
+    
+    Machine {
+        int id PK
+        string name
+        string machine_id UK
+        string machine_type "mixer, granulator, compressor"
+        boolean is_operational
+        date last_maintenance_date
+        date next_maintenance_date
+    }
+    
+    %% QUALITY CONTROL
+    QuarantineBatch {
+        int id PK
+        int bmr_id FK
+        string batch_number
+        int product_id FK
+        text quarantine_reason
+        timestamp quarantine_date
+        int quarantined_by_id FK
+        string status "quarantined, investigating, released"
+        text investigation_notes
+        text resolution_notes
+        timestamp release_date
+        int released_by_id FK
+    }
+    
+    %% FINISHED GOODS
+    FinishedGoods {
+        int id PK
+        int bmr_id FK
+        int product_id FK
+        string batch_number
+        date manufacturing_date
+        date expiry_date
+        decimal quantity
+        string unit
+        string status "in_storage, dispatched"
+        string storage_location
+        timestamp received_date
+        int received_by_id FK
+        string qc_status
+        timestamp release_date
+    }
+    
+    %% SYSTEM SETTINGS
+    SystemTimingSettings {
+        int id PK
+        string setting_name UK
+        decimal setting_value
+        text description
+        string unit
+        timestamp created_date
+    }

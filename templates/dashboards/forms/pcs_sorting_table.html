@@ -1,0 +1,598 @@
+{% load static %}
+{% load dashboard_filters %}
+{# ── POST-COATING SORTING section-based workflow (pages 52-53) ────────── #}
+
+{% with ir_status=pcs_section_statuses.pcs_inspection_recon pers_status=pcs_section_statuses.pcs_personnel ipc_status=pcs_section_statuses.pcs_inprocess_qc %}
+{% with ir_data=pcs_sections_data.pcs_inspection_recon|default_if_none:"" pers_data=pcs_sections_data.pcs_personnel|default_if_none:"" ipc_data=pcs_sections_data.pcs_inprocess_qc|default_if_none:"" sigs_data=pcs_sections_data.pcs_recon_signatures|default_if_none:"" %}
+
+<style>
+.pcs-section-card{border:2px solid #dee2e6;border-radius:6px;margin-bottom:12px;overflow:hidden;}
+.pcs-section-header{background:#2c3e50;color:#fff;padding:8px 12px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;align-items:center;}
+.pcs-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.pcs-badge-ns{background:#ffc107;color:#333;}
+.pcs-badge-done{background:#28a745;color:#fff;}
+.pcs-input{border:1px solid #000;padding:3px 5px;font-size:11px;width:100%;box-sizing:border-box;}
+</style>
+
+<!-- SECTION NAV BAR -->
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:8px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;">
+    <div style="flex:1;text-align:center;padding:4px;border-radius:4px;font-size:11px;
+        {% if ir_status == 'qa_signed' %}background:#d4edda;color:#155724;border:1px solid #c3e6cb;{% elif ir_status == 'operator_filled' %}background:#cce5ff;color:#004085;border:1px solid #b8daff;{% else %}background:#fff3cd;color:#856404;border:1px solid #ffeeba;{% endif %}">
+        <strong>A.</strong> Inspection &amp; Recon
+        {% if ir_status == 'qa_signed' %}<br>&#10003; QA Signed{% elif ir_status == 'operator_filled' %}<br>&#9998; Awaiting QA{% else %}<br>&#9679; {{ ir_status|title }}{% endif %}
+    </div>
+    <div style="flex:1;text-align:center;padding:4px;border-radius:4px;font-size:11px;
+        {% if pers_status == 'completed' %}background:#d4edda;color:#155724;border:1px solid #c3e6cb;{% else %}background:#fff3cd;color:#856404;border:1px solid #ffeeba;{% endif %}">
+        <strong>B.</strong> Personnel Names
+        {% if pers_status == 'completed' %}<br>&#10003; Completed{% else %}<br>&#9679; {{ pers_status|title }}{% endif %}
+    </div>
+    <div style="flex:1;text-align:center;padding:4px;border-radius:4px;font-size:11px;
+        {% if ipc_status == 'qa_filled' %}background:#d4edda;color:#155724;border:1px solid #c3e6cb;{% else %}background:#fff3cd;color:#856404;border:1px solid #ffeeba;{% endif %}">
+        <strong>C.</strong> In-Process QC (QA)
+        {% if ipc_status == 'qa_filled' %}<br>&#10003; QA Filled{% else %}<br>&#9679; {{ ipc_status|title }}{% endif %}
+    </div>
+</div>
+
+<!-- ===================================================================
+     SECTION A: Visual Inspection & Reconciliation (Operator fills, QA verifies)
+     =================================================================== -->
+<div class="pcs-section-card" id="pcs-ir-card-{{ phase_execution.id }}">
+    <div class="pcs-section-header">
+        <span>Section A &mdash; Inspection &amp; Reconciliation (Page 52)</span>
+        <span>
+            {% if ir_status == 'not_started' %}
+                {% if ir_data.draft_saved %}
+                    <span class="pcs-badge" style="background:#fff3cd;color:#856404;">&#9998; Draft Saved</span>
+                {% else %}
+                    <span class="pcs-badge pcs-badge-ns">Not Started</span>
+                {% endif %}
+            {% elif ir_status == 'operator_filled' %}<span class="pcs-badge" style="background:#17a2b8;color:#fff;">&#9998; Awaiting QA</span>
+            {% elif ir_status == 'qa_signed' %}<span class="pcs-badge pcs-badge-done">&#10003; QA Signed</span>
+            {% endif %}
+        </span>
+    </div>
+
+    {% if ir_status == 'not_started' and edit_mode == 'edit' %}
+    {# ── EDIT FORM ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+
+        <!-- PROCEDURES (read-only numbered list) -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;text-transform:uppercase;margin-bottom:0;">INSPECTION AND SORTING PROCEDURE</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:8px;">
+            <tr><td style="border:1px solid #000;padding:5px;">1. Ensure that Line Clearance is done before starting the operation as per SOP.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">2. Check the Environmental Conditions: Temperature NMT 28&deg;C and Relative Humidity 40-65%.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">3. Feed the coated tablets on to the Inspection Belt &amp; sort out the defective tablets.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">4. Pass the inspected tablets through Vibro Sifter fitted with appropriate mesh.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">5. Pass the inspected tablets through Metal Detector and collect in a clean polybag lined container.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">6. Weigh the inspected &amp; sorted tablets and record the weight.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">7. Collect the rejected tablets separately and weigh the rejected tablets and record.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">8. Affix the label on the containers containing inspected &amp; sorted tablets with Product Name, Batch No, Mfg. Date, Exp. Date, Net Weight and sign.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">9. Transfer the inspected and sorted tablets to SMFPQ Store.</td></tr>
+        </table>
+
+        <!-- VISUAL INSPECTION LOG -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;background:#f8f9fa;">VISUAL INSPECTION LOG</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:8px;" id="pcs-vil-table-{{ phase_execution.id }}">
+            <thead>
+                <tr>
+                    <th style="border:1px solid #000;padding:5px;width:40%;">Activity</th>
+                    <th style="border:1px solid #000;padding:5px;width:30%;">From</th>
+                    <th style="border:1px solid #000;padding:5px;width:30%;">To</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in "12345" %}
+                <tr>
+                    <td style="border:1px solid #000;padding:3px;"><input type="text" name="pcs_inspect_{{ forloop.counter }}_activity" class="pcs-input" value="{{ ir_data|dk:forloop.counter|default:'' }}" placeholder="Activity {{ forloop.counter }}"></td>
+                    <td style="border:1px solid #000;padding:3px;"><input type="text" name="pcs_inspect_{{ forloop.counter }}_from" class="pcs-input" value="{{ ir_data|dk:forloop.counter|default:'' }}" placeholder="From"></td>
+                    <td style="border:1px solid #000;padding:3px;"><input type="text" name="pcs_inspect_{{ forloop.counter }}_to" class="pcs-input" value="{{ ir_data|dk:forloop.counter|default:'' }}" placeholder="To"></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- RECONCILIATION AFTER INSPECTION AND SORTING -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;background:#f8f9fa;">RECONCILIATION AFTER INSPECTION AND SORTING</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:6px;" id="pcs-recon-table-{{ phase_execution.id }}">
+            <tr><td style="border:1px solid #000;padding:5px;">1. Weight of tablets received for inspection and sorting <input type="number" step="0.001" name="pcs_recon_weight_received" class="pcs-input" style="width:120px;display:inline-block;" value="{{ ir_data.recon_weight_received|default:'' }}" placeholder="Kg"> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">2. Weight of tablets received after inspection and sorting <input type="number" step="0.001" name="pcs_recon_weight_after" class="pcs-input" style="width:120px;display:inline-block;" value="{{ ir_data.recon_weight_after|default:'' }}" placeholder="Kg"> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">3. Average weight of tablets <input type="number" step="0.01" name="pcs_recon_avg_weight" class="pcs-input" style="width:120px;display:inline-block;" value="{{ ir_data.recon_avg_weight|default:'' }}" placeholder="mg/tablet"> mg/tablet</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">4. Recyclables after inspection and sorting <input type="number" step="0.001" name="pcs_recon_recyclables" class="pcs-input" style="width:120px;display:inline-block;" value="{{ ir_data.recon_recyclables|default:'' }}" placeholder="Kg"> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">5. Total rejects <input type="number" step="0.001" name="pcs_recon_rejects" class="pcs-input" style="width:120px;display:inline-block;" value="{{ ir_data.recon_rejects|default:'' }}" placeholder="Kg"> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">6. Total loss <input type="number" step="0.001" name="pcs_recon_total_loss" class="pcs-input" style="width:120px;display:inline-block;" value="{{ ir_data.recon_total_loss|default:'' }}" placeholder="Kg"> Kg &nbsp;&nbsp; <input type="number" step="0.01" name="pcs_recon_loss_percent" class="pcs-input" style="width:80px;display:inline-block;" value="{{ ir_data.recon_loss_percent|default:'' }}" placeholder="%"> %</td></tr>
+        </table>
+
+        <!-- SIGNATURES: Done by (Group Leader) / Checked by (SMFPQ) -->
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:6px;">
+            <tr>
+                <td style="border:1px solid #000;padding:6px;width:50%;text-align:center;vertical-align:top;">
+                    <strong>Done by:</strong><br>
+                    Sign: <input type="text" name="pcs_sig_group_leader" class="pcs-input" style="width:150px;display:inline-block;" value="{{ sigs_data.sig_group_leader|default:'' }}" placeholder="Name"><br>
+                    Date: <input type="date" name="pcs_sig_group_leader_date" class="pcs-input" style="width:150px;display:inline-block;" value="{{ sigs_data.sig_group_leader_date|default:'' }}">
+                </td>
+                <td style="border:1px solid #000;padding:6px;width:50%;text-align:center;vertical-align:top;">
+                    <strong>Checked by:</strong><br>
+                    Sign: <input type="text" name="pcs_sig_smfpq" class="pcs-input" style="width:150px;display:inline-block;" value="{{ sigs_data.sig_smfpq|default:'' }}" placeholder="Name"><br>
+                    Date: <input type="date" name="pcs_sig_smfpq_date" class="pcs-input" style="width:150px;display:inline-block;" value="{{ sigs_data.sig_smfpq_date|default:'' }}">
+                </td>
+            </tr>
+        </table>
+
+        <!-- Comments -->
+        <div style="margin-bottom:6px;">
+            <strong>Comments:</strong>
+            <textarea name="pcs_sorting_comments" class="pcs-input" style="width:100%;min-height:35px;text-align:left;resize:vertical;" placeholder="Comments...">{{ ir_data.sorting_comments|default:'' }}</textarea>
+        </div>
+
+        {% if ir_data.draft_saved %}
+        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:4px 10px;margin-bottom:6px;font-size:11px;color:#856404;">
+            <i class="fas fa-clock me-1"></i>Draft last saved by <strong>{{ ir_data.draft_by|default:"" }}</strong> on {{ ir_data.draft_at|default:"" }}
+        </div>
+        {% endif %}
+
+        <!-- Action buttons: Draft + Submit -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_draft_section_pcs_inspection_recon">
+                <div id="pcs-ir-draft-fields-{{ phase_execution.id }}"></div>
+                <button type="submit" class="btn btn-warning btn-sm" onclick="return collectPcsIRData_{{ phase_execution.id }}(this.form, 'draft')">
+                    <i class="fas fa-save me-1"></i>Save Draft
+                </button>
+            </form>
+            <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="submit_section_pcs_inspection_recon">
+                <div id="pcs-ir-submit-fields-{{ phase_execution.id }}"></div>
+                <button type="submit" class="btn btn-success btn-sm" onclick="return collectPcsIRData_{{ phase_execution.id }}(this.form, 'submit')">
+                    <i class="fas fa-check me-1"></i>Submit Inspection &amp; Recon
+                </button>
+            </form>
+        </div>
+
+        <script>
+        function collectPcsIRData_{{ phase_execution.id }}(frm, mode) {
+            var containerId = (mode==='draft') ? 'pcs-ir-draft-fields-{{ phase_execution.id }}' : 'pcs-ir-submit-fields-{{ phase_execution.id }}';
+            var container = document.getElementById(containerId);
+            container.innerHTML = '';
+            var card = document.getElementById('pcs-ir-card-{{ phase_execution.id }}');
+            var fields = [
+                {% for i in "12345" %}'pcs_inspect_{{ forloop.counter }}_activity','pcs_inspect_{{ forloop.counter }}_from','pcs_inspect_{{ forloop.counter }}_to',{% endfor %}
+                'pcs_recon_weight_received','pcs_recon_weight_after','pcs_recon_avg_weight',
+                'pcs_recon_recyclables','pcs_recon_rejects','pcs_recon_total_loss','pcs_recon_loss_percent',
+                'pcs_sig_group_leader','pcs_sig_group_leader_date','pcs_sig_smfpq','pcs_sig_smfpq_date',
+                'pcs_sorting_comments'
+            ];
+            fields.forEach(function(name){
+                var el = card.querySelector('[name="'+name+'"]');
+                if(el){ var inp=document.createElement('input');inp.type='hidden';inp.name=name;inp.value=el.value;container.appendChild(inp);}
+            });
+            return true;
+        }
+        </script>
+    </div>
+
+    {% elif ir_status == 'operator_filled' %}
+    {# ── SUBMITTED — read-only with QA sign / recall ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <!-- Procedures (static) -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;text-transform:uppercase;margin-bottom:0;">INSPECTION AND SORTING PROCEDURE</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:8px;">
+            <tr><td style="border:1px solid #000;padding:5px;">1. Ensure that Line Clearance is done before starting the operation as per SOP.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">2. Check the Environmental Conditions: Temperature NMT 28&deg;C and Relative Humidity 40-65%.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">3. Feed the coated tablets on to the Inspection Belt &amp; sort out the defective tablets.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">4. Pass the inspected tablets through Vibro Sifter fitted with appropriate mesh.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">5. Pass the inspected tablets through Metal Detector and collect in a clean polybag lined container.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">6. Weigh the inspected &amp; sorted tablets and record the weight.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">7. Collect the rejected tablets separately and weigh the rejected tablets and record.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">8. Affix the label on the containers containing inspected &amp; sorted tablets with Product Name, Batch No, Mfg. Date, Exp. Date, Net Weight and sign.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">9. Transfer the inspected and sorted tablets to SMFPQ Store.</td></tr>
+        </table>
+
+        <!-- Visual Inspection Log (read-only) -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;background:#f8f9fa;">VISUAL INSPECTION LOG</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:8px;">
+            <thead>
+                <tr>
+                    <th style="border:1px solid #000;padding:5px;width:40%;">Activity</th>
+                    <th style="border:1px solid #000;padding:5px;width:30%;">From</th>
+                    <th style="border:1px solid #000;padding:5px;width:30%;">To</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_1_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_1_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_1_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_2_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_2_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_2_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_3_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_3_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_3_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_4_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_4_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_4_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_5_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_5_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_5_to|default:"" }}</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Reconciliation (read-only) -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;background:#f8f9fa;">RECONCILIATION AFTER INSPECTION AND SORTING</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:6px;">
+            <tr><td style="border:1px solid #000;padding:5px;">1. Weight of tablets received for inspection and sorting <strong>{{ ir_data.recon_weight_received|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">2. Weight of tablets received after inspection and sorting <strong>{{ ir_data.recon_weight_after|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">3. Average weight of tablets <strong>{{ ir_data.recon_avg_weight|default:"" }}</strong> mg/tablet</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">4. Recyclables after inspection and sorting <strong>{{ ir_data.recon_recyclables|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">5. Total rejects <strong>{{ ir_data.recon_rejects|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">6. Total loss <strong>{{ ir_data.recon_total_loss|default:"" }}</strong> Kg &nbsp;&nbsp; <strong>{{ ir_data.recon_loss_percent|default:"" }}</strong> %</td></tr>
+        </table>
+
+        <!-- Signatures (read-only) -->
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:6px;">
+            <tr>
+                <td style="border:1px solid #000;padding:6px;width:50%;text-align:center;">
+                    <strong>Done by:</strong><br>{{ sigs_data.sig_group_leader|default:"" }}<br>{{ sigs_data.sig_group_leader_date|default:"" }}
+                </td>
+                <td style="border:1px solid #000;padding:6px;width:50%;text-align:center;">
+                    <strong>Checked by:</strong><br>{{ sigs_data.sig_smfpq|default:"" }}<br>{{ sigs_data.sig_smfpq_date|default:"" }}
+                </td>
+            </tr>
+        </table>
+        {% if ir_data.sorting_comments %}<p style="margin:3px 0;"><strong>Comments:</strong> {{ ir_data.sorting_comments }}</p>{% endif %}
+
+        <p style="margin:4px 0 0;font-size:10px;color:#004085;"><em>Submitted by {{ pcs_sections_data.section_statuses.pcs_inspection_recon_submitted_by|default:"operator" }}</em></p>
+
+        {% if edit_mode == 'edit' %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <!-- Recall button (operator) -->
+            <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="recall_section_pcs_inspection_recon">
+                <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo me-1"></i>Recall &amp; Re-edit</button>
+            </form>
+            {% if user_role == 'qa' %}
+            <!-- QA Sign form -->
+            <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}" style="display:flex;gap:6px;align-items:center;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="qa_sign_section_pcs_inspection_recon">
+                <label style="font-size:11px;margin:0;">QA Sign:</label>
+                <input type="text" name="pcs_sig_qa" class="pcs-input" style="width:130px;" placeholder="QA Name" value="{{ request.user.get_full_name }}">
+                <input type="date" name="pcs_sig_qa_date" class="pcs-input" style="width:130px;">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-check-circle me-1"></i>Verify &amp; Sign</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% elif ir_status == 'qa_signed' %}
+    {# ── QA SIGNED — full read-only view ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <!-- Procedures (static) -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;text-transform:uppercase;margin-bottom:0;">INSPECTION AND SORTING PROCEDURE</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:8px;">
+            <tr><td style="border:1px solid #000;padding:5px;">1. Ensure that Line Clearance is done before starting the operation as per SOP.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">2. Check the Environmental Conditions: Temperature NMT 28&deg;C and Relative Humidity 40-65%.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">3. Feed the coated tablets on to the Inspection Belt &amp; sort out the defective tablets.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">4. Pass the inspected tablets through Vibro Sifter fitted with appropriate mesh.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">5. Pass the inspected tablets through Metal Detector and collect in a clean polybag lined container.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">6. Weigh the inspected &amp; sorted tablets and record the weight.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">7. Collect the rejected tablets separately and weigh the rejected tablets and record.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">8. Affix the label on the containers containing inspected &amp; sorted tablets with Product Name, Batch No, Mfg. Date, Exp. Date, Net Weight and sign.</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">9. Transfer the inspected and sorted tablets to SMFPQ Store.</td></tr>
+        </table>
+
+        <!-- Visual Inspection Log (read-only) -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;background:#f8f9fa;">VISUAL INSPECTION LOG</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:8px;">
+            <thead>
+                <tr>
+                    <th style="border:1px solid #000;padding:5px;width:40%;">Activity</th>
+                    <th style="border:1px solid #000;padding:5px;width:30%;">From</th>
+                    <th style="border:1px solid #000;padding:5px;width:30%;">To</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_1_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_1_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_1_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_2_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_2_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_2_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_3_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_3_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_3_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_4_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_4_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_4_to|default:"" }}</td></tr>
+                <tr><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_5_activity|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_5_from|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ir_data.inspect_5_to|default:"" }}</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Reconciliation (read-only) -->
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;background:#f8f9fa;">RECONCILIATION AFTER INSPECTION AND SORTING</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:6px;">
+            <tr><td style="border:1px solid #000;padding:5px;">1. Weight of tablets received for inspection and sorting <strong>{{ ir_data.recon_weight_received|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">2. Weight of tablets received after inspection and sorting <strong>{{ ir_data.recon_weight_after|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">3. Average weight of tablets <strong>{{ ir_data.recon_avg_weight|default:"" }}</strong> mg/tablet</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">4. Recyclables after inspection and sorting <strong>{{ ir_data.recon_recyclables|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">5. Total rejects <strong>{{ ir_data.recon_rejects|default:"" }}</strong> Kg</td></tr>
+            <tr><td style="border:1px solid #000;padding:5px;">6. Total loss <strong>{{ ir_data.recon_total_loss|default:"" }}</strong> Kg &nbsp;&nbsp; <strong>{{ ir_data.recon_loss_percent|default:"" }}</strong> %</td></tr>
+        </table>
+
+        <!-- Signatures (read-only, with QA) -->
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;font-size:11px;margin-bottom:4px;">
+            <tr>
+                <td style="border:1px solid #000;padding:6px;width:33%;text-align:center;">
+                    <strong>Done by:</strong><br>{{ sigs_data.sig_group_leader|default:"" }}<br>{{ sigs_data.sig_group_leader_date|default:"" }}
+                </td>
+                <td style="border:1px solid #000;padding:6px;width:33%;text-align:center;">
+                    <strong>Checked by:</strong><br>{{ sigs_data.sig_smfpq|default:"" }}<br>{{ sigs_data.sig_smfpq_date|default:"" }}
+                </td>
+                <td style="border:1px solid #000;padding:6px;width:34%;text-align:center;">
+                    <strong>Verified by QA:</strong><br>{{ sigs_data.sig_qa|default:"" }}<br>{{ sigs_data.sig_qa_date|default:"" }}
+                </td>
+            </tr>
+        </table>
+        {% if ir_data.sorting_comments %}<p style="margin:3px 0;"><strong>Comments:</strong> {{ ir_data.sorting_comments }}</p>{% endif %}
+        <p style="margin:4px 0 0;font-size:10px;color:#155724;">&#10003; QA signed by {{ pcs_sections_data.section_statuses.pcs_inspection_recon_signed_by|default:"QA" }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ===================================================================
+     SECTION B: Personnel Names (unlocked after QA signs Section A)
+     =================================================================== -->
+<div class="pcs-section-card" id="pcs-pers-card-{{ phase_execution.id }}">
+    <div class="pcs-section-header">
+        <span>Section B &mdash; Personnel Names</span>
+        <span>
+            {% if pers_status == 'not_started' %}
+                {% if pers_data.draft_saved %}
+                    <span class="pcs-badge" style="background:#fff3cd;color:#856404;">&#9998; Draft Saved</span>
+                {% else %}
+                    <span class="pcs-badge pcs-badge-ns">Not Started</span>
+                {% endif %}
+            {% elif pers_status == 'completed' %}<span class="pcs-badge pcs-badge-done">&#10003; Completed</span>
+            {% endif %}
+        </span>
+    </div>
+
+    {% if ir_status != 'qa_signed' and pers_status == 'not_started' %}
+    {# ── LOCKED: Section A not yet QA-signed ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;padding:5px 10px;margin-bottom:8px;color:#6c757d;">&#128274; Locked &mdash; Section A must be verified by QA before filling personnel names</div>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #ccc;font-size:11px;opacity:0.55;">
+            <tr><td style="border:1px solid #ccc;padding:5px;" colspan="3"><strong>7. Names of person(s) involved in carrying out Inspection and Sorting</strong></td></tr>
+            <tr><td style="border:1px solid #ccc;padding:6px;width:33%;">a. ______</td><td style="border:1px solid #ccc;padding:6px;width:33%;">b. ______</td><td style="border:1px solid #ccc;padding:6px;width:34%;">c. ______</td></tr>
+            <tr><td style="border:1px solid #ccc;padding:6px;">d. ______</td><td style="border:1px solid #ccc;padding:6px;">e. ______</td><td style="border:1px solid #ccc;padding:6px;">f. ______</td></tr>
+            <tr><td style="border:1px solid #ccc;padding:6px;">g. ______</td><td style="border:1px solid #ccc;padding:6px;">h. ______</td><td style="border:1px solid #ccc;padding:6px;">i. ______</td></tr>
+        </table>
+    </div>
+
+    {% elif pers_status == 'completed' %}
+    {# ── COMPLETED: read-only ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <table style="width:100%;border-collapse:collapse;border:1px solid #000;">
+            <tr><td style="border:1px solid #000;padding:5px;" colspan="3"><strong>7. Names of person(s) involved in carrying out Inspection and Sorting</strong></td></tr>
+            <tr><td style="border:1px solid #000;padding:4px;width:33%;">a. {{ pers_data.person_a|default:"" }}</td><td style="border:1px solid #000;padding:4px;width:33%;">b. {{ pers_data.person_b|default:"" }}</td><td style="border:1px solid #000;padding:4px;width:34%;">c. {{ pers_data.person_c|default:"" }}</td></tr>
+            <tr><td style="border:1px solid #000;padding:4px;">d. {{ pers_data.person_d|default:"" }}</td><td style="border:1px solid #000;padding:4px;">e. {{ pers_data.person_e|default:"" }}</td><td style="border:1px solid #000;padding:4px;">f. {{ pers_data.person_f|default:"" }}</td></tr>
+            <tr><td style="border:1px solid #000;padding:4px;">g. {{ pers_data.person_g|default:"" }}</td><td style="border:1px solid #000;padding:4px;">h. {{ pers_data.person_h|default:"" }}</td><td style="border:1px solid #000;padding:4px;">i. {{ pers_data.person_i|default:"" }}</td></tr>
+        </table>
+        {% if pers_data.sorting_remarks %}<p style="margin:4px 0;"><strong>Remarks:</strong> {{ pers_data.sorting_remarks }}</p>{% endif %}
+        {% if edit_mode == 'edit' %}
+        <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}" style="margin-top:6px;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="recall_section_pcs_personnel">
+            <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo me-1"></i>Recall &amp; Re-edit</button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% elif ir_status == 'qa_signed' and pers_status == 'not_started' and edit_mode == 'edit' %}
+    {# ── EDIT FORM: unlocked, Section A is QA-signed ── #}
+    <div style="padding:8px 10px;">
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;font-size:11px;margin-bottom:8px;" id="pcs-pers-table-{{ phase_execution.id }}">
+            <tr><td style="border:1px solid #000;padding:5px;" colspan="3"><strong>7. Names of person(s) involved in carrying out Inspection and Sorting</strong></td></tr>
+            <tr>
+                <td style="border:1px solid #000;padding:4px;width:33%;">a. <input type="text" name="pcs_person_a" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_a|default:'' }}"></td>
+                <td style="border:1px solid #000;padding:4px;width:33%;">b. <input type="text" name="pcs_person_b" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_b|default:'' }}"></td>
+                <td style="border:1px solid #000;padding:4px;width:34%;">c. <input type="text" name="pcs_person_c" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_c|default:'' }}"></td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #000;padding:4px;">d. <input type="text" name="pcs_person_d" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_d|default:'' }}"></td>
+                <td style="border:1px solid #000;padding:4px;">e. <input type="text" name="pcs_person_e" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_e|default:'' }}"></td>
+                <td style="border:1px solid #000;padding:4px;">f. <input type="text" name="pcs_person_f" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_f|default:'' }}"></td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #000;padding:4px;">g. <input type="text" name="pcs_person_g" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_g|default:'' }}"></td>
+                <td style="border:1px solid #000;padding:4px;">h. <input type="text" name="pcs_person_h" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_h|default:'' }}"></td>
+                <td style="border:1px solid #000;padding:4px;">i. <input type="text" name="pcs_person_i" class="pcs-input" style="width:80%;display:inline-block;" value="{{ pers_data.person_i|default:'' }}"></td>
+            </tr>
+        </table>
+        <div style="margin-bottom:6px;">
+            <strong>Remarks:</strong>
+            <textarea name="pcs_sorting_remarks" class="pcs-input" style="width:100%;min-height:35px;text-align:left;resize:vertical;" placeholder="Remarks...">{{ pers_data.sorting_remarks|default:'' }}</textarea>
+        </div>
+        {% if pers_data.draft_saved %}
+        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:4px 10px;margin-bottom:6px;font-size:11px;color:#856404;">
+            <i class="fas fa-clock me-1"></i>Draft last saved by <strong>{{ pers_data.draft_by|default:"" }}</strong> on {{ pers_data.draft_at|default:"" }}
+        </div>
+        {% endif %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <!-- Save Draft -->
+            <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_draft_section_pcs_personnel">
+                <div id="pcs-pers-draft-fields-{{ phase_execution.id }}"></div>
+                <button type="submit" class="btn btn-warning btn-sm" onclick="return collectPcsPersData_{{ phase_execution.id }}(this.form, 'draft')">
+                    <i class="fas fa-save me-1"></i>Save Draft
+                </button>
+            </form>
+            <!-- Submit -->
+            <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="submit_section_pcs_personnel">
+                <div id="pcs-pers-submit-fields-{{ phase_execution.id }}"></div>
+                <button type="submit" class="btn btn-success btn-sm" onclick="return collectPcsPersData_{{ phase_execution.id }}(this.form, 'submit')">
+                    <i class="fas fa-check me-1"></i>Submit Personnel Names
+                </button>
+            </form>
+        </div>
+        <script>
+        function collectPcsPersData_{{ phase_execution.id }}(frm, mode) {
+            var containerId = (mode==='draft') ? 'pcs-pers-draft-fields-{{ phase_execution.id }}' : 'pcs-pers-submit-fields-{{ phase_execution.id }}';
+            var container = document.getElementById(containerId);
+            container.innerHTML = '';
+            var card = document.getElementById('pcs-pers-card-{{ phase_execution.id }}');
+            ['pcs_person_a','pcs_person_b','pcs_person_c','pcs_person_d','pcs_person_e',
+             'pcs_person_f','pcs_person_g','pcs_person_h','pcs_person_i','pcs_sorting_remarks'].forEach(function(name) {
+                var el = card.querySelector('[name="'+name+'"]');
+                if(el){ var inp=document.createElement('input');inp.type='hidden';inp.name=name;inp.value=el.value;container.appendChild(inp);}
+            });
+            return true;
+        }
+        </script>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ===================================================================
+     SECTION C: In-Process QC Report — Page 53 (QA fills)
+     =================================================================== -->
+<div class="pcs-section-card" id="pcs-ipc-card-{{ phase_execution.id }}">
+    <div class="pcs-section-header">
+        <span>In-Process QC Report &mdash; Page 53 (QA Only)</span>
+        <span>
+            {% if ipc_status == 'not_started' %}<span class="pcs-badge pcs-badge-ns">Not Started</span>
+            {% elif ipc_status == 'qa_filled' %}<span class="pcs-badge pcs-badge-done">&#10003; QA Filled</span>
+            {% endif %}
+        </span>
+    </div>
+
+    {% if pers_status != 'completed' %}
+    {# ── LOCKED: Personnel names not yet complete ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;padding:5px 10px;margin-bottom:8px;color:#6c757d;">&#128274; Locked &mdash; complete Personnel Names (Section B) first</div>
+        <div style="opacity:0.45;">
+            <div style="font-weight:bold;text-align:center;border:2px solid #ccc;padding:5px;font-size:12px;margin-bottom:4px;">QA IN-PROCESS QUALITY CONTROL REPORT FOR INSPECTION &amp; SORTING</div>
+            <p style="font-size:11px;margin:4px 0;">Product coated from Coating Machine Number(s): _______________</p>
+            <p style="font-size:11px;margin:4px 0 6px;">Record the net content of the drums to be sorted, weigh and record the quantity of defects sorted from the respective drums in the table below.</p>
+            <table style="width:100%;border-collapse:collapse;border:2px solid #ccc;font-size:11px;">
+                <tr><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Drum Number</th><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Net Weight (Kg)</th><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Quantity of Defects (Kg)</th><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Nature of Defects</th></tr>
+                {% for i in "1234567890" %}<tr><td style="border:1px solid #ccc;padding:4px;">{{ forloop.counter }}</td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td></tr>{% endfor %}
+                <tr><td style="border:1px solid #ccc;padding:4px;font-weight:bold;">TOTAL</td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td></tr>
+            </table>
+            <p style="font-size:11px;margin:5px 0;">Percentage defects = (Total quantity of defects / Total net weight) &times; 100% = ____________%</p>
+            <p style="font-size:11px;margin:4px 0;">Done by (QA Officer, Sign &amp; Date): ___________________________</p>
+        </div>
+    </div>
+
+    {% elif ipc_status == 'not_started' %}
+    {% if user_role == 'qa' %}
+    {# ── QA FILL FORM ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}" id="pcs-ipc-form-{{ phase_execution.id }}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="qa_fill_section_pcs_inprocess_qc">
+            <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;margin-bottom:6px;">QA IN-PROCESS QUALITY CONTROL REPORT FOR INSPECTION &amp; SORTING</div>
+            <p style="margin:4px 0 6px;">Product coated from Coating Machine Number(s): <input type="text" name="pcs_ipc_machine_no" class="pcs-input" style="width:180px;display:inline-block;" value="{{ ipc_data.machine_no|default:'' }}"></p>
+            <p style="margin:4px 0 8px;">Record the net content of the drums to be sorted, weigh and record the quantity of defects sorted from the respective drums in the table below.</p>
+            <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:4px;" id="pcs-ipc-fill-table-{{ phase_execution.id }}">
+                <tr>
+                    <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:15%;">Drum Number</th>
+                    <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:25%;">Net Weight (Kg)</th>
+                    <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:25%;">Quantity of Defects (Kg)</th>
+                    <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:35%;">Nature of Defects</th>
+                </tr>
+                {% for i in "1234567890" %}
+                <tr>
+                    <td style="border:1px solid #000;padding:4px;text-align:center;">{{ forloop.counter }}</td>
+                    <td style="border:1px solid #000;padding:3px;"><input type="number" step="0.001" name="pcs_ipc_drum_{{ forloop.counter }}_net" class="pcs-input pcs-ipc-net" placeholder="Kg"></td>
+                    <td style="border:1px solid #000;padding:3px;"><input type="number" step="0.001" name="pcs_ipc_drum_{{ forloop.counter }}_defects" class="pcs-input pcs-ipc-def" placeholder="Kg"></td>
+                    <td style="border:1px solid #000;padding:3px;"><input type="text" name="pcs_ipc_drum_{{ forloop.counter }}_nature" class="pcs-input" placeholder="Nature of defects"></td>
+                </tr>
+                {% endfor %}
+                <tr style="font-weight:bold;background:#e9ecef;">
+                    <td style="border:1px solid #000;padding:4px;text-align:center;">TOTAL</td>
+                    <td style="border:1px solid #000;padding:4px;"><input type="number" step="0.001" name="pcs_ipc_total_net" id="pcs-ipc-total-net-{{ phase_execution.id }}" class="pcs-input" style="background:#e8f5e9;" readonly></td>
+                    <td style="border:1px solid #000;padding:4px;"><input type="number" step="0.001" name="pcs_ipc_total_defects" id="pcs-ipc-total-def-{{ phase_execution.id }}" class="pcs-input" style="background:#e8f5e9;" readonly></td>
+                    <td style="border:1px solid #000;padding:4px;"></td>
+                </tr>
+            </table>
+            <p style="margin:5px 0 8px;">Percentage defects = (Total quantity of defects / Total net weight) &times; 100% = <input type="number" step="0.01" name="pcs_ipc_pct_defects" id="pcs-ipc-pct-{{ phase_execution.id }}" class="pcs-input" style="width:100px;display:inline-block;background:#e8f5e9;" readonly>%</p>
+            <p style="margin:4px 0 8px;">Done by (QA Officer, Sign &amp; Date): <input type="text" name="pcs_ipc_qa_sign" class="pcs-input" style="width:200px;display:inline-block;" placeholder="QA officer name" value="{{ request.user.get_full_name }}" required> &nbsp; <input type="date" name="pcs_ipc_qa_sign_date" class="pcs-input" style="width:160px;display:inline-block;" required></p>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-check-circle me-1"></i>Submit In-Process QC Report</button>
+        </form>
+        <script>
+        (function(){
+            var tbl = document.getElementById('pcs-ipc-fill-table-{{ phase_execution.id }}');
+            var totalNet = document.getElementById('pcs-ipc-total-net-{{ phase_execution.id }}');
+            var totalDef = document.getElementById('pcs-ipc-total-def-{{ phase_execution.id }}');
+            var pct      = document.getElementById('pcs-ipc-pct-{{ phase_execution.id }}');
+            function recalc(){
+                var nets=tbl.querySelectorAll('.pcs-ipc-net');
+                var defs=tbl.querySelectorAll('.pcs-ipc-def');
+                var tn=0,td=0;
+                nets.forEach(function(el){tn+=parseFloat(el.value)||0;});
+                defs.forEach(function(el){td+=parseFloat(el.value)||0;});
+                totalNet.value=tn?tn.toFixed(3):'';
+                totalDef.value=td?td.toFixed(3):'';
+                pct.value=(tn>0&&td>=0)?((td/tn)*100).toFixed(2):'';
+            }
+            tbl.querySelectorAll('.pcs-ipc-net,.pcs-ipc-def').forEach(function(el){el.addEventListener('input',recalc);});
+        })();
+        </script>
+    </div>
+
+    {% else %}
+    {# ── NON-QA: awaiting QA ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:4px;padding:5px 10px;margin-bottom:8px;color:#0d47a1;">&#9203; Awaiting QA &mdash; QA officer fills this report.</div>
+        <div style="opacity:0.5;">
+            <div style="font-weight:bold;text-align:center;border:2px solid #ccc;padding:5px;font-size:12px;margin-bottom:4px;">QA IN-PROCESS QUALITY CONTROL REPORT FOR INSPECTION &amp; SORTING</div>
+            <p style="font-size:11px;margin:4px 0;">Product coated from Coating Machine Number(s): _______________</p>
+            <p style="font-size:11px;margin:4px 0 6px;">Record the net content of the drums to be sorted, weigh and record the quantity of defects sorted from the respective drums in the table below.</p>
+            <table style="width:100%;border-collapse:collapse;border:2px solid #ccc;font-size:11px;">
+                <tr><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Drum Number</th><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Net Weight (Kg)</th><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Quantity of Defects (Kg)</th><th style="border:1px solid #ccc;padding:4px;background:#f5f5f5;">Nature of Defects</th></tr>
+                {% for i in "1234567890" %}<tr><td style="border:1px solid #ccc;padding:4px;">{{ forloop.counter }}</td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td></tr>{% endfor %}
+                <tr><td style="border:1px solid #ccc;padding:4px;font-weight:bold;">TOTAL</td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td><td style="border:1px solid #ccc;padding:4px;"></td></tr>
+            </table>
+            <p style="font-size:11px;margin:5px 0;">Percentage defects = (Total quantity of defects / Total net weight) &times; 100% = ____________%</p>
+            <p style="font-size:11px;margin:4px 0;">Done by (QA Officer, Sign &amp; Date): ___________________________</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% elif ipc_status == 'qa_filled' %}
+    {# ── COMPLETED: read-only view of QA filled data ── #}
+    <div style="padding:8px 10px;font-size:11px;">
+        <div style="font-weight:bold;text-align:center;border:2px solid #000;padding:5px;font-size:12px;margin-bottom:6px;">QA IN-PROCESS QUALITY CONTROL REPORT FOR INSPECTION &amp; SORTING</div>
+        <p style="margin:4px 0 6px;">Product coated from Coating Machine Number(s): <strong>{{ ipc_data.machine_no|default:"" }}</strong></p>
+        <p style="margin:4px 0 8px;">Record the net content of the drums to be sorted, weigh and record the quantity of defects sorted from the respective drums in the table below.</p>
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:4px;">
+            <tr>
+                <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:15%;">Drum Number</th>
+                <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:25%;">Net Weight (Kg)</th>
+                <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:25%;">Quantity of Defects (Kg)</th>
+                <th style="border:1px solid #000;padding:5px;background:#f0f0f0;width:35%;">Nature of Defects</th>
+            </tr>
+            {% for n in "1234567890" %}
+            <tr>
+                <td style="border:1px solid #000;padding:4px;text-align:center;">{{ forloop.counter }}</td>
+                {% if forloop.counter == 1 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_1_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_1_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_1_nature|default:"" }}</td>
+                {% elif forloop.counter == 2 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_2_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_2_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_2_nature|default:"" }}</td>
+                {% elif forloop.counter == 3 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_3_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_3_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_3_nature|default:"" }}</td>
+                {% elif forloop.counter == 4 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_4_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_4_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_4_nature|default:"" }}</td>
+                {% elif forloop.counter == 5 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_5_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_5_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_5_nature|default:"" }}</td>
+                {% elif forloop.counter == 6 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_6_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_6_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_6_nature|default:"" }}</td>
+                {% elif forloop.counter == 7 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_7_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_7_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_7_nature|default:"" }}</td>
+                {% elif forloop.counter == 8 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_8_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_8_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_8_nature|default:"" }}</td>
+                {% elif forloop.counter == 9 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_9_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_9_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_9_nature|default:"" }}</td>
+                {% elif forloop.counter == 10 %}<td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_10_net|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_10_defects|default:"" }}</td><td style="border:1px solid #000;padding:4px;">{{ ipc_data.drum_10_nature|default:"" }}</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            <tr style="font-weight:bold;background:#e9ecef;">
+                <td style="border:1px solid #000;padding:4px;text-align:center;">TOTAL</td>
+                <td style="border:1px solid #000;padding:4px;">{{ ipc_data.total_net|default:"" }}</td>
+                <td style="border:1px solid #000;padding:4px;">{{ ipc_data.total_defects|default:"" }}</td>
+                <td style="border:1px solid #000;padding:4px;"></td>
+            </tr>
+        </table>
+        <p style="margin:5px 0 6px;">Percentage defects = (Total quantity of defects / Total net weight) &times; 100% = <strong>{{ ipc_data.pct_defects|default:"" }}</strong>%</p>
+        <p style="margin:4px 0;">Done by (QA Officer, Sign &amp; Date): <strong>{{ ipc_data.qa_sign|default:"" }}</strong> &nbsp; {{ ipc_data.qa_sign_date|default:"" }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<div style="font-weight:bold;font-size:12px;padding:4px 0;font-style:italic;">
+    NOTE: Transfer inspected and sorted tablets to Semi Finished Product Quarantine (SMFPQ) Store.
+</div>
+
+{% endwith %}
+{% endwith %}

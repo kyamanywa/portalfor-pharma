@@ -6,7 +6,15 @@ This configuration supports both HTTP and WebSocket connections for real-time fe
 """
 
 import os
+import sys
 import django
+
+# Add the project root to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import compatibility shim for Python 3.14+ before Django imports
+import pkgutil_compat
+
 from django.core.asgi import get_asgi_application
 
 # Initialize Django ASGI application early to ensure the AppRegistry is populated

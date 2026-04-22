@@ -47,11 +47,12 @@ class Command(BaseCommand):
                     (8, 'post_compression_qc', 'Post-Compression QC', True, True, 2.0, 6),  # Rollback to blending
                     (9, 'sorting', 'Sorting', True, False, 4.0),
                     (10, 'coating', 'Coating', False, False, 8.0),  # Optional phase
-                    (11, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
-                    (12, 'blister_packing', 'Blister Packing', True, False, 6.0),
-                    (13, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
-                    (14, 'final_qa', 'Final QA', True, True, 3.0, None, 13),  # QC rollback: None, QA rollback: secondary_packaging (13)
-                    (15, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
+                    (11, 'post_coating_sorting', 'Post-Coating Sorting', False, False, 4.0),  # Optional: only for coated products
+                    (12, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
+                    (13, 'blister_packing', 'Blister Packing', True, False, 6.0),
+                    (14, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
+                    (15, 'final_qa', 'Final QA', True, True, 3.0, None, 14),  # QC rollback: None, QA rollback: secondary_packaging (14)
+                    (16, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
                 ]
             },
             'tablet_type_2': {
@@ -68,11 +69,12 @@ class Command(BaseCommand):
                     (8, 'post_compression_qc', 'Post-Compression QC', True, True, 2.0, 6),  # Rollback to blending
                     (9, 'sorting', 'Sorting', True, False, 4.0),
                     (10, 'coating', 'Coating', False, False, 8.0),  # Optional phase
-                    (11, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
-                    (12, 'bulk_packing', 'Bulk Packing', True, False, 4.0),
-                    (13, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
-                    (14, 'final_qa', 'Final QA', True, True, 3.0, None, 13),  # QC rollback: None, QA rollback: secondary_packaging (13)
-                    (15, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
+                    (11, 'post_coating_sorting', 'Post-Coating Sorting', False, False, 4.0),  # Optional: only for coated products
+                    (12, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
+                    (13, 'bulk_packing', 'Bulk Packing', True, False, 4.0),
+                    (14, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
+                    (15, 'final_qa', 'Final QA', True, True, 3.0, None, 14),  # QC rollback: None, QA rollback: secondary_packaging (14)
+                    (16, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
                 ]
             },
             'capsule': {

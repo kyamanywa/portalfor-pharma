@@ -1,0 +1,329 @@
+<!-- Compression Process Table Component -->
+<!-- This table shows the compression setup & machine configuration (Page 21) -->
+<!-- Supports edit_mode: 'edit' (fillable form) or 'view' (read only) -->
+
+<style>
+    .compression-input {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+        font-size: 11px;
+        background-color: #fff3e0;
+    }
+    .compression-input:focus {
+        border-color: #e65100;
+        background-color: #ffe0b2;
+        outline: none;
+    }
+    .compression-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .compression-signature {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+        font-size: 11px;
+        background-color: #fff3e0;
+    }
+</style>
+
+<!-- 1. EQUIPMENT USED FOR COMPRESSION -->
+<div style="font-weight: bold; margin-bottom: 5px;">1. EQUIPMENT USED FOR COMPRESSION</div>
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 20px; font-size: 11px;">
+    <thead style="background-color: #f0f0f0;">
+        <tr>
+            <th style="border: 1px solid #000; padding: 4px; width: 25%;">Equipment Name</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 15%;">Equipment ID</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 10%;">Mark</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 25%;">Equipment Name</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 15%;">Equipment ID</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 10%;">Mark</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Row 1 -->
+        <tr style="height: 25px;">
+            <td style="border: 1px solid #000; padding: 4px;">Compression Machine</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-06</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_cm_t06" class="compression-checkbox" {% if compression_data.equip_cm_t06 %}checked{% endif %}>{% elif compression_data.equip_cm_t06 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 4px;">Compression Machine</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-80</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_cm_t80" class="compression-checkbox" {% if compression_data.equip_cm_t80 %}checked{% endif %}>{% elif compression_data.equip_cm_t80 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+        </tr>
+        <!-- Row 2 -->
+        <tr style="height: 25px;">
+            <td style="border: 1px solid #000; padding: 4px;">Compression Machine</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-15</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_cm_t15" class="compression-checkbox" {% if compression_data.equip_cm_t15 %}checked{% endif %}>{% elif compression_data.equip_cm_t15 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 4px;">Metal Detector</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-84</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_md_t84" class="compression-checkbox" {% if compression_data.equip_md_t84 %}checked{% endif %}>{% elif compression_data.equip_md_t84 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+        </tr>
+        <!-- Row 3 -->
+        <tr style="height: 25px;">
+            <td style="border: 1px solid #000; padding: 4px;">Compression Machine</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-30</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_cm_t30" class="compression-checkbox" {% if compression_data.equip_cm_t30 %}checked{% endif %}>{% elif compression_data.equip_cm_t30 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 4px;">Metal Detector</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-85</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_md_t85" class="compression-checkbox" {% if compression_data.equip_md_t85 %}checked{% endif %}>{% elif compression_data.equip_md_t85 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+        </tr>
+        <!-- Row 4 -->
+        <tr style="height: 25px;">
+            <td style="border: 1px solid #000; padding: 4px;">Compression Machine</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-35</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_cm_t35" class="compression-checkbox" {% if compression_data.equip_cm_t35 %}checked{% endif %}>{% elif compression_data.equip_cm_t35 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 4px;">Deduster</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-86</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_dd_t86" class="compression-checkbox" {% if compression_data.equip_dd_t86 %}checked{% endif %}>{% elif compression_data.equip_dd_t86 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+        </tr>
+        <!-- Row 5 -->
+        <tr style="height: 25px;">
+            <td style="border: 1px solid #000; padding: 4px;">Compression Machine</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-52</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_cm_t52" class="compression-checkbox" {% if compression_data.equip_cm_t52 %}checked{% endif %}>{% elif compression_data.equip_cm_t52 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+            <td style="border: 1px solid #000; padding: 4px;">Deduster</td>
+            <td style="border: 1px solid #000; padding: 4px;">T-87</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                {% if edit_mode == 'edit' %}<input type="checkbox" name="equip_dd_t87" class="compression-checkbox" {% if compression_data.equip_dd_t87 %}checked{% endif %}>{% elif compression_data.equip_dd_t87 %}<strong style="font-size:14px;">&#10003;</strong>{% endif %}
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- 2. MACHINE SET UP -->
+<div style="font-weight: bold; margin-bottom: 5px;">2. MACHINE SET UP</div>
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 20px; font-size: 11px;">
+    <tr>
+        <th style="border: 1px solid #000; padding: 5px; text-align: left; width: 50%; background-color: #f0f0f0;">
+            TYPE OF TOOLING : {{ bmr.product.punch_type|default:"D-TOOLING" }}
+        </th>
+        <th style="border: 1px solid #000; padding: 5px; text-align: left; width: 50%; background-color: #f0f0f0;">
+            {{ bmr.product.punch_type|default:"B-TOOLING" }}
+        </th>
+    </tr>
+    <!-- Trade Setup -->
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Punch size: (for Trade)</strong> &nbsp;&nbsp;&nbsp; {{ bmr.product.punch_size|default:"12.5" }}mm
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Punch shape: (for Trade)</strong>. {{ bmr.product.punch_shape_trade }}
+        </td>
+    </tr>
+    <tr>
+        <td rowspan="2" style="border: 1px solid #000; padding: 5px; vertical-align: top;">
+            <strong>Tablet face appearance/ description (Trade):</strong><br>
+            {{ bmr.product.tablet_appearance_trade|default:"White round flat tablets"|linebreaksbr }}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Upper:</strong> {{ bmr.product.upper_punch_description|default:"Flat Beveled" }}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Lower:</strong> {{ bmr.product.lower_punch_description|default:"Flat Beveled, Plain" }}
+        </td>
+    </tr>
+    <!-- UG Setup -->
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Punch size: (for UG)</strong> &nbsp;&nbsp;&nbsp; {{ bmr.product.punch_size_ug|default:bmr.product.punch_size|default:"12.5" }}mm
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Punch shape: (for UG)</strong>. {{ bmr.product.punch_shape_ug|default:bmr.product.punch_shape_trade }}
+        </td>
+    </tr>
+    <tr>
+        <td rowspan="2" style="border: 1px solid #000; padding: 5px; vertical-align: top;">
+            <strong>Tablet face appearance/ description (UG):</strong><br>
+            {{ bmr.product.tablet_appearance_ug|default:"White round flat tablets"|linebreaksbr }}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Upper:</strong> {{ bmr.product.upper_punch_description_ug|default:"Flat Beveled" }}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            <strong>Lower:</strong> {{ bmr.product.lower_punch_description_ug|default:"Flat Beveled, Plain" }}
+        </td>
+    </tr>
+    <!-- Operator Fields -->
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Cleaned by:
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="cleaned_by" class="compression-signature" style="width: 200px; display: inline-block;" value="{{ compression_data.cleaned_by|default:'' }}">
+            {% elif compression_data.cleaned_by %}<strong>{{ compression_data.cleaned_by }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Date:
+            {% if edit_mode == 'edit' %}
+            <input type="date" name="cleaned_date" class="compression-input" style="width: 160px; display: inline-block;" value="{{ compression_data.cleaned_date|default:'' }}">
+            {% elif compression_data.cleaned_date %}<strong>{{ compression_data.cleaned_date }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Machine setting done by:
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="machine_set_by" class="compression-signature" style="width: 170px; display: inline-block;" value="{{ compression_data.machine_set_by|default:'' }}">
+            {% elif compression_data.machine_set_by %}<strong>{{ compression_data.machine_set_by }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Date:
+            {% if edit_mode == 'edit' %}
+            <input type="date" name="machine_set_date" class="compression-input" style="width: 160px; display: inline-block;" value="{{ compression_data.machine_set_date|default:'' }}">
+            {% elif compression_data.machine_set_date %}<strong>{{ compression_data.machine_set_date }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2" style="border: 1px solid #000; padding: 5px;">
+            Machine speed:
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="machine_speed" class="compression-input" style="width: 200px; display: inline-block;" placeholder="RPM" value="{{ compression_data.machine_speed|default:'' }}">
+            {% elif compression_data.machine_speed %}<strong>{{ compression_data.machine_speed }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Checked by (section supervisor):
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="setup_checked_by" class="compression-signature" style="width: 150px; display: inline-block;" value="{{ compression_data.setup_checked_by|default:'' }}">
+            {% elif compression_data.setup_checked_by %}<strong>{{ compression_data.setup_checked_by }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Date:
+            {% if edit_mode == 'edit' %}
+            <input type="date" name="setup_checked_date" class="compression-input" style="width: 160px; display: inline-block;" value="{{ compression_data.setup_checked_date|default:'' }}">
+            {% elif compression_data.setup_checked_date %}<strong>{{ compression_data.setup_checked_date }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Previous Product:
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="prev_product" class="compression-input" style="width: 180px; display: inline-block;" value="{{ compression_data.prev_product|default:'' }}">
+            {% elif compression_data.prev_product %}<strong>{{ compression_data.prev_product }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Batch No.:
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="prev_batch_no" class="compression-input" style="width: 180px; display: inline-block;" value="{{ compression_data.prev_batch_no|default:'' }}">
+            {% elif compression_data.prev_batch_no %}<strong>{{ compression_data.prev_batch_no }}</strong>
+            {% else %}________________________{% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- 3. TABLET WEIGHT RANGE LIMITS (Read-only from product specs) -->
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 12px; margin-bottom: 20px;">
+    <tr>
+        <td colspan="4" style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold; background-color: #f0f0f0;">
+            3. Tablet Weight Range Limits
+        </td>
+    </tr>
+    <tr>
+        <td colspan="4" style="border: 1px solid #000; padding: 5px;">
+            Individual tablet wt. (Nominal): <span style="font-weight: bold; margin-left: 20px;">{{ bmr.product.average_weight_uncoated|default:"591.1" }}mg</span>
+        </td>
+    </tr>
+    <tr style="background-color: #f9f9f9;">
+        <th style="border: 1px solid #000; padding: 5px; width: 25%; text-align: left;"></th>
+        <th style="border: 1px solid #000; padding: 5px; width: 40%; text-align: left;">% of Nominal weight</th>
+        <th style="border: 1px solid #000; padding: 5px; width: 20%; text-align: left;">Tablet wt. (mg)</th>
+        <th style="border: 1px solid #000; padding: 5px; width: 15%; text-align: left;">Symbol</th>
+    </tr>
+    <tr>
+        <td rowspan="3" style="border: 1px solid #000; padding: 5px; font-weight: bold;">Upper range</td>
+        <td style="border: 1px solid #000; padding: 5px;">&gt;105%</td>
+        <td style="border: 1px solid #000; padding: 5px;">&gt;<span class="cmp-calc-weight" data-pct="1.05"></span></td>
+        <td style="border: 1px solid #000; padding: 5px;">&gt; +T2 Alert</td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">105%</td>
+        <td style="border: 1px solid #000; padding: 5px;">=<span class="cmp-calc-weight" data-pct="1.05"></span></td>
+        <td style="border: 1px solid #000; padding: 5px;">= +T2 Alert</td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">103%</td>
+        <td style="border: 1px solid #000; padding: 5px;">=<span class="cmp-calc-weight" data-pct="1.03"></span></td>
+        <td style="border: 1px solid #000; padding: 5px;">= +T1 Good</td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px; font-weight: bold;">Norm</td>
+        <td style="border: 1px solid #000; padding: 5px;">100%</td>
+        <td style="border: 1px solid #000; padding: 5px;"><span class="cmp-calc-weight" data-pct="1.00"></span></td>
+        <td style="border: 1px solid #000; padding: 5px;">Very Good</td>
+    </tr>
+    <tr>
+        <td rowspan="3" style="border: 1px solid #000; padding: 5px; font-weight: bold;">Lower range</td>
+        <td style="border: 1px solid #000; padding: 5px;">97%</td>
+        <td style="border: 1px solid #000; padding: 5px;">=<span class="cmp-calc-weight" data-pct="0.97"></span></td>
+        <td style="border: 1px solid #000; padding: 5px;">= -T1 Good</td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">95%</td>
+        <td style="border: 1px solid #000; padding: 5px;">=<span class="cmp-calc-weight" data-pct="0.95"></span></td>
+        <td style="border: 1px solid #000; padding: 5px;">= -T2 Alert</td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">&lt;95%</td>
+        <td style="border: 1px solid #000; padding: 5px;">&lt;<span class="cmp-calc-weight" data-pct="0.95"></span></td>
+        <td style="border: 1px solid #000; padding: 5px;">&lt; -T2 Alert</td>
+    </tr>
+</table>
+
+<script>
+(function() {
+    var nominalWeight = parseFloat("{{ bmr.product.average_weight_uncoated|default:'591.1' }}");
+    if (!isNaN(nominalWeight)) {
+        var spans = document.querySelectorAll('.cmp-calc-weight');
+        spans.forEach(function(span) {
+            var multiplier = parseFloat(span.getAttribute('data-pct'));
+            span.textContent = (nominalWeight * multiplier).toFixed(1);
+        });
+    }
+})();
+</script>
+
+<!-- Comments -->
+<div style="margin-top: 10px;">
+    <strong>Comments:</strong>
+    {% if edit_mode == 'edit' %}
+    <textarea name="compression_comments" class="compression-input" style="width: 100%; min-height: 50px; text-align: left; resize: vertical;"
+              placeholder="Enter any additional comments...">{{ compression_data.compression_comments|default:'' }}</textarea>
+    {% else %}
+    <div style="min-height:40px; border: 1px solid #ccc; padding: 4px;">{{ compression_data.compression_comments|default:'' }}</div>
+    {% endif %}
+</div>

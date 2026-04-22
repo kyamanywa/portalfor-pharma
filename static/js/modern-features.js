@@ -148,12 +148,16 @@ class ThemeManager {
     showButtonLoading(button) {
         const originalText = button.innerHTML;
         button.innerHTML = '<span class="loading-spinner"></span> Processing...';
-        button.disabled = true;
+        // Use CSS-only loading state — do NOT use `disabled` because that strips
+        // the button's name/value from POST data before the browser sends the form.
+        button.style.opacity = '0.65';
+        button.style.pointerEvents = 'none';
         
         // Restore button after 3 seconds (or when form submits)
         setTimeout(() => {
             button.innerHTML = originalText;
-            button.disabled = false;
+            button.style.opacity = '';
+            button.style.pointerEvents = '';
         }, 3000);
     }
 

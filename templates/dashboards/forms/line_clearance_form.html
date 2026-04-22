@@ -1,0 +1,209 @@
+<!-- Line Clearance Form Component - Phase-specific items passed via context -->
+<!-- Usage: include 'dashboards/forms/line_clearance_form.html' with phase_type='granulation' clearance_type='beginning' lc_items=items lc_end_items=end_items -->
+<!-- Required context: phase_type, clearance_type ('beginning'|'ending'|'both'), edit_mode, lc_data (saved data dict) -->
+
+{% if edit_mode == 'edit' %}
+<style>
+    .lc-input {
+        width: 100%;
+        padding: 4px 6px;
+        border: 1px solid #999;
+        font-size: 11px;
+        text-align: center;
+        background-color: #ffffdd;
+    }
+    .lc-input:focus {
+        border-color: #007bff;
+        background-color: #e8f4fd;
+        outline: none;
+    }
+    .lc-status-select {
+        width: 100%;
+        padding: 3px;
+        border: 1px solid #999;
+        font-size: 11px;
+        text-align: center;
+        background-color: #ffffdd;
+    }
+    .lc-approved { background-color: #d4edda !important; border-color: #28a745 !important; }
+    .lc-pending { background-color: #fff3cd !important; }
+    .lc-remarks-input {
+        width: 100%;
+        min-height: 40px;
+        padding: 4px 6px;
+        border: 1px solid #999;
+        font-size: 11px;
+        resize: vertical;
+        background-color: #ffffdd;
+    }
+    .lc-env-input {
+        width: 80px;
+        padding: 3px 6px;
+        border: 1px solid #999;
+        font-size: 11px;
+        text-align: center;
+        background-color: #ffffdd;
+        display: inline-block;
+    }
+</style>
+{% endif %}
+
+{% with prefix=phase_type|add:"_"|add:clearance_type %}
+
+{% if clearance_type == 'beginning' or clearance_type == 'both' %}
+<!-- PREVIOUS PRODUCT -->
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px;">
+    <tr>
+        <td colspan="5" style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <strong>Previous product:</strong> 
+            <input type="text" name="{{ phase_type }}_beginning_prev_product" class="lc-input" style="width: 300px; display: inline-block;" 
+                   placeholder="Previous product name" value="{{ lc_data.prev_product|default:'' }}">
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            <strong>Batch No:</strong>
+            <input type="text" name="{{ phase_type }}_beginning_prev_batch" class="lc-input" style="width: 180px; display: inline-block;" 
+                   placeholder="Batch number" value="{{ lc_data.prev_batch|default:'' }}">
+            {% else %}
+            <strong>Previous product:</strong> {{ lc_data.prev_product|default:"__________________________________________________" }}
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            <strong>Batch No:</strong> {{ lc_data.prev_batch|default:"______________________" }}
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- BEGINNING ACTIVITIES -->
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; font-size: 11px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #000; padding: 4px; text-align: left; width: 45%;">BEGINNING ACTIVITIES:<br><span style="font-weight: normal;">The following must be checked to ensure adherence to GMP requirements.</span></th>
+            <th style="border: 1px solid #000; padding: 4px; width: 13%;">Done by<br>Operator<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 13%;">Checked by<br>Supervisor<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 13%;">Verified by<br>QA (Sign &<br>Date)</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 8%;">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in lc_items %}
+        <tr>
+            <td style="border: 1px solid #000; padding: 6px;">{{ forloop.counter }}. {{ item|linebreaksbr }}</td>
+            {% if edit_mode == 'edit' %}
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <input type="text" name="{{ phase_type }}_beginning_item{{ forloop.counter }}_operator" 
+                       class="lc-input" placeholder="Sign" 
+                       value="{{ lc_data|default_if_none:'' }}">
+                <input type="date" name="{{ phase_type }}_beginning_item{{ forloop.counter }}_operator_date" 
+                       class="lc-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <input type="text" name="{{ phase_type }}_beginning_item{{ forloop.counter }}_supervisor" 
+                       class="lc-input" placeholder="Sign">
+                <input type="date" name="{{ phase_type }}_beginning_item{{ forloop.counter }}_supervisor_date" 
+                       class="lc-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <input type="text" name="{{ phase_type }}_beginning_item{{ forloop.counter }}_qa" 
+                       class="lc-input" placeholder="Sign">
+                <input type="date" name="{{ phase_type }}_beginning_item{{ forloop.counter }}_qa_date" 
+                       class="lc-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <select name="{{ phase_type }}_beginning_item{{ forloop.counter }}_status" class="lc-status-select">
+                    <option value="">--</option>
+                    <option value="ok">OK</option>
+                    <option value="na">N/A</option>
+                    <option value="fail">FAIL</option>
+                </select>
+            </td>
+            {% else %}
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        <!-- Remarks -->
+        <tr>
+            <td colspan="5" style="border: 1px solid #000; padding: 6px;">
+                <strong>Remarks:</strong>
+                {% if edit_mode == 'edit' %}
+                <textarea name="{{ phase_type }}_beginning_remarks" class="lc-remarks-input" 
+                          placeholder="Enter any remarks...">{{ lc_data.beginning_remarks|default:'' }}</textarea>
+                {% else %}
+                {{ lc_data.beginning_remarks|default:"" }}
+                {% endif %}
+            </td>
+        </tr>
+    </tbody>
+</table>
+{% endif %}
+
+{% if clearance_type == 'ending' or clearance_type == 'both' %}
+<!-- ENDING ACTIVITIES -->
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; {% if clearance_type == 'both' %}margin-top: 15px;{% endif %} font-size: 11px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #000; padding: 4px; text-align: left; width: 45%;">ENDING ACTIVITIES:<br><span style="font-weight: normal;">The following must be checked to ensure adherence to GMP requirements</span></th>
+            <th style="border: 1px solid #000; padding: 4px; width: 13%;">Done by<br>Operator<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 13%;">Checked by<br>Supervisor<br>(Sign & Date)</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 13%;">Verified by<br>QA (Sign &<br>Date)</th>
+            <th style="border: 1px solid #000; padding: 4px; width: 8%;">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in lc_end_items %}
+        <tr>
+            <td style="border: 1px solid #000; padding: 6px;">{{ forloop.counter }}. {{ item }}</td>
+            {% if edit_mode == 'edit' %}
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <input type="text" name="{{ phase_type }}_ending_item{{ forloop.counter }}_operator" 
+                       class="lc-input" placeholder="Sign">
+                <input type="date" name="{{ phase_type }}_ending_item{{ forloop.counter }}_operator_date" 
+                       class="lc-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <input type="text" name="{{ phase_type }}_ending_item{{ forloop.counter }}_supervisor" 
+                       class="lc-input" placeholder="Sign">
+                <input type="date" name="{{ phase_type }}_ending_item{{ forloop.counter }}_supervisor_date" 
+                       class="lc-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <input type="text" name="{{ phase_type }}_ending_item{{ forloop.counter }}_qa" 
+                       class="lc-input" placeholder="Sign">
+                <input type="date" name="{{ phase_type }}_ending_item{{ forloop.counter }}_qa_date" 
+                       class="lc-input" style="margin-top: 2px;">
+            </td>
+            <td style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <select name="{{ phase_type }}_ending_item{{ forloop.counter }}_status" class="lc-status-select">
+                    <option value="">--</option>
+                    <option value="ok">OK</option>
+                    <option value="na">N/A</option>
+                    <option value="fail">FAIL</option>
+                </select>
+            </td>
+            {% else %}
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            <td style="border: 1px solid #000; padding: 6px;"></td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        <!-- Remarks -->
+        <tr>
+            <td colspan="5" style="border: 1px solid #000; padding: 6px;">
+                <strong>Remarks:</strong>
+                {% if edit_mode == 'edit' %}
+                <textarea name="{{ phase_type }}_ending_remarks" class="lc-remarks-input" 
+                          placeholder="Enter any remarks...">{{ lc_data.ending_remarks|default:'' }}</textarea>
+                {% else %}
+                {{ lc_data.ending_remarks|default:"" }}
+                {% endif %}
+            </td>
+        </tr>
+    </tbody>
+</table>
+{% endif %}
+
+{% endwith %}

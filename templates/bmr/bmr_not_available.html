@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="max-width:680px;margin:60px auto;text-align:center;font-family:sans-serif;">
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:40px 32px;">
+        <div style="font-size:48px;margin-bottom:16px;">🚧</div>
+        <h2 style="color:#856404;margin-bottom:8px;">BMR Template Not Yet Available</h2>
+        <p style="color:#856404;font-size:15px;margin-bottom:24px;">
+            A dedicated BMR template for
+            <strong>{{ product_type_display }}{% if coating_type == 'coated' %} (Coated){% endif %}</strong>
+            products is currently being built.
+        </p>
+        <table style="width:100%;border-collapse:collapse;text-align:left;margin-bottom:24px;">
+            <tr>
+                <td style="padding:8px 12px;border:1px solid #ffc107;font-weight:bold;background:#fffbe6;">Product</td>
+                <td style="padding:8px 12px;border:1px solid #ffc107;">{{ product.product_name }}</td>
+            </tr>
+            <tr>
+                <td style="padding:8px 12px;border:1px solid #ffc107;font-weight:bold;background:#fffbe6;">Batch No.</td>
+                <td style="padding:8px 12px;border:1px solid #ffc107;">{{ bmr.batch_number }}</td>
+            </tr>
+            <tr>
+                <td style="padding:8px 12px;border:1px solid #ffc107;font-weight:bold;background:#fffbe6;">Product Type</td>
+                <td style="padding:8px 12px;border:1px solid #ffc107;">{{ product_type_display }}{% if coating_type == 'coated' %} — Coated{% endif %}</td>
+            </tr>
+        </table>
+        <a href="{% url 'bmr:list' %}" style="display:inline-block;background:#0d6efd;color:#fff;padding:10px 24px;border-radius:5px;text-decoration:none;font-size:14px;">
+            ← Back to BMR List
+        </a>
+    </div>
+</div>
+{% endblock %}

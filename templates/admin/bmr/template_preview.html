@@ -1,0 +1,365 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+.preview-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.preview-title {
+    margin: 0;
+    color: #495057;
+}
+
+.back-btn {
+    padding: 10px 20px;
+    background: #6c757d;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.bmr-page {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #007cba;
+    padding-bottom: 15px;
+}
+
+.page-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #007cba;
+    margin-bottom: 5px;
+}
+
+.page-subtitle {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.section {
+    margin-bottom: 25px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    background: #fafbfc;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #495057;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 8px;
+}
+
+.section-description {
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 15px;
+}
+
+.fields-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.fields-grid.columns-1 { grid-template-columns: 1fr; }
+.fields-grid.columns-2 { grid-template-columns: 1fr 1fr; }
+.fields-grid.columns-3 { grid-template-columns: 1fr 1fr 1fr; }
+.fields-grid.columns-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+.field-group {
+    margin-bottom: 15px;
+}
+
+.field-label {
+    display: block;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.field-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.field-input:focus {
+    border-color: #007cba;
+    box-shadow: 0 0 0 0.2rem rgba(0, 124, 186, 0.25);
+    outline: 0;
+}
+
+.field-help {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 3px;
+}
+
+.signature-section {
+    background: #fff8dc;
+    border: 2px dashed #ffc107;
+    padding: 20px;
+    text-align: center;
+    color: #856404;
+}
+
+.table-section {
+    overflow-x: auto;
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.preview-table th,
+.preview-table td {
+    border: 1px solid #dee2e6;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.preview-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+.info-section {
+    background: #e7f3ff;
+    border-left: 4px solid #007cba;
+}
+
+.form-section {
+    background: #f8f9fa;
+}
+
+.divider-section {
+    border: none;
+    background: none;
+    padding: 10px 0;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.required-indicator {
+    color: #dc3545;
+    margin-left: 2px;
+}
+
+.readonly-field {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+@media print {
+    .preview-header {
+        display: none;
+    }
+    
+    .bmr-page {
+        box-shadow: none;
+        border: none;
+        page-break-after: always;
+    }
+    
+    .bmr-page:last-child {
+        page-break-after: auto;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="preview-container">
+    <div class="preview-header">
+        <h1 class="preview-title">BMR Template Preview: {{ template.name }}</h1>
+        <a href="{% url 'admin:bmr_bmrtemplate_visual_editor' template.id %}" class="back-btn">← Back to Editor</a>
+    </div>
+
+    {% regroup sections by page_number as page_groups %}
+    {% for page_group in page_groups %}
+    <div class="bmr-page">
+        <div class="page-header">
+            <div class="page-title">{{ template.name }} - Page {{ page_group.grouper }}</div>
+            <div class="page-subtitle">Batch Manufacturing Record</div>
+        </div>
+
+        {% for section in page_group.list %}
+        <div class="section {{ section.section_type }}-section">
+            {% if section.title %}
+            <div class="section-title">{{ section.title }}</div>
+            {% endif %}
+            
+            {% if section.description %}
+            <div class="section-description">{{ section.description }}</div>
+            {% endif %}
+
+            {% if section.section_type == 'divider' %}
+                <div class="divider-section">
+                    --- Page Break ---
+                </div>
+            
+            {% elif section.section_type == 'signature' %}
+                <div class="signature-section">
+                    <h4>{{ section.title|default:"Signatures Required" }}</h4>
+                    <div style="display: flex; justify-content: space-around; margin-top: 20px;">
+                        <div>
+                            <div style="border-bottom: 1px solid #000; width: 200px; margin-bottom: 5px;">&nbsp;</div>
+                            <div style="text-align: center; font-size: 12px;">Operator Signature</div>
+                        </div>
+                        <div>
+                            <div style="border-bottom: 1px solid #000; width: 100px; margin-bottom: 5px;">&nbsp;</div>
+                            <div style="text-align: center; font-size: 12px;">Date</div>
+                        </div>
+                        <div>
+                            <div style="border-bottom: 1px solid #000; width: 200px; margin-bottom: 5px;">&nbsp;</div>
+                            <div style="text-align: center; font-size: 12px;">Supervisor Review</div>
+                        </div>
+                    </div>
+                </div>
+
+            {% elif section.section_type == 'table' %}
+                <div class="table-section">
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                {% for column in section.table_columns.all %}
+                                <th>{{ column.header }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                {% for column in section.table_columns.all %}
+                                <td style="height: 40px;">&nbsp;</td>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                {% for column in section.table_columns.all %}
+                                <td style="height: 40px;">&nbsp;</td>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                {% for column in section.table_columns.all %}
+                                <td style="height: 40px;">&nbsp;</td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            {% else %}
+                <!-- Regular form/info sections -->
+                <div class="fields-grid columns-{{ section.columns|default:1 }}">
+                    {% for field in section.fields.all %}
+                    <div class="field-group">
+                        <label class="field-label">
+                            {{ field.label }}
+                            {% if field.is_required %}<span class="required-indicator">*</span>{% endif %}
+                        </label>
+                        
+                        {% if field.field_type == 'text' %}
+                            <input type="text" class="field-input{% if field.is_readonly %} readonly-field{% endif %}" 
+                                   placeholder="{{ field.placeholder|default:'' }}"
+                                   {% if field.is_readonly %}readonly{% endif %}
+                                   {% if field.is_required %}required{% endif %}>
+                        
+                        {% elif field.field_type == 'number' %}
+                            <input type="number" class="field-input{% if field.is_readonly %} readonly-field{% endif %}" 
+                                   placeholder="{{ field.placeholder|default:'' }}"
+                                   {% if field.is_readonly %}readonly{% endif %}
+                                   {% if field.is_required %}required{% endif %}>
+                        
+                        {% elif field.field_type == 'date' %}
+                            <input type="date" class="field-input{% if field.is_readonly %} readonly-field{% endif %}"
+                                   {% if field.is_readonly %}readonly{% endif %}
+                                   {% if field.is_required %}required{% endif %}>
+                        
+                        {% elif field.field_type == 'textarea' %}
+                            <textarea class="field-input{% if field.is_readonly %} readonly-field{% endif %}" 
+                                      rows="3" placeholder="{{ field.placeholder|default:'' }}"
+                                      {% if field.is_readonly %}readonly{% endif %}
+                                      {% if field.is_required %}required{% endif %}></textarea>
+                        
+                        {% elif field.field_type == 'select' %}
+                            <select class="field-input{% if field.is_readonly %} readonly-field{% endif %}"
+                                    {% if field.is_readonly %}disabled{% endif %}
+                                    {% if field.is_required %}required{% endif %}>
+                                <option value="">Select...</option>
+                                <option value="option1">Option 1</option>
+                                <option value="option2">Option 2</option>
+                                <option value="option3">Option 3</option>
+                            </select>
+                        
+                        {% elif field.field_type == 'signature' %}
+                            <div style="border: 2px dashed #ccc; padding: 20px; text-align: center; background: #f9f9f9;">
+                                <div style="color: #999;">✍️ Signature Area</div>
+                                <div style="font-size: 12px; color: #666; margin-top: 5px;">Click to sign</div>
+                            </div>
+                        
+                        {% else %}
+                            <input type="text" class="field-input{% if field.is_readonly %} readonly-field{% endif %}" 
+                                   placeholder="{{ field.placeholder|default:field.field_type }}"
+                                   {% if field.is_readonly %}readonly{% endif %}
+                                   {% if field.is_required %}required{% endif %}>
+                        {% endif %}
+                        
+                        {% if field.help_text %}
+                        <div class="field-help">{{ field.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    {% if not sections %}
+    <div class="bmr-page">
+        <div style="text-align: center; color: #6c757d; padding: 60px;">
+            <h3>No Template Content</h3>
+            <p>This template doesn't have any sections yet.</p>
+            <a href="{% url 'admin:bmr_bmrtemplate_visual_editor' template.id %}" class="back-btn">Start Building Template</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

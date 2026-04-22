@@ -1,0 +1,383 @@
+// Kampala Pharmaceutical Industries - Complete System ERD
+// Visit https://dbdiagram.io and paste this code to generate visual ERD
+// You can export as PNG, PDF, or SVG
+
+Project KPI_Operations_System {
+  database_type: 'PostgreSQL/SQLite'
+  Note: 'Pharmaceutical Operations Management System - 300 Batches/Month'
+}
+
+// ================================
+// USER MANAGEMENT
+// ================================
+
+Table accounts_customuser {
+  id integer [pk, increment]
+  username varchar(150) [unique, not null]
+  email varchar(254)
+  password varchar(128) [not null]
+  role varchar(30) [not null, note: 'qa, production_manager, store_manager, qc, operators, etc.']
+  employee_id varchar(20) [unique, not null]
+  department varchar(100)
+  phone_number varchar(15)
+  signature image
+  is_active_operator boolean [default: true]
+  is_active boolean [default: true]
+  date_joined timestamp [not null]
+  
+  indexes {
+    role
+    employee_id
+  }
+  
+  Note: 'Custom user with role-based access control'
+}
+
+Table accounts_usersession {
+  id integer [pk, increment]
+  user_id integer [ref: > accounts_customuser.id]
+  login_time timestamp [not null]
+  logout_time timestamp
+  ip_address varchar(45) [not null]
+  
+  Note: 'Audit trail for user login sessions'
+}
+
+// ================================
+// PRODUCT MANAGEMENT
+// ================================
+
+Table products_product {
+  id integer [pk, increment]
+  product_name varchar(200) [not null]
+  product_code varchar(50) [unique, not null]
+  product_type varchar(20) [not null, note: 'tablet, capsule, ointment, etc.']
+  dosage_form varchar(100)
+  strength varchar(100)
+  batch_size decimal(10,2)
+  batch_size_unit varchar(20)
+  tablet_type varchar(20) [note: 'normal, tablet_type_2']
+  is_coated boolean [default: false]
+  packaging_type varchar(20)
+  behavior_tags json [note: 'Product-specific workflow tags']
+  is_active boolean [default: true]
+  created_date timestamp [not null]
+  
+  indexes {
+    product_code
+    product_type
+  }
+  
+  Note: 'Product master data with workflow configuration'
+}
+
+// ================================
+// BMR MANAGEMENT
+// ================================
+
+Table bmr_bmrrequest {
+  id integer [pk, increment]
+  product_id integer [ref: > products_product.id, not null]
+  requested_by_id integer [ref: > accounts_customuser.id, not null]
+  approved_by_id integer [ref: > accounts_customuser.id]
+  bmr_id integer [ref: > bmr_bmr.id]
+  request_date timestamp [not null]
+  required_date date [not null]
+  status varchar(10) [not null, default: 'pending', note: 'pending, approved, rejected, completed']
+  priority varchar(10) [default: 'medium', note: 'low, medium, high, urgent']
+  reason text [not null]
+  quantity_required integer [not null]
+  quantity_unit varchar(20) [not null]
+  notes text
+  rejection_reason text
+  approved_date timestamp
+  completed_date timestamp
+  
+  indexes {
+    status
+    request_date
+  }
+  
+  Note: 'Production Manager requests BMR from QA'
+}
+
+Table bmr_bmr {
+  id integer [pk, increment]
+  bmr_number varchar(20) [unique, not null]
+  batch_number varchar(10) [not null]
+  manufacturing_date date
+  product_id integer [ref: > products_product.id, not null]
+  actual_batch_size decimal(10,2)
+  actual_batch_size_unit varchar(20)
+  created_date timestamp [not null]
+  planned_start_date timestamp
+  planned_completion_date timestamp
+  actual_start_date timestamp
+  actual_completion_date timestamp
+  status varchar(20) [not null, default: 'draft', note: 'draft, submitted, approved, rejected, in_production, completed, cancelled']
+  created_by_id integer [ref: > accounts_customuser.id, not null]
+  approved_by_id integer [ref: > accounts_customuser.id]
+  approved_date timestamp
+  manufacturing_instructions text
+  special_instructions text
+  in_process_controls text
+  quality_checks_required text
+  qa_comments text
+  regulatory_comments text
+  
+  indexes {
+    bmr_number
+    batch_number
+    status
+    product_id
+  }
+  
+  Note: 'Batch Manufacturing Record - Core pharmaceutical document'
+}
+
+Table bmr_bmrsignature {
+  id integer [pk, increment]
+  bmr_id integer [ref: > bmr_bmr.id, not null]
+  signature_type varchar(30) [not null, note: 'created, reviewed, approved, dispensed, production_started, production_completed, qc_approved, final_approval']
+  signed_by_id integer [ref: > accounts_customuser.id, not null]
+  signed_date timestamp [not null]
+  comments text
+  
+  indexes {
+    (bmr_id, signature_type, signed_by_id) [unique]
+    signed_date
+  }
+  
+  Note: 'Electronic signatures for FDA 21 CFR Part 11 compliance'
+}
+
+Table bmr_materialdispensing {
+  id integer [pk, increment]
+  bmr_id integer [ref: > bmr_bmr.id, not null]
+  material_name varchar(200) [not null]
+  material_code varchar(100) [not null]
+  quantity_required decimal(10,3) [not null]
+  quantity_dispensed decimal(10,3)
+  unit varchar(20) [not null]
+  batch_number varchar(100)
+  dispensed_by_id integer [ref: > accounts_customuser.id]
+  dispensed_date timestamp
+  status varchar(20) [default: 'pending', note: 'pending, dispensed, returned']
+  
+  indexes {
+    bmr_id
+    status
+  }
+  
+  Note: 'Raw material dispensing for each batch'
+}
+
+// ================================
+// WORKFLOW ENGINE
+// ================================
+
+Table workflow_workflowtemplate {
+  id integer [pk, increment]
+  name varchar(100) [not null]
+  product_type varchar(20) [not null, note: 'tablet, tablet_type_2, capsule, ointment']
+  description text
+  is_active boolean [default: true]
+  created_date timestamp [not null]
+  modified_date timestamp [not null]
+  
+  indexes {
+    product_type
+  }
+  
+  Note: 'Workflow templates for different product types'
+}
+
+Table workflow_workflowtemplatephase {
+  id integer [pk, increment]
+  template_id integer [ref: > workflow_workflowtemplate.id, not null]
+  phase_name varchar(30) [not null, note: 'bmr_creation, dispensing, mixing, granulation, blending, compression, coating, drying, filling, blister_packing, bulk_packing, etc.']
+  phase_order integer [not null]
+  description text
+  is_mandatory boolean [default: true]
+  requires_approval boolean [default: false]
+  estimated_duration_hours decimal(5,2) [default: 0]
+  
+  indexes {
+    template_id
+    phase_order
+  }
+  
+  Note: 'Defines phases in workflow templates'
+}
+
+Table workflow_productionphase {
+  id integer [pk, increment]
+  product_type varchar(20) [not null]
+  phase_name varchar(30) [not null]
+  phase_order integer [not null]
+  description text
+  is_mandatory boolean [default: true]
+  requires_approval boolean [default: false]
+  can_rollback_to_id integer [ref: > workflow_productionphase.id, note: 'QC rollback target']
+  qa_can_rollback_to_id integer [ref: > workflow_productionphase.id, note: 'QA rollback target']
+  estimated_duration_hours decimal(5,2) [default: 0]
+  
+  indexes {
+    (product_type, phase_name) [unique]
+    phase_order
+  }
+  
+  Note: 'Production phase definitions with rollback capability'
+}
+
+Table workflow_batchphaseexecution {
+  id integer [pk, increment]
+  bmr_id integer [ref: > bmr_bmr.id, not null]
+  phase_id integer [ref: > workflow_productionphase.id, not null]
+  status varchar(20) [not null, default: 'pending', note: 'pending, in_progress, completed, failed, skipped, rolled_back']
+  started_by_id integer [ref: > accounts_customuser.id]
+  completed_by_id integer [ref: > accounts_customuser.id]
+  created_date timestamp [not null]
+  started_date timestamp
+  completed_date timestamp
+  phase_data json [note: 'Phase-specific execution data']
+  operator_comments text
+  qa_comments text
+  machine_used_id integer [ref: > workflow_machine.id]
+  breakdown_occurred boolean [default: false]
+  breakdown_start_time timestamp
+  breakdown_end_time timestamp
+  breakdown_reason text
+  changeover_occurred boolean [default: false]
+  changeover_start_time timestamp
+  changeover_end_time timestamp
+  changeover_reason text
+  qc_approved boolean
+  qc_approved_by_id integer [ref: > accounts_customuser.id]
+  qc_approved_date timestamp
+  materials_dispensed boolean [default: false]
+  
+  indexes {
+    bmr_id
+    status
+    started_date
+    completed_date
+  }
+  
+  Note: 'Tracks execution of each phase for every batch'
+}
+
+Table workflow_machine {
+  id integer [pk, increment]
+  name varchar(200) [not null]
+  machine_id varchar(50) [unique, not null]
+  machine_type varchar(50) [not null, note: 'mixer, granulator, compressor, coater, dryer, filler, blister_pack, etc.']
+  is_operational boolean [default: true]
+  last_maintenance_date date
+  next_maintenance_date date
+  
+  indexes {
+    machine_id
+    machine_type
+  }
+  
+  Note: 'Production equipment tracking'
+}
+
+// ================================
+// QUALITY CONTROL
+// ================================
+
+Table quarantine_quarantinebatch {
+  id integer [pk, increment]
+  bmr_id integer [ref: > bmr_bmr.id, not null]
+  batch_number varchar(50) [not null]
+  product_id integer [ref: > products_product.id, not null]
+  quarantine_reason text [not null]
+  quarantine_date timestamp [not null]
+  quarantined_by_id integer [ref: > accounts_customuser.id, not null]
+  status varchar(20) [not null, default: 'quarantined', note: 'quarantined, investigating, released, destroyed']
+  investigation_notes text
+  resolution_notes text
+  release_date timestamp
+  released_by_id integer [ref: > accounts_customuser.id]
+  
+  indexes {
+    batch_number
+    status
+  }
+  
+  Note: 'Failed batches in quarantine for investigation'
+}
+
+// ================================
+// FINISHED GOODS
+// ================================
+
+Table fgs_management_finishedgoods {
+  id integer [pk, increment]
+  bmr_id integer [ref: > bmr_bmr.id, not null]
+  product_id integer [ref: > products_product.id, not null]
+  batch_number varchar(50) [not null]
+  manufacturing_date date [not null]
+  expiry_date date [not null]
+  quantity decimal(10,2) [not null]
+  unit varchar(20) [not null]
+  status varchar(20) [not null, default: 'in_storage', note: 'in_storage, dispatched, recalled, expired']
+  storage_location varchar(100)
+  received_date timestamp [not null]
+  received_by_id integer [ref: > accounts_customuser.id]
+  qc_status varchar(20) [note: 'pending, approved, rejected']
+  release_date timestamp
+  
+  indexes {
+    batch_number
+    status
+    expiry_date
+  }
+  
+  Note: 'Finished goods storage and tracking'
+}
+
+// ================================
+// SYSTEM SETTINGS
+// ================================
+
+Table workflow_systemtimingsettings {
+  id integer [pk, increment]
+  setting_name varchar(100) [unique, not null]
+  setting_value decimal(8,2) [not null]
+  description text [not null]
+  unit varchar(20) [default: 'hours']
+  created_date timestamp [not null]
+  modified_date timestamp [not null]
+  
+  Note: 'Configurable timing settings for phase monitoring'
+}
+
+Table workflow_dashboardsettings {
+  id integer [pk, increment]
+  setting_name varchar(100) [unique, not null]
+  setting_value text [not null]
+  description text
+  data_type varchar(20) [default: 'string']
+  created_date timestamp [not null]
+  modified_date timestamp [not null]
+  
+  Note: 'Dashboard configuration settings'
+}
+
+// ================================
+// RELATIONSHIPS SUMMARY
+// ================================
+
+// User relationships: User creates/approves BMRs, signs documents, executes phases
+// Product to BMR: One product can have many batches (BMRs)
+// BMR to Phases: One BMR has many phase executions (workflow)
+// BMR to Signatures: Multiple electronic signatures per BMR (audit trail)
+// BMR to Materials: Materials dispensed for each batch
+// BMR to Finished Goods: Completed batch moves to FGS
+// BMR to Quarantine: Failed batch moves to quarantine
+// Phases have rollback references: QC failures rollback to previous phases
+// Workflow Templates: Define phase sequences for product types
+// Machines: Track equipment usage in phase executions

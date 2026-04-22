@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Granulation - Batch {{ bmr.batch_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bmr-form-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .form-section {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-left: 4px solid #11998e;
+    }
+    
+    .specification-badge {
+        background: #e8f5e9;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        border-left: 3px solid #4caf50;
+        font-weight: 500;
+        color: #2e7d32;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .env-monitoring {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .env-monitoring h5 {
+        color: #856404;
+        margin-bottom: 1rem;
+    }
+    
+    .lot-accordion .accordion-button {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .lot-accordion .accordion-button:not(.collapsed) {
+        background-color: #11998e;
+        color: white;
+    }
+    
+    .process-step {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        background: #f8f9fa;
+    }
+    
+    .process-step-header {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #11998e;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .readonly-spec {
+        background-color: #e9ecef;
+        border: 1px solid #ced4da;
+        padding: 0.375rem 0.75rem;
+        border-radius: 0.25rem;
+        cursor: not-allowed;
+    }
+    
+    .lod-result {
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-align: center;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-top: 1rem;
+    }
+    
+    .lod-pass {
+        background: #d4edda;
+        color: #155724;
+        border: 2px solid #c3e6cb;
+    }
+    
+    .lod-fail {
+        background: #f8d7da;
+        color: #721c24;
+        border: 2px solid #f5c6cb;
+    }
+    
+    .yield-summary {
+        background: #e3f2fd;
+        border: 2px solid #2196f3;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .yield-summary h4 {
+        color: #1976d2;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Form Header -->
+    <div class="bmr-form-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-2">
+                    <i class="fas fa-cogs me-2"></i>
+                    Granulation Phase - Complete Process Record
+                </h2>
+                <p class="mb-0">
+                    <strong>Batch:</strong> {{ bmr.batch_number }} | 
+                    <strong>Product:</strong> {{ product.product_name }} | 
+                    <strong>Number of Lots:</strong> {{ number_of_lots }}
+                </p>
+                {% if is_draft %}
+                <span class="badge bg-warning mt-2">
+                    <i class="fas fa-save me-1"></i> Draft in Progress
+                </span>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'dashboards:operator_dashboard' %}" class="btn btn-light">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environmental Monitoring -->
+    <div class="env-monitoring">
+        <h5>
+            <i class="fas fa-thermometer-half me-2"></i>
+            Environmental Monitoring (Critical)
+        </h5>
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">{{ form.temperature.label }}</label>
+                <div class="specification-badge">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Limit: NMT {{ form.temperature_limit.value }}°C
+                </div>
+                {{ form.temperature }}
+                {% if form.temperature.errors %}
+                <div class="text-danger small">{{ form.temperature.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Temperature Limit</label>
+                <input type="text" class="form-control readonly-spec" value="{{ form.temperature_limit.value }}°C" readonly>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">{{ form.humidity.label }}</label>
+                <div class="specification-badge">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Range: {{ form.humidity_min.value }}-{{ form.humidity_max.value }}%
+                </div>
+                {{ form.humidity }}
+                {% if form.humidity.errors %}
+                <div class="text-danger small">{{ form.humidity.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Humidity Range</label>
+                <input type="text" class="form-control readonly-spec" value="{{ form.humidity_min.value }}-{{ form.humidity_max.value }}%" readonly>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" id="granulation-form">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+
+        <!-- Process Timing -->
+        <div class="form-section">
+            <h4 class="process-step-header">
+                <i class="fas fa-clock me-2"></i>
+                Process Timing
+            </h4>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">{{ form.granulation_started_date.label }}</label>
+                    {{ form.granulation_started_date }}
+                    {% if form.granulation_started_date.errors %}
+                    <div class="text-danger small">{{ form.granulation_started_date.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">{{ form.granulation_started_time.label }}</label>
+                    {{ form.granulation_started_time }}
+                    {% if form.granulation_started_time.errors %}
+                    <div class="text-danger small">{{ form.granulation_started_time.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">{{ form.granulation_completed_date.label }}</label>
+                    {{ form.granulation_completed_date }}
+                    {% if form.granulation_completed_date.errors %}
+                    <div class="text-danger small">{{ form.granulation_completed_date.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">{{ form.granulation_completed_time.label }}</label>
+                    {{ form.granulation_completed_time }}
+                    {% if form.granulation_completed_time.errors %}
+                    <div class="text-danger small">{{ form.granulation_completed_time.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Personnel -->
+        <div class="form-section">
+            <h4 class="process-step-header">
+                <i class="fas fa-users me-2"></i>
+                Personnel
+            </h4>
+            
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">{{ form.operator_name.label }}</label>
+                    {{ form.operator_name }}
+                    {% if form.operator_name.errors %}
+                    <div class="text-danger small">{{ form.operator_name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">{{ form.group_leader.label }}</label>
+                    {{ form.group_leader }}
+                    {% if form.group_leader.errors %}
+                    <div class="text-danger small">{{ form.group_leader.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">{{ form.section_supervisor.label }}</label>
+                    {{ form.section_supervisor }}
+                    {% if form.section_supervisor.errors %}
+                    <div class="text-danger small">{{ form.section_supervisor.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi-Lot Processing Accordion -->
+        <div class="form-section">
+            <h4 class="process-step-header mb-3">
+                <i class="fas fa-layer-group me-2"></i>
+                Lot Processing ({{ number_of_lots }} Lots)
+            </h4>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Process Flow:</strong> Dry Mixing → Wet Mixing → Drying Cycle 1 → Drying Cycle 2 → Final Drying + LOD Test → Yield Reconciliation
+            </div>
+
+            <div class="accordion lot-accordion" id="lot-accordion">
+                {% for lot in lot_forms %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-lot-{{ lot.lot_num }}">
+                        <button class="accordion-button {% if lot.lot_num != 1 %}collapsed{% endif %}" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#collapse-lot-{{ lot.lot_num }}" 
+                                aria-expanded="{% if lot.lot_num == 1 %}true{% else %}false{% endif %}" 
+                                aria-controls="collapse-lot-{{ lot.lot_num }}">
+                            <i class="fas fa-box me-2"></i>
+                            Lot {{ lot.lot_num }} - Complete Processing Record
+                        </button>
+                    </h2>
+                    <div id="collapse-lot-{{ lot.lot_num }}" class="accordion-collapse collapse {% if lot.lot_num == 1 %}show{% endif %}" 
+                         aria-labelledby="heading-lot-{{ lot.lot_num }}" data-bs-parent="#lot-accordion">
+                        <div class="accordion-body">
+                            
+                            <!-- Hidden lot identifier -->
+                            {{ lot.dry_mixing.lot_number.as_hidden }}
+
+                            <!-- Dry Mixing Section -->
+                            <div class="process-step">
+                                <h5 class="process-step-header">
+                                    <i class="fas fa-blender me-2"></i>
+                                    Step 1: Dry Mixing (RMG)
+                                </h5>
+                                <div class="alert alert-secondary">
+                                    <strong>Specifications:</strong> Slow Speed {{ product.dry_mixing_slow_time_minutes|default:"N/A" }} min | 
+                                    Fast Speed {{ product.dry_mixing_fast_time_minutes|default:"N/A" }} min
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.dry_mixing.rmg_number.label }}</label>
+                                        {{ lot.dry_mixing.rmg_number }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.dry_mixing.done_by.label }}</label>
+                                        {{ lot.dry_mixing.done_by }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.dry_mixing.verified_by_spv.label }}</label>
+                                        {{ lot.dry_mixing.verified_by_spv }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.dry_mixing.confirmed_by_qa.label }}</label>
+                                        {{ lot.dry_mixing.confirmed_by_qa }}
+                                    </div>
+                                </div>
+
+                                <table class="table table-bordered table-sm text-center">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Phase</th>
+                                            <th>Impeller (RPM)</th>
+                                            <th>Chopper (RPM)</th>
+                                            <th>Start Time</th>
+                                            <th>End Time</th>
+                                            <th>Spec. Time</th>
+                                            <th>Actual Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Slow Mixing</strong></td>
+                                            <td>{{ lot.dry_mixing.slow_impeller_speed }}</td>
+                                            <td>{{ lot.dry_mixing.slow_chopper_speed }}</td>
+                                            <td>{{ lot.dry_mixing.slow_started_time }}</td>
+                                            <td>{{ lot.dry_mixing.slow_completed_time }}</td>
+                                            <td>{{ lot.dry_mixing.slow_specified_time }}</td>
+                                            <td>{{ lot.dry_mixing.slow_actual_time }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fast Mixing</strong></td>
+                                            <td>{{ lot.dry_mixing.fast_impeller_speed }}</td>
+                                            <td>{{ lot.dry_mixing.fast_chopper_speed }}</td>
+                                            <td>{{ lot.dry_mixing.fast_started_time }}</td>
+                                            <td>{{ lot.dry_mixing.fast_completed_time }}</td>
+                                            <td>{{ lot.dry_mixing.fast_specified_time }}</td>
+                                            <td>{{ lot.dry_mixing.fast_actual_time }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Wet Mixing Section -->
+                            <div class="process-step">
+                                <h5 class="process-step-header">
+                                    <i class="fas fa-tint me-2"></i>
+                                    Step 2: Wet Mixing (Binder Preparation)
+                                </h5>
+                                {{ lot.wet_mixing.lot_number.as_hidden }}
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Binder Prep: Water Volume (L)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">Cold</span>
+                                            {{ lot.wet_mixing.actual_cold_water_volume }}
+                                            <span class="input-group-text">Hot</span>
+                                            {{ lot.wet_mixing.actual_hot_water_volume }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Massing Duration</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">Slow</span>
+                                            {{ lot.wet_mixing.slow_actual_time }}
+                                            <span class="input-group-text">Fast</span>
+                                            {{ lot.wet_mixing.fast_actual_time }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label">{{ lot.wet_mixing.done_by.label }}</label>
+                                        {{ lot.wet_mixing.done_by }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">{{ lot.wet_mixing.verified_by_spv.label }}</label>
+                                        {{ lot.wet_mixing.verified_by_spv }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Drying Cycle 1 -->
+                            <div class="process-step">
+                                <h5 class="process-step-header">
+                                    <i class="fas fa-fire me-2"></i>
+                                    Step 3: Drying Cycle 1 (FBD)
+                                </h5>
+                                {{ lot.drying_1.lot_number.as_hidden }}
+                                <div class="alert alert-secondary py-1 px-2 mb-2 small">
+                                    <strong>Specs:</strong> Inlet {{ product.drying_inlet_temperature_min|default:"-" }}-{{ product.drying_inlet_temperature_max|default:"-" }}°C
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_1.fbd_number.label }}</label>
+                                        {{ lot.drying_1.fbd_number }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_1.std_inlet_temp.label }}</label>
+                                        {{ lot.drying_1.std_inlet_temp }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_1.observed_drying_temp.label }}</label>
+                                        {{ lot.drying_1.observed_drying_temp }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_1.outlet_temp.label }}</label>
+                                        {{ lot.drying_1.outlet_temp }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_1.started_time.label }}</label>
+                                        {{ lot.drying_1.started_time }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_1.completed_time.label }}</label>
+                                        {{ lot.drying_1.completed_time }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Drying Cycle 2 -->
+                            <div class="process-step">
+                                <h5 class="process-step-header">
+                                    <i class="fas fa-fire me-2"></i>
+                                    Step 4: Drying Cycle 2 (FBD)
+                                </h5>
+                                {{ lot.drying_2.lot_number.as_hidden }}
+                                <div class="row g-2">
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_2.fbd_number.label }}</label>
+                                        {{ lot.drying_2.fbd_number }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_2.std_inlet_temp.label }}</label>
+                                        {{ lot.drying_2.std_inlet_temp }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_2.observed_drying_temp.label }}</label>
+                                        {{ lot.drying_2.observed_drying_temp }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_2.outlet_temp.label }}</label>
+                                        {{ lot.drying_2.outlet_temp }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_2.started_time.label }}</label>
+                                        {{ lot.drying_2.started_time }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">{{ lot.drying_2.completed_time.label }}</label>
+                                        {{ lot.drying_2.completed_time }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Final Drying + LOD Test -->
+                            <div class="process-step">
+                                <h5 class="process-step-header">
+                                    <i class="fas fa-check-double me-2"></i>
+                                    Step 5: Final Drying + LOD Test
+                                </h5>
+                                {{ lot.final_drying.lot_number.as_hidden }}
+                                <div class="alert alert-warning py-1 px-2 mb-2 small">
+                                    <strong>LOD Spec:</strong> {{ product.lod_min_percentage|default:"N/A" }}% - {{ product.lod_max_percentage|default:"N/A" }}%
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.final_drying.sieve_size.label }}</label>
+                                        {{ lot.final_drying.sieve_size }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.final_drying.lod_percentage.label }}</label>
+                                        {{ lot.final_drying.lod_percentage }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.final_drying.miller_number.label }}</label>
+                                        {{ lot.final_drying.miller_number }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">{{ lot.final_drying.done_by.label }}</label>
+                                        {{ lot.final_drying.done_by }}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Min/Max LOD Specs (Target)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">Min</span>
+                                            {{ lot.final_drying.lod_min_spec }}
+                                            <span class="input-group-text">Max</span>
+                                            {{ lot.final_drying.lod_max_spec }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Yield Reconciliation -->
+        <div class="form-section">
+            <div class="yield-summary">
+                <h4>
+                    <i class="fas fa-calculator me-2"></i>
+                    Yield Reconciliation
+                </h4>
+                
+                <div class="alert alert-info">
+                    <strong>Acceptable Yield Range:</strong> {{ product.min_yield_percentage|default:"98" }}% - {{ product.max_yield_percentage|default:"102" }}%
+                </div>
+                
+                <div class="text-muted small">
+                    <i class="fas fa-code me-1"></i>
+                    Yield reconciliation form will render here (total theoretical, total actual, percentage calculation, approval)
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden fields -->
+        {{ form.is_draft }}
+        {{ form.number_of_lots }}
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between mb-5">
+            <a href="{% url 'dashboards:operator_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+            
+            <div>
+                <button type="button" class="btn btn-warning me-2" id="save-draft-btn">
+                    <i class="fas fa-save me-2"></i>Save Draft
+                </button>
+                <button type="submit" class="btn btn-success" id="complete-btn">
+                    <i class="fas fa-check-circle me-2"></i>Complete Granulation
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('granulation-form');
+    const saveDraftBtn = document.getElementById('save-draft-btn');
+    const completeBtn = document.getElementById('complete-btn');
+    const isDraftField = document.getElementById('id_is_draft');
+    
+    // Save Draft Button
+    saveDraftBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        isDraftField.value = 'true';
+        form.submit();
+    });
+    
+    // Complete Button - ensure is_draft is false
+    completeBtn.addEventListener('click', function(e) {
+        isDraftField.value = 'false';
+    });
+    
+    // Environmental monitoring validation
+    const tempField = document.getElementById('id_temperature');
+    const tempLimit = parseFloat('{{ form.temperature_limit.value }}');
+    const humidityField = document.getElementById('id_humidity');
+    const humidityMin = parseFloat('{{ form.humidity_min.value }}');
+    const humidityMax = parseFloat('{{ form.humidity_max.value }}');
+    
+    if (tempField) {
+        tempField.addEventListener('blur', function() {
+            const value = parseFloat(this.value);
+            if (value > tempLimit) {
+                alert(`Warning: Temperature ${value}°C exceeds limit of ${tempLimit}°C!`);
+                this.style.borderColor = '#dc3545';
+            } else {
+                this.style.borderColor = '#28a745';
+            }
+        });
+    }
+    
+    if (humidityField) {
+        humidityField.addEventListener('blur', function() {
+            const value = parseFloat(this.value);
+            if (value < humidityMin || value > humidityMax) {
+                alert(`Warning: Humidity ${value}% is outside acceptable range ${humidityMin}-${humidityMax}%!`);
+                this.style.borderColor = '#dc3545';
+            } else {
+                this.style.borderColor = '#28a745';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

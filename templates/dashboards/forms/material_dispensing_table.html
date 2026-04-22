@@ -1,0 +1,536 @@
+<!-- Material Dispensing Table Component -->
+<!-- This table shows the complete material dispensing data for the BMR -->
+<!-- Supports edit_mode: 'store' (AR Number editable) or 'dispensing' (Weighed/Checked/Received editable) -->
+
+{% if edit_mode == 'store' %}
+<style>
+    .add-row-btn {
+        background: #28a745;
+        color: white;
+        border: 2px solid #1e7e34;
+        padding: 5px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin: 5px 0;
+    }
+    .add-row-btn:hover {
+        background: #218838;
+    }
+    .ar-input-box {
+        width: 100%;
+        margin-bottom: 4px;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+    }
+    .ar-input-container {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .ar-display-box {
+        width: 100%;
+        margin-bottom: 4px;
+        padding: 4px 8px;
+        border: 1px solid #ddd;
+        background-color: #f8f9fa;
+        text-align: center;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+</style>
+{% endif %}
+
+{% if edit_mode == 'dispensing' %}
+<style>
+    .ar-display-container {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .ar-display-box {
+        width: 100%;
+        margin-bottom: 4px;
+        padding: 4px 8px;
+        border: 1px solid #ddd;
+        background-color: #f8f9fa;
+        text-align: center;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+</style>
+{% endif %}
+
+<table class="phase-form-table" id="materialTable" style="border-collapse: collapse; border: 2px solid #000; width: 100%;">
+    <thead>
+        <tr>
+            <th style="border: 2px solid #000; padding: 8px;">Sr.<br>No.</th>
+            <th style="border: 2px solid #000; padding: 8px;">Description</th>
+            <th style="border: 2px solid #000; padding: 8px; {% if edit_mode == 'store' %}background-color: #fff3cd;{% endif %}">A.R.<br>No.***{% if edit_mode == 'store' %} ⭐{% endif %}</th>
+            <th style="border: 2px solid #000; padding: 8px;">Unit<br>Quantity<br>(mg/tablet)</th>
+            <th style="border: 2px solid #000; padding: 8px;">Overage<br>(mg/tablet)</th>
+            <th style="border: 2px solid #000; padding: 8px;">Total<br>Quantity<br>(mg/tablet)*</th>
+            <th style="border: 2px solid #000; padding: 8px;">Total Batch<br>Quantity<br>(Kg)</th>
+            <th style="border: 2px solid #000; padding: 8px;">Lot</th>
+            <th style="border: 2px solid #000; padding: 8px;">Quantity<br>Per Lot</th>
+            <th style="border: 2px solid #000; padding: 8px;">Tare<br>Weight<br>(Kg/g)</th>
+            <th style="border: 2px solid #000; padding: 8px;">Gross<br>Weight<br>(Kg/g)</th>
+            <th style="border: 2px solid #000; padding: 8px;">Net<br>Weight<br>(Kg/g)</th>
+            <th style="border: 2px solid #000; padding: 8px;">Scale<br>ID.</th>
+            <th style="border: 2px solid #000; padding: 8px; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">Weighed<br>by***{% if edit_mode == 'dispensing' %} ⭐{% endif %}</th>
+            <th style="border: 2px solid #000; padding: 8px; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">Checked<br>by***{% if edit_mode == 'dispensing' %} ⭐{% endif %}</th>
+            <th style="border: 2px solid #000; padding: 8px; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">Received<br>by{% if edit_mode == 'dispensing' %} ⭐{% endif %}</th>
+            {% if edit_mode == 'store' %}
+            <th style="border: 2px solid #000; padding: 8px; background-color: #fff3cd;">Actions</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% if ingredient_table %}
+            {% for ingredient in ingredient_table %}
+                <tr class="ingredient-row" data-ingredient-id="{{ ingredient.ingredient_id }}">
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient.sr_no }}</td>
+                    
+                    <!-- Description - Shows Raw Material Name -->
+                    <td style="border: 2px solid #000; padding: 8px; text-align: left;">
+                        <strong>{{ ingredient.description }}</strong>
+                    </td>
+                    
+                    <!-- AR Number - MULTIPLE BOXES in ONE CELL for Store Manager -->
+                    <td style="border: 2px solid #000; padding: 8px; {% if edit_mode == 'store' %}background-color: #fff3cd;{% elif edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'store' %}
+                            <!-- Store Manager: Editable AR inputs -->
+                            <div class="ar-input-container" id="ar-container-{{ ingredient.ingredient_id }}">
+                                {% for lot in ingredient.lots %}
+                                    <input type="text" 
+                                           name="ar_number_{{ ingredient.ingredient_id }}_lot{{ lot.lot_number }}" 
+                                           value="{{ lot.ar_number|default:'' }}" 
+                                           class="ar-input-box" 
+                                           placeholder="AR #">
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <!-- Dispensing/View Mode: Show saved AR numbers -->
+                            <div class="ar-display-container">
+                                {% for lot in ingredient.lots %}
+                                    <div class="ar-display-box">{{ lot.ar_number|default:"-" }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </td>
+                    
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient.unit_quantity }}</td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient.overage }}%</td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient.total_quantity }}</td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient.total_batch_quantity }}</td>
+                    
+                    <!-- Lot Column - Shows lot numbers vertically in ONE CELL -->
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center;" id="lot-display-{{ ingredient.ingredient_id }}">
+                        {% for lot in ingredient.lots %}
+                            {{ lot.lot_number }}<br>
+                        {% endfor %}
+                    </td>
+                    
+                    <!-- Quantity Per Lot - Multiple values in ONE CELL -->
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center;">
+                        {% for lot in ingredient.lots %}
+                            {{ lot.quantity_per_lot|default:"-" }}<br>
+                        {% endfor %}
+                    </td>
+                    
+                    <!-- Weight fields - EDITABLE for Dispensing Operator -->
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'dispensing' %}
+                            {% for lot in ingredient.lots %}
+                                <input type="number" name="tare_weight_{{ ingredient.ingredient_id }}_{{ lot.lot_number }}" 
+                                       value="{{ lot.tare_weight|default:'' }}" 
+                                       class="form-control form-control-sm mb-1" 
+                                       placeholder="Kg/g" 
+                                       step="0.001"
+                                       style="min-width: 80px;"><br>
+                            {% endfor %}
+                        {% else %}
+                            {% for lot in ingredient.lots %}
+                                {{ lot.tare_weight|default:"-" }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'dispensing' %}
+                            {% for lot in ingredient.lots %}
+                                <input type="number" name="gross_weight_{{ ingredient.ingredient_id }}_{{ lot.lot_number }}" 
+                                       value="{{ lot.gross_weight|default:'' }}" 
+                                       class="form-control form-control-sm mb-1" 
+                                       placeholder="Kg/g" 
+                                       step="0.001"
+                                       style="min-width: 80px;"><br>
+                            {% endfor %}
+                        {% else %}
+                            {% for lot in ingredient.lots %}
+                                {{ lot.gross_weight|default:"-" }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'dispensing' %}
+                            {% for lot in ingredient.lots %}
+                                <input type="number" name="net_weight_{{ ingredient.ingredient_id }}_{{ lot.lot_number }}" 
+                                       value="{{ lot.net_weight|default:'' }}" 
+                                       class="form-control form-control-sm mb-1" 
+                                       placeholder="Kg/g" 
+                                       step="0.001"
+                                       style="min-width: 80px;"><br>
+                            {% endfor %}
+                        {% else %}
+                            {% for lot in ingredient.lots %}
+                                {{ lot.net_weight|default:"-" }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'dispensing' %}
+                            {% for lot in ingredient.lots %}
+                                <input type="text" name="scale_id_{{ ingredient.ingredient_id }}_{{ lot.lot_number }}" 
+                                       value="{{ lot.scale_id|default:'' }}" 
+                                       class="form-control form-control-sm mb-1" 
+                                       placeholder="Scale ID" 
+                                       style="min-width: 80px;"><br>
+                            {% endfor %}
+                        {% else %}
+                            {% for lot in ingredient.lots %}
+                                {{ lot.scale_id|default:"-" }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Dispensing fields - Editable ONLY for Dispensing staff, Multiple values in ONE CELL -->
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'dispensing' %}
+                            {% for lot in ingredient.lots %}
+                                <input type="text" name="weighed_by_{{ ingredient.ingredient_id }}_{{ lot.lot_number }}" 
+                                       value="{{ lot.weighed_by|default:'' }}" 
+                                       class="form-control form-control-sm mb-1" 
+                                       placeholder="Name" 
+                                       style="min-width: 100px;"><br>
+                            {% endfor %}
+                        {% else %}
+                            {% for lot in ingredient.lots %}
+                                {{ lot.weighed_by|default:"-" }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'dispensing' %}
+                            {% for lot in ingredient.lots %}
+                                <input type="text" name="checked_by_{{ ingredient.ingredient_id }}_{{ lot.lot_number }}" 
+                                       value="{{ lot.checked_by|default:'' }}" 
+                                       class="form-control form-control-sm mb-1" 
+                                       placeholder="Name" 
+                                       style="min-width: 100px;"><br>
+                            {% endfor %}
+                        {% else %}
+                            {% for lot in ingredient.lots %}
+                                {{ lot.checked_by|default:"-" }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; {% if edit_mode == 'dispensing' %}background-color: #d4edda;{% endif %}">
+                        {% if edit_mode == 'dispensing' %}
+                            {% for lot in ingredient.lots %}
+                                <input type="text" name="received_by_{{ ingredient.ingredient_id }}_{{ lot.lot_number }}" 
+                                       value="{{ lot.received_by|default:'' }}" 
+                                       class="form-control form-control-sm mb-1" 
+                                       placeholder="Name" 
+                                       style="min-width: 100px;"><br>
+                            {% endfor %}
+                        {% else %}
+                            {% for lot in ingredient.lots %}
+                                {{ lot.received_by|default:"-" }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    
+                    {% if edit_mode == 'store' %}
+                    <td style="border: 2px solid #000; padding: 8px; text-align: center; background-color: #fff3cd;">
+                        <button type="button" class="add-row-btn" onclick="addARBox({{ ingredient.ingredient_id }}, '{{ ingredient.description }}')">
+                            <i class="fas fa-plus"></i> Add Lot
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="{% if edit_mode == 'store' %}17{% else %}16{% endif %}" style="border: 2px solid #000; text-align: center; padding: 20px;">
+                    <em>No materials have been added to this BMR yet.</em>
+                </td>
+            </tr>
+        {% endif %}
+        
+        <!-- TOTAL ROW -->
+        {% if ingredient_table %}
+        <tr style="background-color: #f8f9fa; font-weight: bold;">
+            <td style="border: 2px solid #000; padding: 8px; text-align: center;" colspan="3">TOTAL</td>
+            <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient_table_totals.total_unit_quantity|default:"0.0000" }}</td>
+            <td style="border: 2px solid #000; padding: 8px; text-align: center;"></td>
+            <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient_table_totals.total_quantity|default:"0.0000" }}</td>
+            <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient_table_totals.total_batch_quantity|default:"0.000" }}</td>
+            <td style="border: 2px solid #000; padding: 8px; text-align: left; vertical-align: top;" colspan="{% if edit_mode == 'store' %}3{% else %}2{% endif %}">
+                <strong>Store In-charge:</strong>
+            </td>
+            <td style="border: 2px solid #000; padding: 8px; text-align: left; vertical-align: top;" colspan="4">
+                <strong>Dispensing Supervisor:</strong>
+            </td>
+            <td style="border: 2px solid #000; padding: 8px; text-align: left; vertical-align: top;" colspan="{% if edit_mode == 'store' %}4{% else %}3{% endif %}">
+                <strong>QA Officer:</strong>
+            </td>
+        </tr>
+        <!-- Weighing Times Row -->
+        <tr>
+            <td style="border: 2px solid #000; padding: 8px;" colspan="{% if edit_mode == 'store' %}9{% else %}8{% endif %}">
+                <strong>Weighing Started (HH:MM)</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                Date: _______________
+            </td>
+            <td style="border: 2px solid #000; padding: 8px;" colspan="{% if edit_mode == 'store' %}9{% else %}8{% endif %}">
+                <strong>Weighing Stopped (HH:MM)</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                Date: _______________
+            </td>
+        </tr>
+        <!-- Store Signatures Row -->
+        <tr>
+            <td style="border: 2px solid #000; padding: 8px;" colspan="{% if edit_mode == 'store' %}6{% else %}5{% endif %}">
+                (Sign & Date)
+            </td>
+            <td style="border: 2px solid #000; padding: 8px;" colspan="6">
+                (Sign & Date)
+            </td>
+            <td style="border: 2px solid #000; padding: 8px;" colspan="{% if edit_mode == 'store' %}6{% else %}5{% endif %}">
+                (Sign & Date)
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<!-- Packing Material Note -->
+<div style="margin-top: 0; padding: 10px; border: 2px solid #000; border-top: none;">
+    <p style="margin: 5px 0; font-size: 12px;">
+        * Includes conversion to base drug, with overage and corrected for Potency and/or Moisture where required.<br>
+        ** Check weight, A.R. No. and verify presence of QC approved label on Raw Material container.
+    </p>
+    <p style="margin: 10px 0 5px 0; font-size: 12px;">
+        <strong>*** AR No. Checked/Approved by QCM</strong> _____________________________ (Sign & Date)
+    </p>
+</div>
+
+<!-- Signature Section - 4 Column Format -->
+<div style="margin-top: 30px;">
+    <table class="phase-form-table" style="border-collapse: collapse; border: 2px solid #000; width: 100%;">
+        <thead>
+            <tr>
+                <th style="border: 2px solid #000; padding: 10px; text-align: center; background-color: #e9ecef; width: 25%;">PREPARED BY</th>
+                <th style="border: 2px solid #000; padding: 10px; text-align: center; background-color: #e9ecef; width: 25%;">REVIEWED BY</th>
+                <th style="border: 2px solid #000; padding: 10px; text-align: center; background-color: #e9ecef; width: 25%;">APPROVED BY</th>
+                <th style="border: 2px solid #000; padding: 10px; text-align: center; background-color: #e9ecef; width: 25%;">AUTHORIZED BY</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Sign & Date:</strong><br>
+                        <input type="text" name="prepared_by_sign_date" value="{{ phase.phase_data.prepared_by_sign_date|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Signature & Date">
+                    {% else %}
+                        <strong>Sign & Date:</strong> {{ phase.phase_data.prepared_by_sign_date|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Sign & Date:</strong><br>
+                        <input type="text" name="reviewed_by_sign_date" value="{{ phase.phase_data.reviewed_by_sign_date|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Signature & Date">
+                    {% else %}
+                        <strong>Sign & Date:</strong> {{ phase.phase_data.reviewed_by_sign_date|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Sign & Date:</strong><br>
+                        <input type="text" name="approved_by_sign_date" value="{{ phase.phase_data.approved_by_sign_date|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Signature & Date">
+                    {% else %}
+                        <strong>Sign & Date:</strong> {{ phase.phase_data.approved_by_sign_date|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Sign & Date:</strong><br>
+                        <input type="text" name="authorized_by_sign_date" value="{{ phase.phase_data.authorized_by_sign_date|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Signature & Date">
+                    {% else %}
+                        <strong>Sign & Date:</strong> {{ phase.phase_data.authorized_by_sign_date|default:"-" }}
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Name:</strong><br>
+                        <input type="text" name="prepared_by_name" value="{{ phase.phase_data.prepared_by_name|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Name">
+                    {% else %}
+                        <strong>Name:</strong> {{ phase.phase_data.prepared_by_name|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Name:</strong><br>
+                        <input type="text" name="reviewed_by_name" value="{{ phase.phase_data.reviewed_by_name|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Name">
+                    {% else %}
+                        <strong>Name:</strong> {{ phase.phase_data.reviewed_by_name|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Name:</strong><br>
+                        <input type="text" name="approved_by_name" value="{{ phase.phase_data.approved_by_name|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Name">
+                    {% else %}
+                        <strong>Name:</strong> {{ phase.phase_data.approved_by_name|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Name:</strong><br>
+                        <input type="text" name="authorized_by_name" value="{{ phase.phase_data.authorized_by_name|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Name">
+                    {% else %}
+                        <strong>Name:</strong> {{ phase.phase_data.authorized_by_name|default:"-" }}
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Designation:</strong><br>
+                        <input type="text" name="prepared_by_designation" value="{{ phase.phase_data.prepared_by_designation|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Designation">
+                    {% else %}
+                        <strong>Designation:</strong> {{ phase.phase_data.prepared_by_designation|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Designation:</strong><br>
+                        <input type="text" name="reviewed_by_designation" value="{{ phase.phase_data.reviewed_by_designation|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Designation">
+                    {% else %}
+                        <strong>Designation:</strong> {{ phase.phase_data.reviewed_by_designation|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Designation:</strong><br>
+                        <input type="text" name="approved_by_designation" value="{{ phase.phase_data.approved_by_designation|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Designation">
+                    {% else %}
+                        <strong>Designation:</strong> {{ phase.phase_data.approved_by_designation|default:"-" }}
+                    {% endif %}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px;">
+                    {% if edit_mode %}
+                        <strong>Designation:</strong><br>
+                        <input type="text" name="authorized_by_designation" value="{{ phase.phase_data.authorized_by_designation|default:'' }}" class="form-control form-control-sm mt-1" placeholder="Designation">
+                    {% else %}
+                        <strong>Designation:</strong> {{ phase.phase_data.authorized_by_designation|default:"-" }}
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <div style="text-align: right; margin-top: 5px; font-size: 11px;">
+        <strong>QAD/022/F01.01</strong>
+    </div>
+</div>
+
+<!-- Notes -->
+<div style="margin-top: 30px;">
+    <p style="font-size: 12px; margin: 10px 0;">
+        <strong>Note:</strong> Fields marked with ⭐ are editable in this view.
+        {% if edit_mode == 'store' %}
+        <br>Store Manager can add AR Numbers and add additional lots as needed using the "Add Lot" button.
+        {% elif edit_mode == 'dispensing' %}
+        <br>Dispensing Operator can fill in weighing and receiving details.
+        {% endif %}
+    </p>
+    <p style="font-size: 12px; margin: 10px 0;">
+        * Total Quantity = Unit Quantity + Overage<br>
+        ** AR = Analytical Release number from Quality Control<br>
+        *** These fields require signatures/names
+    </p>
+</div>
+
+{% if edit_mode == 'store' %}
+<script>
+// Toast notification function
+function showToast(message, type = 'success') {
+    const toastHTML = `
+        <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', toastHTML);
+    const toastElement = document.body.lastElementChild;
+    const toast = new bootstrap.Toast(toastElement, {delay: 3000});
+    toast.show();
+    setTimeout(() => toastElement.remove(), 3500);
+}
+
+// Track lot counters for each ingredient
+const lotCounters = {};
+
+// Initialize lot counters from existing data
+document.querySelectorAll('.ingredient-row').forEach(row => {
+    const ingredientId = row.dataset.ingredientId;
+    if (!lotCounters[ingredientId]) {
+        // Count existing lots for this ingredient
+        const container = document.getElementById(`ar-container-${ingredientId}`);
+        lotCounters[ingredientId] = container ? container.children.length : 0;
+    }
+});
+
+// Function to add a new AR Number box (lot) to an ingredient
+function addARBox(ingredientId, ingredientName) {
+    // Increment counter for this ingredient
+    if (!lotCounters[ingredientId]) {
+        lotCounters[ingredientId] = 4; // Start after the default 4 lots
+    }
+    lotCounters[ingredientId]++;
+    const newLotNumber = lotCounters[ingredientId];
+    
+    // Get the AR input container
+    const container = document.getElementById(`ar-container-${ingredientId}`);
+    if (!container) {
+        console.error(`Container not found for ingredient ${ingredientId}`);
+        return;
+    }
+    
+    // Create new AR input box
+    const newInput = document.createElement('input');
+    newInput.type = 'text';
+    newInput.name = `ar_number_${ingredientId}_lot${newLotNumber}`;
+    newInput.className = 'ar-input-box';
+    newInput.placeholder = 'AR #';
+    
+    // Append to container
+    container.appendChild(newInput);
+    
+    // Also add corresponding lot number in the Lot column
+    const lotDisplay = document.getElementById(`lot-display-${ingredientId}`);
+    if (lotDisplay) {
+        lotDisplay.innerHTML += `${newLotNumber}<br>`;
+    }
+    
+    // Show success message
+    showToast(`Added Lot ${newLotNumber} for ${ingredientName}`, 'success');
+    
+    // Focus the new input
+    newInput.focus();
+}
+</script>
+{% endif %}

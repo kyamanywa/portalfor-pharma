@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'dashboards/dashboard_base.html' %}
 
 {% block title %}Packaging Store Dashboard - Kampala Pharmaceutical Industries{% endblock %}
 {% load static %}
@@ -15,14 +15,10 @@
 }
 
 .countdown-timer.overrun {
-    animation: pulse 2s infinite;
+    /* Static - no animation */
 }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.7; }
-    100% { opacity: 1; }
-}
+/* Removed pulse animation */
 
 .progress {
     border-radius: 10px;
@@ -30,7 +26,7 @@
 }
 
 .progress-bar {
-    transition: width 0.3s ease, background-color 0.3s ease;
+    /* Static - no transitions */
 }
 </style>
 {% endblock %}
@@ -252,10 +248,29 @@
                                                     <i class="fas fa-play"></i> Start
                                                 </button>
                                                 {% elif phase.status == 'in_progress' %}
-                                                <button class="btn btn-outline-success btn-sm"
-                                                        onclick="completeRelease('{{ phase.id }}')">
-                                                    <i class="fas fa-check"></i> Release
-                                                </button>
+                                                  {% if phase.phase.phase_name == 'packaging_material_release' %}
+                                                    {% with req_status=phase.req.status|default:"not_started" %}
+                                                      {% if req_status == "qa_verified" %}
+                                                        <button class="btn btn-success btn-sm"
+                                                                onclick="completeRelease('{{ phase.id }}')">
+                                                            <i class="fas fa-check"></i> Complete Release
+                                                        </button>
+                                                      {% else %}
+                                                        <button class="btn btn-outline-warning btn-sm" disabled
+                                                                title="Complete the packaging requisition workflow first">
+                                                            <i class="fas fa-lock"></i> Pending Req. ({{ req_status|default:"not_started"|title }})
+                                                        </button>
+                                                        <a href="{% url 'dashboards:phase_form' phase.id %}" class="btn btn-outline-info btn-sm">
+                                                            <i class="fas fa-clipboard-list"></i> Requisition Form
+                                                        </a>
+                                                      {% endif %}
+                                                    {% endwith %}
+                                                  {% else %}
+                                                    <button class="btn btn-outline-success btn-sm"
+                                                            onclick="completeRelease('{{ phase.id }}')">
+                                                        <i class="fas fa-check"></i> Release
+                                                    </button>
+                                                  {% endif %}
                                                 {% endif %}
                                             </div>
                                         </td>
@@ -276,6 +291,8 @@
         </div>
     </div>
 </div>
+
+
 
     <!-- My History Section -->
     <div class="row mb-4">

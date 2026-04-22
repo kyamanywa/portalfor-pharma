@@ -128,10 +128,7 @@
         display: block !important;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+    /* Removed keyframes animation */
     
     /* Section Title */
     .pm-section-title {
@@ -221,6 +218,43 @@
                     </a>
                 </li>
                 {% endif %}
+
+                {% if pkg_req_not_started %}
+                <li>
+                    <a href="#" data-section="pm-pkg-request" class="section-link" id="pm-pkg-request-link">
+                        <i class="fas fa-boxes"></i> Packaging Requests
+                        <span class="badge bg-danger ms-1">{{ pkg_req_not_started|length }}</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if pkg_req_pending_approval %}
+                <li>
+                    <a href="#" data-section="pm-pkg-approval" class="section-link" id="pm-pkg-approval-link">
+                        <i class="fas fa-clipboard-check"></i> Packaging Approvals
+                        <span class="badge bg-warning text-dark ms-1">{{ pkg_req_pending_approval|length }}</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li>
+                    <a href="#" data-section="pm-fp-recon-approval" class="section-link" id="pm-fp-recon-approval-link">
+                        <i class="fas fa-balance-scale"></i> FP Reconciliation Approval
+                        {% if fp_recon_pending_pm %}
+                        <span class="badge bg-warning text-dark ms-1">{{ fp_recon_pending_pm|length }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+
+                {% if tab_fp_recon_pending_fill %}
+                <li>
+                    <a href="#" data-section="pm-tab-fp-recon-fill" class="section-link" id="pm-tab-fp-recon-fill-link">
+                        <i class="fas fa-clipboard-list"></i> Tablet FP Recon (Fill)
+                        <span class="badge bg-warning text-dark ms-1">{{ tab_fp_recon_pending_fill|length }}</span>
+                    </a>
+                </li>
+                {% endif %}
+
             </ul>
             {% endif %}
             
@@ -1040,6 +1074,178 @@
         </div>
         {% endif %}
         <!-- End Quarantine Section -->
+
+        <!-- Packaging Requisition — Supervisor Request Section -->
+        {% if pkg_req_not_started %}
+        <div class="pm-content-section" id="pm-pkg-request">
+            <div class="mb-4">
+                <h1 class="section-title">
+                    <i class="fas fa-boxes me-2"></i>Packaging Material Requests &mdash; Awaiting Supervisor Request
+                </h1>
+                <p class="section-subtitle">Sorting is complete for these batches. The Production Supervisor must open the BMR, fill in the &ldquo;Requested by&rdquo; section on Page 41, and submit the request.</p>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Batch No.</th>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for phase in pkg_req_not_started %}
+                        <tr>
+                            <td><strong>{{ phase.bmr.batch_number }}</strong></td>
+                            <td>{{ phase.bmr.product.product_name }}</td>
+                            <td><span class="badge bg-secondary">Awaiting Supervisor Request</span></td>
+                            <td>
+                                <a href="{% url 'dashboards:phase_form' phase.id %}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-file-signature me-1"></i> Open &amp; Request
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        <!-- End Packaging Requisition Request Section -->
+
+        <!-- Packaging Requisition Approval Section -->
+        {% if pkg_req_pending_approval %}
+        <div class="pm-content-section" id="pm-pkg-approval">
+            <div class="mb-4">
+                <h1 class="section-title">
+                    <i class="fas fa-clipboard-check me-2"></i>Packaging Material Requisitions — Awaiting Your Approval
+                </h1>
+                <p class="section-subtitle">The Production Supervisor has submitted these requisitions. Review and approve on Page 41 of the BMR.</p>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Batch No.</th>
+                            <th>Product</th>
+                            <th>Requested by</th>
+                            <th>Pack Size</th>
+                            <th>Date Submitted</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for phase in pkg_req_pending_approval %}
+                        {% with req=phase.phase_data.packaging_req %}
+                        <tr>
+                            <td><strong>{{ phase.bmr.batch_number }}</strong></td>
+                            <td>{{ phase.bmr.product.product_name }}</td>
+                            <td>{{ req.supervisor_name|default:"—" }}</td>
+                            <td>{{ req.pack_size_selected|default:"—" }}</td>
+                            <td>{{ req.supervisor_sign_date|default:"—" }}</td>
+                            <td>
+                                <a href="{% url 'dashboards:phase_form' phase.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-pen me-1"></i> Review &amp; Approve
+                                </a>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        <!-- End Packaging Requisition Approval Section -->
+
+        <!-- FP Reconciliation Pending PM Approval Section -->
+        <div class="pm-content-section" id="pm-fp-recon-approval">
+            <div class="mb-4">
+                <h1 class="section-title">
+                    <i class="fas fa-balance-scale me-2"></i>Finished Product Reconciliation &mdash; Awaiting Your Approval
+                </h1>
+                <p class="section-subtitle">QA has verified these reconciliation sheets. Review and approve on Page 28 of the BMR.</p>
+            </div>
+            {% if fp_recon_pending_pm %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Batch No.</th>
+                            <th>Product</th>
+                            <th>QA Approved By</th>
+                            <th>QA Approval Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in fp_recon_pending_pm %}
+                        <tr>
+                            <td><strong>{{ item.bmr.batch_number }}</strong></td>
+                            <td>{{ item.bmr.product.product_name }}</td>
+                            <td>{{ item.qa_approved_by|default:"—" }}</td>
+                            <td>{{ item.qa_approved_date|default:"—" }}</td>
+                            <td>
+                                <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-pen me-1"></i> Review &amp; Approve
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-check-circle me-2"></i>No pending FP Reconciliation approvals at this time.
+            </div>
+            {% endif %}
+        </div>
+        <!-- End FP Reconciliation PM Approval Section -->
+
+        <!-- Tablet FP Reconciliation Fill Section -->
+        <div class="pm-content-section" id="pm-tab-fp-recon-fill" style="display:none;">
+            <div class="section-header">
+                <h1 class="section-title">
+                    <i class="fas fa-clipboard-list text-primary me-2"></i>
+                    Tablet FP Reconciliation — Pending Fill
+                </h1>
+                <p class="section-subtitle">These tablet batches need FP Reconciliation (Page 70) filled before QA can release the batch.</p>
+            </div>
+            {% if tab_fp_recon_pending_fill %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Batch No.</th>
+                            <th>Product</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in tab_fp_recon_pending_fill %}
+                        <tr>
+                            <td><strong>{{ item.bmr.batch_number }}</strong></td>
+                            <td>{{ item.bmr.product.product_name }}</td>
+                            <td>
+                                <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#tab-fp-recon-page" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-pen me-1"></i> Fill FP Recon
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-check-circle me-2"></i>No pending tablet FP Reconciliation forms at this time.
+            </div>
+            {% endif %}
+        </div>
+        <!-- End Tablet FP Reconciliation Fill Section -->
+
         
     </div>
     <!-- End Main Content -->

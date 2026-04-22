@@ -1,0 +1,424 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/widgets.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="{% static 'js/bmr_template_editor.js' %}"></script>
+{% csrf_token %}"></script>
+<style>
+.visual-editor {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.editor-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+}
+
+.btn-primary { background: #007cba; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-secondary { background: #6c757d; color: white; }
+.btn-danger { background: #dc3545; color: white; }
+
+.pages-container {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+}
+
+.page {
+    min-width: 400px;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sections-container {
+    min-height: 200px;
+}
+
+.section {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    padding: 15px;
+    position: relative;
+    cursor: grab;
+}
+
+.section:hover {
+    border-color: #007cba;
+    box-shadow: 0 2px 8px rgba(0,124,186,0.1);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.section-title {
+    font-weight: bold;
+    color: #495057;
+}
+
+.section-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.section-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 3px;
+    color: #6c757d;
+}
+
+.section-actions button:hover {
+    background: #dee2e6;
+}
+
+.fields-container {
+    display: grid;
+    gap: 10px;
+}
+
+.field {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.field-info {
+    flex: 1;
+}
+
+.field-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.field-type {
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.field-actions {
+    display: flex;
+    gap: 3px;
+}
+
+.toolbox {
+    position: fixed;
+    right: 20px;
+    top: 120px;
+    width: 300px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.toolbox-section {
+    margin-bottom: 20px;
+}
+
+.toolbox-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.component-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 5px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.component-btn:hover {
+    background: #e9ecef;
+    border-color: #007cba;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.sortable-ghost {
+    opacity: 0.4;
+}
+
+.sortable-chosen {
+    background: #e3f2fd !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="visual-editor">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    
+    <div class="editor-header">
+        <div>
+            <h1>Visual BMR Template Editor</h1>
+            <p>Template: <strong>{{ template.name }}</strong></p>
+        </div>
+        <div class="editor-actions">
+            <button class="btn btn-success" onclick="saveTemplate()">💾 Save Template</button>
+            <a href="{% url 'admin:bmr_bmrtemplate_preview' template.id %}" class="btn btn-secondary" target="_blank">👁️ Preview</a>
+            <a href="{% url 'admin:bmr_bmrtemplate_changelist' %}" class="btn btn-secondary">← Back to List</a>
+        </div>
+    </div>
+
+    <div class="pages-container" id="pages-container">
+        <!-- Pages will be populated by JavaScript -->
+    </div>
+
+    <!-- Toolbox for adding components -->
+    <div class="toolbox">
+        <div class="toolbox-section">
+            <div class="toolbox-title">📄 Pages</div>
+            <button class="component-btn" onclick="addPage()">+ Add New Page</button>
+        </div>
+
+        <div class="toolbox-section">
+            <div class="toolbox-title">📝 Sections</div>
+            <button class="component-btn" onclick="addSection('info')">📋 Info Section</button>
+            <button class="component-btn" onclick="addSection('form')">📝 Form Section</button>
+            <button class="component-btn" onclick="addSection('table')">📊 Table Section</button>
+            <button class="component-btn" onclick="addSection('signature')">✍️ Signature Section</button>
+            <button class="component-btn" onclick="addSection('divider')">➖ Page Divider</button>
+        </div>
+
+        <div class="toolbox-section">
+            <div class="toolbox-title">🔧 Field Types</div>
+            <button class="component-btn" onclick="addField('text')">📝 Text Input</button>
+            <button class="component-btn" onclick="addField('number')">🔢 Number Input</button>
+            <button class="component-btn" onclick="addField('date')">📅 Date Input</button>
+            <button class="component-btn" onclick="addField('select')">📋 Dropdown</button>
+            <button class="component-btn" onclick="addField('textarea')">📄 Text Area</button>
+            <button class="component-btn" onclick="addField('signature')">✍️ Signature</button>
+        </div>
+    </div>
+</div>
+
+<!-- Section Edit Modal -->
+<div id="sectionModal" class="modal">
+    <div class="modal-content">
+        <h2>Edit Section</h2>
+        <form id="sectionForm">
+            <div class="form-group">
+                <label>Title:</label>
+                <input type="text" id="section-title" required>
+            </div>
+            <div class="form-group">
+                <label>Description:</label>
+                <textarea id="section-description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Section Type:</label>
+                <select id="section-type">
+                    <option value="info">Information Section</option>
+                    <option value="form">Form Section</option>
+                    <option value="table">Table Section</option>
+                    <option value="signature">Signature Section</option>
+                    <option value="divider">Page Break/Divider</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Columns:</label>
+                <select id="section-columns">
+                    <option value="1">1 Column</option>
+                    <option value="2">2 Columns</option>
+                    <option value="3">3 Columns</option>
+                    <option value="4">4 Columns</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeSectionModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Section</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Field Edit Modal -->
+<div id="fieldModal" class="modal">
+    <div class="modal-content">
+        <h2>Edit Field</h2>
+        <form id="fieldForm">
+            <div class="form-group">
+                <label>Label:</label>
+                <input type="text" id="field-label" required>
+            </div>
+            <div class="form-group">
+                <label>Field Type:</label>
+                <select id="field-type">
+                    {% for value, label in field_types %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Data Source:</label>
+                <select id="field-data-source">
+                    {% for value, label in data_sources %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Placeholder:</label>
+                <input type="text" id="field-placeholder">
+            </div>
+            <div class="form-group">
+                <label>Help Text:</label>
+                <textarea id="field-help-text" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="field-required"> Required Field</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="field-readonly"> Read Only</label>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeFieldModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Field</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Global configuration for the editor
+window.saveStructureUrl = "{% url 'admin:bmr_bmrtemplate_save_structure' template.id %}";
+
+// Template data from Django context
+let templateSections = [
+    {% for section in sections %}
+    {
+        id: {{ section.id }},
+        title: "{{ section.title|escapejs }}",
+        description: "{{ section.description|escapejs }}",
+        section_type: "{{ section.section_type }}",
+        page_number: {{ section.page_number }},
+        order: {{ section.order }},
+        columns: {{ section.columns|default:1 }},
+        is_visible: {{ section.is_visible|yesno:"true,false" }},
+        fields: [
+            {% for field in section.fields.all %}
+            {
+                id: {{ field.id }},
+                label: "{{ field.label|escapejs }}",
+                field_type: "{{ field.field_type }}",
+                data_source: "{{ field.data_source }}",
+                is_required: {{ field.is_required|yesno:"true,false" }},
+                is_readonly: {{ field.is_readonly|yesno:"true,false" }},
+                placeholder: "{{ field.placeholder|escapejs }}",
+                help_text: "{{ field.help_text|escapejs }}",
+                order: {{ field.order }}
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Initialize template data when editor loads
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.editor) {
+        editor.templateData.sections = templateSections;
+        editor.renderPages();
+        editor.initializeDragAndDrop();
+    }
+});
+</script>
+{% endblock %}

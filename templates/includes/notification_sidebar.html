@@ -71,11 +71,10 @@
         max-height: 500px;
         z-index: 1000;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transition: transform 0.3s ease;
     }
     
     .notification-sidebar.collapsed {
-        transform: translateY(calc(-100% + 50px));
+        display: none; /* Just hide instead of sliding */
     }
     
     .notification-actions {
@@ -90,7 +89,6 @@
         border-radius: 8px 8px 0 0;
         padding: 12px 15px;
         color: white;
-        transition: border-radius 0.3s ease;
     }
     
     .notification-sidebar.collapsed .notification-header {
@@ -107,7 +105,6 @@
     .notification-item {
         border-bottom: 1px solid #e9ecef;
         padding: 12px 15px;
-        transition: background 0.2s;
     }
     
     .notification-item:hover {

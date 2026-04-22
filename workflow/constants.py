@@ -65,6 +65,7 @@ PHASE_NAMES = {
     'COMPRESSION': 'compression',
     'SORTING': 'sorting',
     'COATING': 'coating',
+    'POST_COATING_SORTING': 'post_coating_sorting',
     'BLISTER_PACKING': 'blister_packing',
     'BULK_PACKING': 'bulk_packing',
     
@@ -97,6 +98,7 @@ PHASE_CHOICES = [
     (PHASE_NAMES['COMPRESSION'], 'Compression'),
     (PHASE_NAMES['SORTING'], 'Sorting'),
     (PHASE_NAMES['COATING'], 'Coating'),
+    (PHASE_NAMES['POST_COATING_SORTING'], 'Post-Coating Sorting'),
     (PHASE_NAMES['BLISTER_PACKING'], 'Blister Packing'),
     (PHASE_NAMES['BULK_PACKING'], 'Bulk Packing'),
     
@@ -152,6 +154,7 @@ TABLET_PHASES = {
     PHASE_NAMES['COMPRESSION'],
     PHASE_NAMES['SORTING'],
     PHASE_NAMES['COATING'],
+    PHASE_NAMES['POST_COATING_SORTING'],
     PHASE_NAMES['POST_COMPRESSION_QC'],
     PHASE_NAMES['BLISTER_PACKING'],
     PHASE_NAMES['BULK_PACKING'],

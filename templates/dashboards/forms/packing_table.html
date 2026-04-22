@@ -1,0 +1,306 @@
+<!-- Packing (Blister/Bulk) Process Table Component -->
+<!-- This covers Packing Instructions (Page 43) and Blister Machine Setting & Yield (Page 44) -->
+<!-- Supports edit_mode: 'edit' (fillable form) or 'read' (view only) -->
+
+{% if edit_mode == 'edit' %}
+<style>
+    .packing-input {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+        font-size: 11px;
+        background-color: #fce4ec;
+    }
+    .packing-input:focus {
+        border-color: #c62828;
+        background-color: #ffcdd2;
+        outline: none;
+    }
+    .packing-signature {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #000;
+        text-align: center;
+        font-size: 11px;
+        background-color: #fce4ec;
+    }
+</style>
+{% endif %}
+
+<!-- Blister Machine Setting -->
+<div style="font-weight: bold; margin-bottom: 2px;">1. BLISTER MACHINE SETTING</div>
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px; margin-bottom: 10px;">
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px; width: 25%;">Blister Machine number</td>
+        <td style="border: 1px solid #000; padding: 5px; width: 25%;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="blister_machine_no" class="packing-input" value="{{ packing_data.blister_machine_no|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px; width: 25%;">Blister machine Make</td>
+        <td style="border: 1px solid #000; padding: 5px; width: 25%;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="blister_machine_make" class="packing-input" value="{{ packing_data.blister_machine_make|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">PVC Clear Film Size</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="pvc_film_size" class="packing-input" value="{{ packing_data.pvc_film_size|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">Aluminium Foil Size</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="aluminium_foil_size" class="packing-input" value="{{ packing_data.aluminium_foil_size|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">Set Sealing Temperature</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="set_sealing_temp" class="packing-input" placeholder="°C" value="{{ packing_data.set_sealing_temp|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">Observed Sealing Temperature</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="obs_sealing_temp" class="packing-input" placeholder="°C" value="{{ packing_data.obs_sealing_temp|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">Set Forming Temperature</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="set_forming_temp" class="packing-input" placeholder="°C" value="{{ packing_data.set_forming_temp|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">Observed Forming Temperature</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="obs_forming_temp" class="packing-input" placeholder="°C" value="{{ packing_data.obs_forming_temp|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">Machine Speed</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="blister_machine_speed" class="packing-input" value="{{ packing_data.blister_machine_speed|default:'' }}">
+            {% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">Blister Pack Size</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="blister_pack_size" class="packing-input" value="{{ packing_data.blister_pack_size|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2" style="border: 1px solid #000; padding: 5px;">Machine Setting Done By (Sign & Date):</td>
+        <td colspan="2" style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="blister_set_by" class="packing-signature" style="width: 60%; display: inline-block;" placeholder="Sign">
+            <input type="date" name="blister_set_date" class="packing-input" style="width: 35%; display: inline-block;">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2" style="border: 1px solid #000; padding: 5px;">Checked by Supervisor (Sign & Date):</td>
+        <td colspan="2" style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="blister_checked_by" class="packing-signature" style="width: 60%; display: inline-block;" placeholder="Sign">
+            <input type="date" name="blister_checked_date" class="packing-input" style="width: 35%; display: inline-block;">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2" style="border: 1px solid #000; padding: 5px;">Verified by QA (Sign & Date):</td>
+        <td colspan="2" style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="blister_qa" class="packing-signature" style="width: 60%; display: inline-block;" placeholder="Sign">
+            <input type="date" name="blister_qa_date" class="packing-input" style="width: 35%; display: inline-block;">
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- 2. BLISTER PACKING Times -->
+<div style="font-weight: bold; margin-bottom: 2px;">2. BLISTER PACKING</div>
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px; margin-bottom: 10px;">
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">Started</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Date: {% if edit_mode == 'edit' %}<input type="date" name="blister_start_date" class="packing-input" style="width: 130px; display: inline-block;">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Time: {% if edit_mode == 'edit' %}<input type="time" name="blister_start_time" class="packing-input" style="width: 110px; display: inline-block;">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">Completed</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Date: {% if edit_mode == 'edit' %}<input type="date" name="blister_end_date" class="packing-input" style="width: 130px; display: inline-block;">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            Time: {% if edit_mode == 'edit' %}<input type="time" name="blister_end_time" class="packing-input" style="width: 110px; display: inline-block;">{% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- 3. Percentage Yield -->
+<div style="font-weight: bold; margin-bottom: 2px;">3. DETERMINE PERCENTAGE YIELD</div>
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px; margin-bottom: 10px;">
+    <tr>
+        <th style="border: 1px solid #000; padding: 5px;">Date:</th>
+        <th style="border: 1px solid #000; padding: 5px;">Shift:</th>
+        <th style="border: 1px solid #000; padding: 5px;">Operator/ Grp. Leader</th>
+        <th style="border: 1px solid #000; padding: 5px; width: 40%;">Number of Blisters</th>
+    </tr>
+    {% for i in "12345" %}
+    <tr style="height: 20px;">
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="date" name="yield_date_{{ forloop.counter }}" class="packing-input">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_shift_{{ forloop.counter }}" class="packing-input" placeholder="Shift">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_operator_{{ forloop.counter }}" class="packing-signature" placeholder="Name/Sign">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="number" name="yield_blisters_{{ forloop.counter }}" class="packing-input" placeholder="No. of Blisters">{% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    <tr style="font-weight: bold;">
+        <td colspan="3" style="border: 1px solid #000; padding: 5px;">Total Number of Blisters</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="number" name="total_blisters" class="packing-input" style="font-weight: bold;" value="{{ packing_data.total_blisters|default:'' }}">
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- YIELD RECONCILIATION -->
+<div style="font-weight: bold; margin-bottom: 2px;">YIELD RECONCILIATION</div>
+<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px;">
+    <tr>
+        <th style="border: 1px solid #000; padding: 5px; width: 5%;">Steps</th>
+        <th style="border: 1px solid #000; padding: 5px; width: 45%;">Descriptions</th>
+        <th style="border: 1px solid #000; padding: 5px; width: 10%;">Qty. (Nos)</th>
+        <th style="border: 1px solid #000; padding: 5px; width: 20%;">Done by SPV<br>(Sign & Date)</th>
+        <th style="border: 1px solid #000; padding: 5px; width: 20%;">Verified by QA<br>(Sign & Date)</th>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">A.</td>
+        <td style="border: 1px solid #000; padding: 5px;">Theoretical Batch Size (Blisters) with respect to tablets received from sorting</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_a_qty" class="packing-input" value="{{ packing_data.yield_a_qty|default:'' }}">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_a_spv" class="packing-signature" placeholder="Sign">{% endif %}
+        </td>
+        <td rowspan="8" style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="yield_qa_sign" class="packing-signature" placeholder="QA Sign"><br>
+            <input type="date" name="yield_qa_date" class="packing-input" style="margin-top: 4px;">
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">B.</td>
+        <td style="border: 1px solid #000; padding: 5px;">Actual Quantities of Blisters</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_b_qty" class="packing-input" value="{{ packing_data.yield_b_qty|default:'' }}">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_b_spv" class="packing-signature" placeholder="Sign">{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">C.</td>
+        <td style="border: 1px solid #000; padding: 5px;">Sample Quantities (In-Process checks)</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_c_qty" class="packing-input" value="{{ packing_data.yield_c_qty|default:'' }}">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_c_spv" class="packing-signature" placeholder="Sign">{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">D.</td>
+        <td style="border: 1px solid #000; padding: 5px;">Validation Samples</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_d_qty" class="packing-input" value="{{ packing_data.yield_d_qty|default:'' }}">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_d_spv" class="packing-signature" placeholder="Sign">{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">E.</td>
+        <td style="border: 1px solid #000; padding: 5px;">Rejects (if any)</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_e_qty" class="packing-input" value="{{ packing_data.yield_e_qty|default:'' }}">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_e_spv" class="packing-signature" placeholder="Sign">{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">F.</td>
+        <td style="border: 1px solid #000; padding: 5px;">Total Actual Yield (B+C+D)</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_f_qty" class="packing-input" value="{{ packing_data.yield_f_qty|default:'' }}">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_f_spv" class="packing-signature" placeholder="Sign">{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #000; padding: 5px;">G.</td>
+        <td style="border: 1px solid #000; padding: 5px;">Unaccountable Losses [A-(E+F)]</td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_g_qty" class="packing-input" value="{{ packing_data.yield_g_qty|default:'' }}">{% endif %}
+        </td>
+        <td style="border: 1px solid #000; padding: 5px;">
+            {% if edit_mode == 'edit' %}<input type="text" name="yield_g_spv" class="packing-signature" placeholder="Sign">{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td colspan="4" style="border: 1px solid #000; padding: 5px; font-weight: bold; text-align: center;">
+            Percentage Yield = F x 100 / A = 
+            {% if edit_mode == 'edit' %}
+            <input type="text" name="percentage_yield" class="packing-input" style="width: 80px; display: inline-block;" placeholder="%" value="{{ packing_data.percentage_yield|default:'' }}">
+            {% else %}...........................{% endif %}%
+        </td>
+    </tr>
+    <tr>
+        <td colspan="5" style="border: 1px solid #000; padding: 5px; font-weight: bold;">Permissible Yield Limit: (98% to 102%)</td>
+    </tr>
+</table>
+
+<!-- Variation/Remarks -->
+<div style="font-size: 11px; margin-top: 5px;">
+    (If percentage yield is within 98% to 102% no justification is required, otherwise explain variation in space below):<br>
+    {% if edit_mode == 'edit' %}
+    <strong>CAUSE OF VARIATION:</strong> 
+    <select name="cause_variation" class="packing-input" style="width: 80px; display: inline-block;">
+        <option value="">--</option>
+        <option value="NO" {% if packing_data.cause_variation == 'NO' %}selected{% endif %}>NO</option>
+        <option value="YES" {% if packing_data.cause_variation == 'YES' %}selected{% endif %}>YES</option>
+    </select><br>
+    <strong>REMARKS/BREAKDOWNS:</strong><br>
+    <textarea name="packing_remarks" class="packing-input" style="width: 100%; min-height: 50px; text-align: left; resize: vertical;"
+              placeholder="Enter remarks if variation exists...">{{ packing_data.packing_remarks|default:'' }}</textarea>
+    {% else %}
+    CAUSE OF VARIATION: YES/NO<br>
+    REMARKS/BREAKDOWNS................................................................................................
+    <br>..............................................................................................................................
+    {% endif %}
+</div>

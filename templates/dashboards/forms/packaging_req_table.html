@@ -1,0 +1,16 @@
+{% comment %}
+Packaging Materials Requisition Sheet — Page 41 editable form.
+Included by bmr_detail_new.html when edit_mode == 'packaging_material_release'.
+Context: packaging_req_data, packaging_materials (QuerySet), phase_execution, user_role, today_str, bmr
+{% endcomment %}
+{% load dashboard_filters %}
+
+{% with req=packaging_req_data req_status=packaging_req_data.status|default:"not_started" %}
+{# ─── Compute per-role permissions ─────────────────────────────── #}
+{% if req_status == "not_started" and user_role == "production_supervisor" or req_status == "not_started" and user_role == "production_manager" or req_status == "not_started" and request.user.is_staff %}{% with can_supervisor=1 can_manager=0 can_store=0 can_qa=0 active_action="req_supervisor" %}{% include 'dashboards/forms/_pkg_req_body.html' %}{% endwith %}
+{% elif req_status == "supervisor_requested" and user_role == "production_manager" or req_status == "supervisor_requested" and request.user.is_staff %}{% with can_supervisor=0 can_manager=1 can_store=0 can_qa=0 active_action="req_manager_approve" %}{% include 'dashboards/forms/_pkg_req_body.html' %}{% endwith %}
+{% elif req_status == "manager_approved" and user_role == "packaging_store" %}{% with can_supervisor=0 can_manager=0 can_store=1 can_qa=0 active_action="req_store_fill" %}{% include 'dashboards/forms/_pkg_req_body.html' %}{% endwith %}
+{% elif req_status == "store_filled" and user_role == "qa" or req_status == "store_filled" and request.user.is_staff %}{% with can_supervisor=0 can_manager=0 can_store=0 can_qa=1 active_action="req_qa_verify" %}{% include 'dashboards/forms/_pkg_req_body.html' %}{% endwith %}
+{% else %}{% with can_supervisor=0 can_manager=0 can_store=0 can_qa=0 active_action="" %}{% include 'dashboards/forms/_pkg_req_body.html' %}{% endwith %}
+{% endif %}
+{% endwith %}
