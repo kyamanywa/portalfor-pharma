@@ -88,6 +88,12 @@ EQUIPMENT = {
 }
 
 # ── Per-product field values ───────────────────────────────────────────────────
+# Name-based lookup map — works regardless of DB primary key
+PRODUCT_NAME_MAP = {
+    13: 'kamadol',   # fallback label used for name lookup
+    11: 'kamsidar',
+}
+
 PRODUCTS = {
     13: {  # KAMADOL — Paracetamol Tablets BP 500mg
         'mfg_license_number':                  'NDA/MAL/HDP/1887',
@@ -164,10 +170,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for product_id, fields in PRODUCTS.items():
-            try:
-                product = Product.objects.get(id=product_id)
-            except Product.DoesNotExist:
-                self.stderr.write(self.style.ERROR(f'Product id={product_id} not found — skipping'))
+            # Try by ID first; fall back to name search so it works on any server
+            product = Product.objects.filter(id=product_id).first()
+            if not product:
+                name_hint = PRODUCT_NAME_MAP.get(product_id, '')
+                product = Product.objects.filter(product_name__icontains=name_hint).first()
+            if not product:
+                self.stderr.write(self.style.ERROR(f'Product id={product_id} / name~"{PRODUCT_NAME_MAP.get(product_id)}" not found — skipping'))
                 continue
 
             # ── Update product fields ──────────────────────────────────────────

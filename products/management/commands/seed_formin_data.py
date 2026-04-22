@@ -322,17 +322,20 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        try:
-            product = Product.objects.get(id=15)
-        except Product.DoesNotExist:
-            self.stderr.write(self.style.ERROR('FORMIN (id=15) not found — aborting'))
+        # Try by ID first; fall back to name search so it works on any server
+        product = (
+            Product.objects.filter(id=15).first()
+            or Product.objects.filter(product_name__icontains='formin').first()
+        )
+        if not product:
+            self.stderr.write(self.style.ERROR('FORMIN product not found — aborting'))
             return
 
         # ── Update product fields ──────────────────────────────────────────
         for field, value in FORMIN_FIELDS.items():
             setattr(product, field, value)
         product.save()
-        self.stdout.write(self.style.SUCCESS(f'Updated {len(FORMIN_FIELDS)} fields for {product.product_name} (id=15)'))
+        self.stdout.write(self.style.SUCCESS(f'Updated {len(FORMIN_FIELDS)} fields for {product.product_name} (id={product.id})'))
 
         # ── Seed equipment entries ─────────────────────────────────────────
         existing = EquipmentEntry.objects.filter(product=product).count()

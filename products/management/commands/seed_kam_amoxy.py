@@ -25,8 +25,8 @@ class Command(BaseCommand):
 
         # ── Find product ─────────────────────────────────────────────────────────
         product = (
-            Product.objects.filter(pk=16).first()
-            or Product.objects.filter(product_name__icontains="KAM AMOXY").first()
+            Product.objects.filter(product_name__icontains="KAM AMOXY").first()
+            or Product.objects.filter(pk=16).first()
         )
         if not product:
             self.stderr.write(self.style.ERROR("KAM AMOXY product not found in database."))

@@ -57,9 +57,10 @@ class Command(BaseCommand):
     help = 'Seed KAMADOL BMR revision history (from THE REVISED KAMADOL BMR-VERSION 03.pdf, page 59)'
 
     def handle(self, *args, **options):
-        kmd = Product.objects.filter(id=13).first()
-        if not kmd:
-            kmd = Product.objects.filter(product_name__icontains='kamadol').first()
+        kmd = (
+            Product.objects.filter(product_name__icontains='kamadol').first()
+            or Product.objects.filter(id=13).first()
+        )
         if not kmd:
             self.stderr.write(self.style.ERROR('KAMADOL product not found'))
             return
