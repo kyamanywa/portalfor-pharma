@@ -10,3 +10,5 @@ class WorkflowConfig(AppConfig):
         from . import signals
         # Import signals_autoload to auto-load templates/defaults after migrate
         from . import signals_autoload
+        # Import real-time notification signals (WebSocket)
+        from . import signals_realtime

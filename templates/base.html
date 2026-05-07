@@ -319,8 +319,28 @@
         });
     </script>
     
+    <!-- User ID for WebSocket authentication -->
+    {% if user.is_authenticated %}
+    <script>
+        window.userId = {{ user.id }};
+        window.userRole = '{{ user.role }}';
+        window.userName = '{{ user.get_full_name|default:user.username }}';
+    </script>
+    {% else %}
+    <script>
+        window.userId = null;
+        window.userRole = null;
+        window.userName = null;
+    </script>
+    {% endif %}
+    
     <!-- Modern Features -->
     <script src="{% static 'js/modern-features.js' %}"></script>
+    
+    <!-- Real-time Notifications (WebSocket) -->
+    {% if user.is_authenticated %}
+    <script src="{% static 'js/realtime_notifications.js' %}"></script>
+    {% endif %}
     
     {% block scripts %}{% endblock %}
 </body>

@@ -309,9 +309,24 @@ REST_FRAMEWORK = {
     ]
 }
 
-# Channels Configuration (WebSocket support) - Optional
-# Redis is disabled - using local memory cache for simplicity
-print("[INFO] Using local memory cache (Redis disabled)")
+# Channels Configuration (WebSocket support)
+# Using local memory channel layer for development (no Redis required)
+if 'channels' in INSTALLED_APPS:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer'
+            # For production with Redis, use:
+            # 'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            # 'CONFIG': {
+            #     "hosts": [("127.0.0.1", 6379)],
+            # },
+        }
+    }
+    ASGI_APPLICATION = 'kampala_pharma.routing.application'
+    print("[OK] Django Channels: ENABLED (InMemoryChannelLayer)")
+else:
+    print("[INFO] Django Channels: NOT INSTALLED")
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
