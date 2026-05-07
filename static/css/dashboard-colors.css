@@ -104,8 +104,6 @@ div[style*="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)"] {
 .timeline-stat .stat-label {
     color: white !important;
 }
-    background: linear-gradient(135deg, #198754 0%, #146c43 100%) !important;
-}
 
 .card-header.bg-success {
     background: linear-gradient(135deg, #198754 0%, #146c43 100%) !important;
