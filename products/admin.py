@@ -2,7 +2,8 @@ from django.contrib import admin
 from django import forms
 from .models import Product, ProductIngredient, ProductSpecification, PackagingMaterial, ProductRevisionHistory
 from workflow.constants import (
-    get_product_type_choices, get_coating_type_choices, get_tablet_type_choices
+    get_product_type_choices, get_coating_type_choices, get_tablet_type_choices,
+    CAPSULE_TYPE_CHOICES
 )
 from bmr.models import EquipmentEntry, YieldReconciliationRow, WeightRangeLimit, BMRProcedureStep
 
@@ -14,6 +15,7 @@ class ProductAdminForm(forms.ModelForm):
             'product_type': forms.Select(attrs={'id': 'id_product_type'}),
             'coating_type': forms.Select(attrs={'id': 'id_coating_type'}),
             'tablet_type': forms.Select(attrs={'id': 'id_tablet_type'}),
+            'capsule_type': forms.Select(attrs={'id': 'id_capsule_type'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -25,10 +27,12 @@ class ProductAdminForm(forms.ModelForm):
         # Dynamically set tablet type and coating type choices
         self.fields['coating_type'].choices = [('', '---------')] + get_coating_type_choices()
         self.fields['tablet_type'].choices = [('', '---------')] + get_tablet_type_choices()
-        
+        self.fields['capsule_type'].choices = [('', '---------')] + list(CAPSULE_TYPE_CHOICES)
+
         # Add help text
         self.fields['coating_type'].help_text = "Select coating type for tablets only"
         self.fields['tablet_type'].help_text = "Select tablet type for tablets only"
+        self.fields['capsule_type'].help_text = "Select capsule type — Normal goes to Blister Packing, UG goes to Bulk Packing"
 
 
 class ProductIngredientInline(admin.TabularInline):
@@ -115,7 +119,7 @@ class ProductAdmin(admin.ModelAdmin):
         ('Basic Information', {
             'fields': (
                 'product_name', 'brand_name', 'mfr_number',
-                'product_type', 'coating_type', 'tablet_type',
+                'product_type', 'coating_type', 'tablet_type', 'capsule_type',
                 'is_active'
             ),
             'description': 'Essential product identification and type'
@@ -261,6 +265,23 @@ class ProductAdmin(admin.ModelAdmin):
             'description': 'JSON arrays of checklist item strings for each phase\'s line clearance form. '
                            'Leave empty to use the default items built into the template. '
                            'Enter as: ["Item 1 description", "Item 2 description"].'
+        }),
+        ('Capsule Specifications', {
+            'fields': (
+                'capsule_size',
+                'capsule_body_colour_trade', 'capsule_body_print_trade',
+                'capsule_cap_colour_trade', 'capsule_cap_print_trade',
+                'capsule_body_colour_ug', 'capsule_body_print_ug',
+                'capsule_cap_colour_ug', 'capsule_cap_print_ug',
+                'capsule_appearance',
+                'fill_weight_mg', 'avg_empty_shell_weight_mg',
+                'capsule_machine_speed_min', 'capsule_machine_speed_max',
+                'lock_length_min', 'lock_length_max',
+                'standard_weight_tolerance_percentage',
+                'theoretical_weight_kg',
+            ),
+            'classes': ('collapse',),
+            'description': 'Capsule filling machine setup, shell colours/printing, and weight specifications shown on BMR page 14.'
         }),
         ('Special Instructions', {
             'fields': (

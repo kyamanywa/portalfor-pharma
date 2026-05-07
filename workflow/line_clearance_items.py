@@ -253,6 +253,35 @@ MIXING_LC_SPECIAL_FIELDS = {
 
 
 # ============================================================
+# CAPSULE FILLING LINE CLEARANCE (Capsule BMR Page 13)
+# ============================================================
+CAPSULE_FILLING_LC_BEGINNING = [
+    "Area cleaning as per SOP.",
+    "Ensure that all the previous product containers, material, and labels are removed from the manufacturing area.",
+    "Gowning procedure is followed.",
+    "Ensure that status board is displayed with mentioning Product Name, Batch No, B. Size, Mfg. Date, Exp.Date & Status with sign & date.",
+    "Ensure the absence of batch documents, labels, materials or remnants of previous product or batch on each critical part.",
+    "Are the following parts of the capsule filling machine cleaned: Hopper/Feeder/Turret/Below the turret, Y-chute/Powder collection.",
+    "Check and ensure that Balance Calibration & Verification records are updated.",
+    "Ensure Environmental conditions are met as per SOP. Temperature NMT 28\u00b0C ___ Relative Humidity (40-65)% ___",
+]
+
+CAPSULE_FILLING_LC_ENDING = [
+    "All material from current product have been removed.",
+    "All facilities have been cleaned and labeled.",
+    "The area has been cleaned and labeled.",
+    "All paperwork for the current batch has been completed.",
+    "Reconciliation of current batch has been done.",
+    "Machine(s) has been checked for cleanliness.",
+]
+
+CAPSULE_FILLING_LC_SPECIAL_FIELDS = {
+    'has_environmental': True,
+    'environmental_item_index': 8,
+}
+
+
+# ============================================================
 # TUBE FILLING LINE CLEARANCE (Ointment BMR Page 11)
 # ============================================================
 TUBE_FILLING_LC_BEGINNING = [
@@ -390,6 +419,12 @@ LINE_CLEARANCE_CONFIG = {
         'special': COATING_LC_SPECIAL_FIELDS,
         'title': 'FILM COATING',
     },
+    'filling': {
+        'beginning': CAPSULE_FILLING_LC_BEGINNING,
+        'ending': CAPSULE_FILLING_LC_ENDING,
+        'special': CAPSULE_FILLING_LC_SPECIAL_FIELDS,
+        'title': 'CAPSULE FILLING',
+    },
 }
 
 # Phases that have NO line clearance
@@ -405,7 +440,6 @@ PHASES_WITHOUT_LC = [
     'finished_goods_store',
     'packaging_material_release',
     'drying',        # Capsule drying
-    'filling',       # Capsule filling
 ]
 
 

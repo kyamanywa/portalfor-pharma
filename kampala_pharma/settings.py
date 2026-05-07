@@ -54,9 +54,9 @@ for app in OPTIONAL_APPS:
     try:
         __import__(app)
         INSTALLED_APPS.append(app)
-        print(f"✅ {app} - Available")
+        print(f"[OK] {app} - Available")
     except ImportError:
-        print(f"⚠️  {app} - Not installed (optional)")
+        print(f"[OPTIONAL] {app} - Not installed (optional)")
 
 # Add OTP middleware only if django_otp is available
 MIDDLEWARE = [
@@ -283,7 +283,7 @@ try:
     USE_TWO_FACTOR_AUTH = env('USE_2FA')
     
 except ImportError:
-    print("⚠️  django-environ not installed - using default settings")
+    print("[OPTIONAL] django-environ not installed - using default settings")
     USE_TWO_FACTOR_AUTH = False
     env = lambda key, default=None: os.environ.get(key, default)
 
@@ -311,7 +311,7 @@ REST_FRAMEWORK = {
 
 # Channels Configuration (WebSocket support) - Optional
 # Redis is disabled - using local memory cache for simplicity
-print("⚠️  Using local memory cache (Redis disabled)")
+print("[INFO] Using local memory cache (Redis disabled)")
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -384,10 +384,10 @@ PHARMACEUTICAL_SETTINGS = {
 SYSTEM_VERSION = '2.0.0'
 SYSTEM_BUILD = 'enterprise-ready'
 
-print("🚀 KPI Operations System - Enhanced Configuration Loaded")
+print("[OK] KPI Operations System - Enhanced Configuration Loaded")
 if USE_TWO_FACTOR_AUTH:
-    print("🔐 Two-Factor Authentication: ENABLED")
+    print("[OK] Two-Factor Authentication: ENABLED")
 if 'channels' in INSTALLED_APPS:
-    print("⚡ Real-time Features: READY")
-print("🔌 API Framework: ENABLED")
-print("🛡️  Security: ENHANCED")
+    print("[OK] Real-time Features: READY")
+print("[OK] API Framework: ENABLED")
+print("[OK] Security: ENHANCED")

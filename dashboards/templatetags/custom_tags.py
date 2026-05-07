@@ -84,6 +84,43 @@ def split(value, arg):
     return str(value).split(str(arg))
 
 
+@register.filter
+def counter_to_alpha(value):
+    """Convert 1-based integer to lowercase letter: 1→a, 2→b, etc."""
+    try:
+        return chr(96 + int(value))
+    except (ValueError, TypeError):
+        return ''
+
+
+@register.filter
+def get_item(dictionary, key):
+    """Access a dict value by variable key. Usage: {{ mydict|get_item:key }}"""
+    if not isinstance(dictionary, dict):
+        return ''
+    return dictionary.get(str(key), '')
+
+
+@register.simple_tag
+def blending_sift_value(blending_data, row, field):
+    """
+    Look up a blending sift saved value by row number and field.
+    Usage: {% blending_sift_value blending_data forloop.counter 'operator' %}
+    Builds key: sift_{row}_{field}
+    """
+    if not isinstance(blending_data, dict):
+        return ''
+    return blending_data.get(f'sift_{row}_{field}', '')
+
+
+@register.simple_tag
+def blending_equip_mark(blending_data, row_num):
+    """Return the saved equipment mark for a given row. Key: equip_{row}_mark"""
+    if not isinstance(blending_data, dict):
+        return ''
+    return blending_data.get(f'equip_{row_num}_mark', '')
+
+
 @register.simple_tag
 def lc_value(lc_data, phase, section, item_num, field):
     """

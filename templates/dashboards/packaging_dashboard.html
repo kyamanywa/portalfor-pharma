@@ -158,7 +158,7 @@
                                 </thead>
                                 <tbody>
                                     {% for phase in my_phases %}
-                                    <tr>
+                                    <tr id="pkg-phase-{{ phase.id }}" style="scroll-margin-top:80px;">
                                         <td>
                                             <strong>{{ phase.bmr.batch_number }}</strong>
                                         </td>
@@ -501,6 +501,22 @@ function sendOverrunNotification(phaseId) {
 document.addEventListener('DOMContentLoaded', function() {
     // Update timers every second
     setInterval(updateCountdownTimers, 1000);
+    
+    // Auto-scroll to phase if hash is present in URL
+    if (window.location.hash) {
+        setTimeout(function() {
+            const targetElement = document.querySelector(window.location.hash);
+            if (targetElement) {
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Add brief highlight effect
+                targetElement.style.transition = 'background-color 0.5s';
+                targetElement.style.backgroundColor = '#fff3cd';
+                setTimeout(function() {
+                    targetElement.style.backgroundColor = '';
+                }, 2000);
+            }
+        }, 300);
+    }
 });
 </script>
 {% endblock %}

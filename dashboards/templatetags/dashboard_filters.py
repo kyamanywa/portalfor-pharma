@@ -105,3 +105,45 @@ def filter_pack_type(materials, pack_type):
     if materials is None:
         return []
     return [m for m in materials if getattr(m, 'pack_type', None) == pack_type]
+
+
+@register.filter
+def drum_rows(data):
+    """Return list of 10 drum dicts from a flat capsule filling dy dict.
+    Usage: {% for drum in dy|drum_rows %}{{ drum.date }}{% endfor %}
+    """
+    if not isinstance(data, dict):
+        return [{}] * 10
+    rows = []
+    for i in range(1, 11):
+        rows.append({
+            'no':       str(i),
+            'date':     data.get(f'drum_{i}_date', ''),
+            'shift':    data.get(f'drum_{i}_shift', ''),
+            'operator': data.get(f'drum_{i}_operator', ''),
+            'gross':    data.get(f'drum_{i}_gross', ''),
+            'tare':     data.get(f'drum_{i}_tare', ''),
+            'net':      data.get(f'drum_{i}_net', ''),
+        })
+    return rows
+
+
+@register.filter
+def ipqc_rows(data):
+    """Return list of 20 dicts with t1 and t2 weight data from an ipqc data dict.
+    Usage: {% for row in ipqc|ipqc_rows %}{{ row.no }} {{ row.t1_w }} {{ row.t2_w }}{% endfor %}
+    """
+    if not isinstance(data, dict):
+        return [{'no': str(i), 't1_w': '', 't1_e': '', 't1_net': '', 't2_w': '', 't2_e': '', 't2_net': ''} for i in range(1, 21)]
+    return [
+        {
+            'no': str(i),
+            't1_w':   data.get(f't1_w{i}', ''),
+            't1_e':   data.get(f't1_e{i}', ''),
+            't1_net': data.get(f't1_net{i}', ''),
+            't2_w':   data.get(f't2_w{i}', ''),
+            't2_e':   data.get(f't2_e{i}', ''),
+            't2_net': data.get(f't2_net{i}', ''),
+        }
+        for i in range(1, 21)
+    ]

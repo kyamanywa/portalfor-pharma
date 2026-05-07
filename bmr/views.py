@@ -109,53 +109,141 @@ def _build_basic_bmr_pdf(context, filename):
     return response
 
 
-def _sanitize_pdf_html(html):
-    # xhtml2pdf cannot reliably handle the app's full CSS, JS, percentage widths,
-    # or radio inputs inside deeply nested tables.
+def _sanitize_pdf_html(html, use_weasyprint=True):
+    """Sanitize HTML for PDF generation.
+    
+    When using WeasyPrint, we can keep most CSS as it supports modern CSS well.
+    When using xhtml2pdf, we need aggressive sanitization due to limited CSS support.
+    """
+    # Always remove JavaScript
     html = re.sub(r'(?is)<script[^>]*>.*?</script>', '', html)
-    html = re.sub(r'(?is)<link[^>]*rel=["\']?stylesheet["\']?[^>]*>', '', html)
-    html = re.sub(r'\s+onerror=("[^"]*"|\'[^\']*\')', '', html)
-    html = re.sub(r'width\s*:\s*\d+(?:\.\d+)?%;?', 'width:auto;', html, flags=re.IGNORECASE)
-    html = re.sub(r'\swidth=("\d+(?:\.\d+)?%"|\'\d+(?:\.\d+)?%\')', ' width="auto"', html, flags=re.IGNORECASE)
+    
+    if use_weasyprint:
+        # For WeasyPrint: minimal sanitization
+        # Remove only event handlers that could cause issues
+        html = re.sub(r'\s+on\w+=("[^"]*"|\'[^\']*\')', '', html)
+        
+        # Replace radio inputs with text indicators
+        def _replace_radio(match):
+            attrs = match.group(1) or ''
+            return '[x]' if 'checked' in attrs.lower() else '[ ]'
+        html = re.sub(r'(?is)<input([^>]*type=["\']radio["\'][^>]*)>', _replace_radio, html)
+        
+        # Remove external stylesheets that might conflict (keep inline styles)
+        html = re.sub(r'(?is)<link[^>]*rel=["\']?stylesheet["\']?[^>]*>', '', html)
+    else:
+        # For xhtml2pdf: aggressive sanitization (original behavior)
+        html = re.sub(r'\s+onerror=("[^"]*"|\'[^\']*\')', '', html)
+        html = re.sub(r'width\s*:\s*\d+(?:\.\d+)?%;?', 'width:auto;', html, flags=re.IGNORECASE)
+        html = re.sub(r'\swidth=("\d+(?:\.\d+)?%"|\'\d+(?:\.\d+)?%\')', ' width="auto"', html, flags=re.IGNORECASE)
 
-    def _clean_style_block(match):
-        css = match.group(1)
-        css = re.sub(r'[^{}]*:not\([^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
-        css = re.sub(r'[^{}]*\[contenteditable[^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
-        css = re.sub(r'[^{}]*calc\([^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
-        return f'<style>{css}</style>'
+        def _clean_style_block(match):
+            css = match.group(1)
+            css = re.sub(r'[^{}]*:not\([^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
+            css = re.sub(r'[^{}]*\[contenteditable[^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
+            css = re.sub(r'[^{}]*calc\([^{}]*\{[^{}]*\}', '', css, flags=re.IGNORECASE)
+            return f'<style>{css}</style>'
 
-    html = re.sub(r'(?is)<style[^>]*>(.*?)</style>', _clean_style_block, html)
+        html = re.sub(r'(?is)<style[^>]*>(.*?)</style>', _clean_style_block, html)
 
-    def _replace_radio(match):
-        attrs = match.group(1) or ''
-        return '[x]' if 'checked' in attrs.lower() else '[ ]'
+        def _replace_radio_weasy(match):
+            attrs = match.group(1) or ''
+            return '[x]' if 'checked' in attrs.lower() else '[ ]'
 
-    html = re.sub(r'(?is)<input([^>]*type=["\']radio["\'][^>]*)>', _replace_radio, html)
+        html = re.sub(r'(?is)<input([^>]*type=["\']radio["\'][^>]*)>', _replace_radio_weasy, html)
+    
     return html
 
 
 def _try_render_pdf(template_name, context, request, filename):
-    """Render template as downloadable PDF; returns None on failure."""
+    """Render template as downloadable PDF using WeasyPrint (enterprise-grade)."""
     try:
-        from xhtml2pdf import pisa
-    except Exception:
-        return None
-
-    html = _sanitize_pdf_html(render_to_string(template_name, context, request=request))
-
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    try:
-        pdf = pisa.CreatePDF(html, dest=response, link_callback=_pdf_link_callback, encoding='utf-8')
-    except Exception:
-        logger.exception('PDF render failed for BMR template')
-        return _build_basic_bmr_pdf(context, filename)
-
-    if pdf.err:
-        logger.error('PDF render had errors for BMR template: %s', filename)
-        return _build_basic_bmr_pdf(context, filename)
-    return response
+        from weasyprint import HTML, CSS
+        from weasyprint.text.fonts import FontConfiguration
+        
+        # Render the template to HTML
+        html_string = render_to_string(template_name, context, request=request)
+        
+        # Remove JavaScript and interactive elements for PDF (use WeasyPrint mode for better CSS support)
+        html_string = _sanitize_pdf_html(html_string, use_weasyprint=True)
+        
+        # Get the base URL for static files
+        base_url = request.build_absolute_uri('/')
+        
+        # Create PDF using WeasyPrint
+        buffer = BytesIO()
+        
+        # Configure WeasyPrint with proper settings
+        html = HTML(string=html_string, base_url=base_url)
+        html.write_pdf(
+            buffer,
+            stylesheets=[
+                CSS(string='''
+                    @page {
+                        size: A4;
+                        margin: 10mm;
+                        @bottom-center {
+                            content: counter(page) " of " counter(pages);
+                        }
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        font-size: 10px;
+                        line-height: 1.3;
+                    }
+                    table {
+                        border-collapse: collapse;
+                        width: 100%;
+                    }
+                    th, td {
+                        border: 1px solid #000;
+                        padding: 4px 6px;
+                        font-size: 9px;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                ''')
+            ]
+        )
+        
+        # Prepare response
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+        
+    except ImportError:
+        logger.warning('WeasyPrint not installed, falling back to xhtml2pdf')
+        # Fall back to xhtml2pdf if WeasyPrint is not available
+        try:
+            from xhtml2pdf import pisa
+            html_string = _sanitize_pdf_html(render_to_string(template_name, context, request=request), use_weasyprint=False)
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            pdf = pisa.CreatePDF(html_string, dest=response, link_callback=_pdf_link_callback, encoding='utf-8')
+            if pdf.err:
+                logger.error('PDF render had errors for BMR template: %s', filename)
+                return _build_basic_bmr_pdf(context, filename)
+            return response
+        except Exception as e:
+            logger.exception('PDF render failed: %s', str(e))
+            return _build_basic_bmr_pdf(context, filename)
+            
+    except Exception as e:
+        logger.exception('WeasyPrint PDF generation failed: %s', str(e))
+        # Try xhtml2pdf as fallback
+        try:
+            from xhtml2pdf import pisa
+            html_string = _sanitize_pdf_html(render_to_string(template_name, context, request=request), use_weasyprint=False)
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            pdf = pisa.CreatePDF(html_string, dest=response, link_callback=_pdf_link_callback, encoding='utf-8')
+            if pdf.err:
+                return _build_basic_bmr_pdf(context, filename)
+            return response
+        except Exception:
+            return _build_basic_bmr_pdf(context, filename)
 
 
 @login_required
@@ -728,6 +816,7 @@ def bmr_detail_view(request, bmr_id):
         get_tf_ipc_page_statuses, get_tf_qa_ipc_page_statuses,
         SECONDARY_SECTIONS, get_secondary_section_statuses, all_secondary_sections_complete,
         POST_COATING_SORTING_SECTIONS, get_pcs_section_statuses, all_pcs_sections_complete,
+        CAPSULE_FILLING_SECTIONS, get_capsule_filling_section_statuses, all_capsule_filling_sections_complete,
         _get_pkg_materials,
     )
     _blending_data   = combined_data.get('blending', {})
@@ -742,6 +831,23 @@ def bmr_detail_view(request, bmr_id):
     _blending_section_statuses = get_blending_section_statuses(combined_data)
     _compression_section_statuses = get_compression_section_statuses(combined_data)
     _ipc_page_statuses = get_ipc_page_statuses(combined_data)
+    
+    # Capsule filling IPQC config (for pages 17-22)
+    _cf_ipqc_st = get_capsule_filling_section_statuses(combined_data)
+    capsule_filling_ipqc_cfg = [
+        {
+            'n': str(i),
+            'section_key': f'cf_ipqc_{i}',
+            'page_no': str(16 + i),
+            'data': combined_data.get('filling_sections', {}).get(f'cf_ipqc_{i}', {}),
+            'status': _cf_ipqc_st.get(f'cf_ipqc_{i}', 'not_started'),
+            'prev_completed': (
+                True if i == 1
+                else _cf_ipqc_st.get(f'cf_ipqc_{i-1}', 'not_started') in ('qa_signed', 'qa_approved', 'completed')
+            ),
+        }
+        for i in range(1, 7)
+    ]
 
     # ── Ointment-specific view-mode context ──
     _phase_exec_dict = {pe.phase.phase_name: pe for pe in phase_executions}
@@ -851,6 +957,13 @@ def bmr_detail_view(request, bmr_id):
         'tf_ipc_page_statuses': get_tf_ipc_page_statuses(combined_data),
         'tf_qa_ipc_page_statuses': get_tf_qa_ipc_page_statuses(combined_data),
         'tube_filling_qa_ipc_data': combined_data.get('tube_filling_sections', {}).get('tf_qa_ipc', {}),
+        # Capsule filling sections (for pages 17-23)
+        'capsule_filling_section_statuses': _cf_ipqc_st,
+        'CAPSULE_FILLING_SECTIONS': CAPSULE_FILLING_SECTIONS,
+        'all_capsule_filling_sections_complete': all_capsule_filling_sections_complete(combined_data),
+        'capsule_filling_sections_data': combined_data.get('filling_sections', {}),
+        'capsule_filling_ipqc_cfg': capsule_filling_ipqc_cfg,
+        # Page shifts and dates
         'page_shifts': combined_data.get('page_shifts', {}),
         'page_dates': combined_data.get('page_dates', {}),
         # Keep print output in strict view-mode so templates render saved values,

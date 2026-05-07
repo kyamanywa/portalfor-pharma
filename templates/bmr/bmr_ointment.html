@@ -40,7 +40,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <h2><i class="fas fa-file-medical-alt me-2"></i>Batch Manufacturing Record â€” Ointment</h2>
             <div class="btn-group">
-                <button onclick="window.print()" class="btn btn-primary"><i class="fas fa-print me-1"></i>Print BMR</button>
+                {% if user_role == 'admin' %}<button onclick="window.print()" class="btn btn-primary"><i class="fas fa-print me-1"></i>Print BMR</button>{% endif %}
                 <a href="{% url 'bmr:list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
             </div>
         </div>
@@ -3341,7 +3341,7 @@
     {% with req=packaging_req_data req_status=packaging_req_data.status|default:"not_started" %}
 
     {# â”€â”€â”€ Role-gating: determine active step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ #}
-    {% if edit_mode == 'packaging_material_release' %}
+    {% if edit_mode == 'packaging_material_release' or edit_mode == 'secondary_packaging' or edit_mode == 'qa' %}
       {% if req_status == "not_started" and user_role == "production_supervisor" or req_status == "not_started" and user_role == "production_manager" or req_status == "not_started" and request.user.is_staff %}
         {% with can_supervisor=1 can_manager=0 can_store=0 can_qa=0 active_action="req_supervisor" %}
 
@@ -3381,7 +3381,12 @@
         <input type="hidden" name="action" value="{{ active_action }}">
         {% include "bmr/_ointment_pkg_req_inner.html" %}
         <div class="no-print" style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;">
-          <button type="submit" class="btn btn-sm btn-success">Submit to QA</button>
+          <button type="submit" name="action" value="req_store_draft" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-save"></i> Save Draft
+          </button>
+          <button type="submit" name="action" value="req_store_fill" class="btn btn-sm btn-success">
+            <i class="fas fa-paper-plane"></i> Submit to QA
+          </button>
         </div>
         </form>
         {% endwith %}
@@ -5412,9 +5417,12 @@
     {% endif %}
     {% endwith %}
 {% elif edit_mode == 'secondary_packaging' %}
-    {% with spk_lc=phase_executions.secondary_packaging %}
+    {% with spk_lc=phase_executions.secondary_packaging oint_req_status=packaging_req_data.status|default:"not_started" %}
     {% if user_role == 'qa' %}
-        {% if spk_lc.beginning_lc_status == 'operator_filled' %}
+        {# Check packaging requisition first - QA needs to verify #}
+        {% if oint_req_status == 'store_filled' %}
+            <meta name="oint-scroll-target" content="oint-pkg-req">
+        {% elif spk_lc.beginning_lc_status == 'operator_filled' %}
             <meta name="oint-scroll-target" content="oint-sec-begin-lc">
         {% elif secondary_sections_data.sec_packing_coding.coding_stage == 'coding_submitted' %}
             <meta name="oint-scroll-target" content="oint-sec-coding">
@@ -6053,13 +6061,32 @@ document.addEventListener('DOMContentLoaded', calcYield);
 <script>
 /* Auto-scroll to the first actionable section */
 document.addEventListener('DOMContentLoaded', function() {
-    var meta = document.querySelector('meta[name="oint-scroll-target"]');
-    if (meta) {
-        var targetId = meta.getAttribute('content');
+    // First check for URL hash (e.g., #oint-pkg-req)
+    if (window.location.hash) {
+        var targetId = window.location.hash.substring(1); // Remove the #
         setTimeout(function() {
             var el = document.getElementById(targetId);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Add highlight effect
+                el.style.transition = 'background-color 0.3s ease';
+                el.style.backgroundColor = '#fff3cd';
+                setTimeout(function() {
+                    el.style.backgroundColor = '';
+                }, 2000);
+            }
         }, 300);
+    }
+    // Otherwise check for meta tag
+    else {
+        var meta = document.querySelector('meta[name="oint-scroll-target"]');
+        if (meta) {
+            var targetId = meta.getAttribute('content');
+            setTimeout(function() {
+                var el = document.getElementById(targetId);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
     }
     /* â”€â”€ Per-page shift: each page has its own shift_page_X dropdown
        sitting outside <form> tags. On submit, inject ALL shift values. â”€â”€ */

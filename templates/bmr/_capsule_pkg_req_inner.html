@@ -1,0 +1,185 @@
+{% comment %}
+_capsule_pkg_req_inner.html — Inner body for capsule Packaging Materials Requisition Sheet (Page 27).
+Variables from parent: req, can_supervisor, can_manager, can_store, can_qa,
+    packaging_materials_blister, packaging_materials_bulk, phase_execution, bmr, user_role, today_str, user
+{% endcomment %}
+{% load dashboard_filters %}
+
+<style>
+.cpkg-input  { width:100%; padding:2px 4px; border:1px solid #000; font-size:10px; }
+.cpkg-sup    { background:#fff3cd; }
+.cpkg-mgr    { background:#cfe2ff; }
+.cpkg-store  { background:#d1e7dd; }
+.cpkg-qa     { background:#f8d7da; }
+</style>
+
+{# ──── SIGNATURE HEADER TABLE ──── #}
+<table style="width:100%; border-collapse:collapse; border:2px solid #000; margin-bottom:5px; font-size:11px;">
+  <tr>
+    <td style="border:1px solid #000; padding:4px; width:50%; {% if can_supervisor %}background:#fff3cd;{% endif %}">
+      Requested by Production Supervisor (Sign &amp; Date):
+      {% if can_supervisor %}
+        <input type="text" name="supervisor_name" class="cpkg-input cpkg-sup" style="width:40%;" value="{{ req.supervisor_name|default:user.get_full_name|default:user.username }}" placeholder="Name" required>
+        <input type="text" name="supervisor_signature" class="cpkg-input cpkg-sup" style="width:25%;" value="{{ req.supervisor_signature|default:'' }}" placeholder="Signature">
+        <input type="date" name="supervisor_sign_date" class="cpkg-input cpkg-sup" style="width:25%;" value="{{ req.supervisor_sign_date|default:today_str }}" required>
+      {% else %}
+        {{ req.supervisor_name|default:"" }} &nbsp; {{ req.supervisor_signature|default:"" }} &nbsp; {{ req.supervisor_sign_date|default:"" }}
+      {% endif %}
+    </td>
+    <td style="border:1px solid #000; padding:4px; width:50%; {% if can_manager %}background:#cfe2ff;{% endif %}">
+      Approved by Production Manager (Sign &amp; Date):
+      {% if can_manager %}
+        <input type="text" name="manager_name" class="cpkg-input cpkg-mgr" style="width:40%;" value="{{ req.manager_name|default:user.get_full_name|default:user.username }}" placeholder="Name" required>
+        <input type="text" name="manager_signature" class="cpkg-input cpkg-mgr" style="width:25%;" value="{{ req.manager_signature|default:'' }}" placeholder="Signature">
+        <input type="date" name="manager_sign_date" class="cpkg-input cpkg-mgr" style="width:25%;" value="{{ req.manager_sign_date|default:today_str }}" required>
+      {% else %}
+        {{ req.manager_name|default:"" }} &nbsp; {{ req.manager_signature|default:"" }} &nbsp; {{ req.manager_sign_date|default:"" }}
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+{# ──── PACK SIZE SELECTION ──── #}
+<p style="font-size:11px;margin-bottom:4px;">
+  <strong>Pack Size:</strong>
+  {% if can_supervisor %}
+    &nbsp;&#9744; 10&times;10 Blisters <input type="radio" name="pack_size_selected" value="10x10 Blisters" {% if req.pack_size_selected == "10x10 Blisters" %}checked{% endif %} required>
+    &nbsp;&nbsp;&#9744; 100 Blisters&times;10 <input type="radio" name="pack_size_selected" value="100 Blistersx10" {% if req.pack_size_selected == "100 Blistersx10" %}checked{% endif %}>
+    &nbsp;&nbsp;&#9744; 500's <input type="radio" name="pack_size_selected" value="500's" {% if req.pack_size_selected == "500's" %}checked{% endif %}>
+    &nbsp;&nbsp;&#9744; 1000's <input type="radio" name="pack_size_selected" value="1000's" {% if req.pack_size_selected == "1000's" %}checked{% endif %}>
+  {% else %}
+    &nbsp;&nbsp;<strong>{{ req.pack_size_selected|default:"—" }}</strong>
+  {% endif %}
+</p>
+
+{# ──── FOR BLISTER PACK ──── #}
+<p style="font-weight:bold;margin:8px 0 4px 0;">FOR BLISTER PACK:</p>
+<table style="width:100%;border-collapse:collapse;border:2px solid #000;">
+  <thead>
+    <tr style="background:#f0f0f0;">
+      <th style="border:2px solid #000;padding:5px;width:5%;">S/N</th>
+      <th style="border:2px solid #000;padding:5px;width:12%;">Item Code</th>
+      <th style="border:2px solid #000;padding:5px;width:28%;">Item Description</th>
+      <th style="border:2px solid #000;padding:5px;width:8%; {% if can_store %}background:#d1e7dd;{% endif %}">AR No</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_store %}background:#d1e7dd;{% endif %}">Total Batch Qty</th>
+      <th style="border:2px solid #000;padding:5px;width:7%;">Units</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_store %}background:#d1e7dd;{% endif %}">Issued by Stores In-charge (Sign/Date)</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_store %}background:#d1e7dd;{% endif %}">Received by Packing SPV (Sign/Date)</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_qa %}background:#f8d7da;{% endif %}">Verified by QA (Sign/Date)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if packaging_materials_blister %}
+      {% for mat in packaging_materials_blister %}
+      {% with sid=mat.id|stringformat:"s" %}{% with item_d=req.items|dict_get:sid %}
+      <tr>
+        <td style="border:1px solid #000;padding:4px;text-align:center;">{{ forloop.counter }}</td>
+        <td style="border:1px solid #000;padding:4px;">{{ mat.item_code }}</td>
+        <td style="border:1px solid #000;padding:4px;">{{ mat.item_description }}</td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}<input type="text" name="item_{{ mat.id }}_ar_no" class="cpkg-input cpkg-store" value="{{ item_d.ar_no|default:'' }}" placeholder="AR-XXX">
+          {% else %}{{ item_d.ar_no|default:"" }}{% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}<input type="number" name="item_{{ mat.id }}_qty" class="cpkg-input cpkg-store" value="{{ item_d.total_batch_qty|default:'' }}" placeholder="0" step="0.001">
+          {% else %}{{ item_d.total_batch_qty|default:"" }}{% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px;">{{ mat.units }}</td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}
+            <input type="text" name="item_{{ mat.id }}_issued_sign" class="cpkg-input cpkg-store" value="{{ item_d.issued_sign|default:'' }}" placeholder="Sign" style="width:48%;">
+            <input type="date" name="item_{{ mat.id }}_issued_date" class="cpkg-input cpkg-store" value="{{ item_d.issued_date|default:today_str }}" style="width:48%;">
+          {% else %}
+            {{ item_d.issued_sign|default:"" }} {{ item_d.issued_date|default:"" }}
+          {% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}
+            <input type="text" name="item_{{ mat.id }}_received_sign" class="cpkg-input cpkg-store" value="{{ item_d.received_sign|default:'' }}" placeholder="Sign" style="width:48%;">
+            <input type="date" name="item_{{ mat.id }}_received_date" class="cpkg-input cpkg-store" value="{{ item_d.received_date|default:today_str }}" style="width:48%;">
+          {% else %}
+            {{ item_d.received_sign|default:"" }} {{ item_d.received_date|default:"" }}
+          {% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px; {% if can_qa %}background:#f8d7da;{% endif %}">
+          {% if can_qa %}
+            <input type="text" name="item_{{ mat.id }}_qa_sign" class="cpkg-input cpkg-qa" value="{{ item_d.qa_sign|default:'' }}" placeholder="Sign" style="width:48%;">
+            <input type="date" name="item_{{ mat.id }}_qa_date" class="cpkg-input cpkg-qa" value="{{ item_d.qa_date|default:today_str }}" style="width:48%;">
+          {% else %}
+            {{ item_d.qa_sign|default:"" }} {{ item_d.qa_date|default:"" }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endwith %}{% endwith %}
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="9" style="border:1px solid #000;padding:8px;text-align:center;font-style:italic;">No blister packaging materials configured for this product.</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+
+{# ──── FOR BULK PACK ──── #}
+<p style="font-weight:bold;margin:8px 0 4px 0;">FOR BULK PACK:</p>
+<table style="width:100%;border-collapse:collapse;border:2px solid #000;">
+  <thead>
+    <tr style="background:#f0f0f0;">
+      <th style="border:2px solid #000;padding:5px;width:5%;">S/N</th>
+      <th style="border:2px solid #000;padding:5px;width:12%;">Item Code</th>
+      <th style="border:2px solid #000;padding:5px;width:28%;">Item Description</th>
+      <th style="border:2px solid #000;padding:5px;width:8%; {% if can_store %}background:#d1e7dd;{% endif %}">AR No</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_store %}background:#d1e7dd;{% endif %}">Total Batch Qty</th>
+      <th style="border:2px solid #000;padding:5px;width:7%;">Units</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_store %}background:#d1e7dd;{% endif %}">Issued by Stores In-charge (Sign/Date)</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_store %}background:#d1e7dd;{% endif %}">Received by Packing SPV (Sign/Date)</th>
+      <th style="border:2px solid #000;padding:5px;width:10%; {% if can_qa %}background:#f8d7da;{% endif %}">Verified by QA (Sign/Date)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if packaging_materials_bulk %}
+      {% for mat in packaging_materials_bulk %}
+      {% with sid=mat.id|stringformat:"s" %}{% with item_d=req.items|dict_get:sid %}
+      <tr>
+        <td style="border:1px solid #000;padding:4px;text-align:center;">{{ forloop.counter }}</td>
+        <td style="border:1px solid #000;padding:4px;">{{ mat.item_code }}</td>
+        <td style="border:1px solid #000;padding:4px;">{{ mat.item_description }}</td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}<input type="text" name="item_{{ mat.id }}_ar_no" class="cpkg-input cpkg-store" value="{{ item_d.ar_no|default:'' }}" placeholder="AR-XXX">
+          {% else %}{{ item_d.ar_no|default:"" }}{% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}<input type="number" name="item_{{ mat.id }}_qty" class="cpkg-input cpkg-store" value="{{ item_d.total_batch_qty|default:'' }}" placeholder="0" step="0.001">
+          {% else %}{{ item_d.total_batch_qty|default:"" }}{% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px;">{{ mat.units }}</td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}
+            <input type="text" name="item_{{ mat.id }}_issued_sign" class="cpkg-input cpkg-store" value="{{ item_d.issued_sign|default:'' }}" placeholder="Sign" style="width:48%;">
+            <input type="date" name="item_{{ mat.id }}_issued_date" class="cpkg-input cpkg-store" value="{{ item_d.issued_date|default:today_str }}" style="width:48%;">
+          {% else %}
+            {{ item_d.issued_sign|default:"" }} {{ item_d.issued_date|default:"" }}
+          {% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px; {% if can_store %}background:#d1e7dd;{% endif %}">
+          {% if can_store %}
+            <input type="text" name="item_{{ mat.id }}_received_sign" class="cpkg-input cpkg-store" value="{{ item_d.received_sign|default:'' }}" placeholder="Sign" style="width:48%;">
+            <input type="date" name="item_{{ mat.id }}_received_date" class="cpkg-input cpkg-store" value="{{ item_d.received_date|default:today_str }}" style="width:48%;">
+          {% else %}
+            {{ item_d.received_sign|default:"" }} {{ item_d.received_date|default:"" }}
+          {% endif %}
+        </td>
+        <td style="border:1px solid #000;padding:4px; {% if can_qa %}background:#f8d7da;{% endif %}">
+          {% if can_qa %}
+            <input type="text" name="item_{{ mat.id }}_qa_sign" class="cpkg-input cpkg-qa" value="{{ item_d.qa_sign|default:'' }}" placeholder="Sign" style="width:48%;">
+            <input type="date" name="item_{{ mat.id }}_qa_date" class="cpkg-input cpkg-qa" value="{{ item_d.qa_date|default:today_str }}" style="width:48%;">
+          {% else %}
+            {{ item_d.qa_sign|default:"" }} {{ item_d.qa_date|default:"" }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endwith %}{% endwith %}
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="9" style="border:1px solid #000;padding:8px;text-align:center;font-style:italic;">No bulk packaging materials configured for this product.</td></tr>
+    {% endif %}
+  </tbody>
+</table>

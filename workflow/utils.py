@@ -102,6 +102,9 @@ def get_packing_phase_for_product(product) -> Optional[str]:
             return 'bulk_packing'
         return 'blister_packing'
     if is_capsule(key):
+        capsule_type = getattr(product, 'capsule_type', 'normal') or 'normal'
+        if capsule_type == 'ug':
+            return 'bulk_packing'
         return 'blister_packing'
     if is_ointment(key):
         return 'secondary_packaging'

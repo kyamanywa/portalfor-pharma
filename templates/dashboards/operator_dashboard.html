@@ -200,6 +200,11 @@
                                     </div>
                                 </div>
                                 <small class="text-muted d-block" style="font-size: 0.75rem;">{{ phase.bmr.product.product_name|truncatewords:3 }}</small>
+                                {% if phase.lc_waiting_qa %}
+                                <small class="text-info d-block" style="font-size: 0.7rem; font-weight:600;">
+                                    <i class="fas fa-hourglass-half me-1"></i>⏳ QA Approval Needed
+                                </small>
+                                {% endif %}
                                 {% if phase.phase.phase_name == 'post_coating_sorting' %}
                                 <small class="text-info d-block" style="font-size: 0.7rem; font-weight:600;">
                                     <i class="fas fa-sort-amount-down me-1"></i>Post-Coating Sorting
@@ -321,9 +326,27 @@
                                                 <small class="text-muted" style="font-size:0.7rem;">Sections: {{ phase.pcs_progress.done }}/{{ phase.pcs_progress.total }}</small>
                                             </div>
                                             {% endif %}
+                                            {% if phase.sorting_progress %}
+                                            <div class="mt-1">
+                                                <div class="progress" style="height: 5px;">
+                                                    <div class="progress-bar {% if phase.sorting_progress.percent == 100 %}bg-success{% elif phase.sorting_progress.percent > 0 %}bg-info{% else %}bg-secondary{% endif %}" style="width: {{ phase.sorting_progress.percent }}%"></div>
+                                                </div>
+                                                <small class="text-muted" style="font-size:0.7rem;">Sections: {{ phase.sorting_progress.done }}/{{ phase.sorting_progress.total }}</small>
+                                                {% if phase.sorting_progress.current_section %}
+                                                <br><small class="text-primary" style="font-size:0.7rem;font-weight:600;"><i class="fas fa-clipboard-check me-1"></i>{{ phase.sorting_progress.current_section }}</small>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
                                         </td>
                                         <td>{{ phase.bmr.batch_size|floatformat:0 }} {{ phase.bmr.product.batch_size_unit }}</td>
                                         <td>
+                                            {% if phase.lc_waiting_qa %}
+                                                <span class="badge bg-info text-white mb-1">
+                                                    <i class="fas fa-hourglass-half me-1"></i>Waiting for QA Approval
+                                                </span>
+                                                <br>
+                                                <small class="text-muted">Beginning LC submitted to QA</small>
+                                            {% endif %}
                                             {% if phase.rework_count > 0 %}
                                                 <span class="badge bg-info me-1">
                                                     <i class="fas fa-redo"></i> Rework #{{ phase.rework_count }}

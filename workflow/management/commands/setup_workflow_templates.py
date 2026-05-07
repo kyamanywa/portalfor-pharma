@@ -96,6 +96,26 @@ class Command(BaseCommand):
                     (13, 'final_qa', 'Final QA', True, True, 3.0, None, 12),  # QC rollback: None, QA rollback: secondary_packaging (12)
                     (14, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
                 ]
+            },
+            'capsule_ug': {
+                'name': 'Capsule UG Workflow (Bulk Packing)',
+                'description': 'Workflow for UG capsules — skips blister packing, uses bulk packing directly',
+                'phases': [
+                    (1, 'bmr_creation', 'BMR Creation', True, False, 1.0),
+                    (2, 'regulatory_approval', 'Regulatory Approval', True, True, 24.0),
+                    (3, 'raw_material_release', 'Raw Material Release', True, False, 2.0),
+                    (4, 'material_dispensing', 'Material Dispensing', True, False, 3.0),
+                    (5, 'drying', 'Drying', True, False, 12.0),
+                    (6, 'blending', 'Blending', True, False, 6.0),
+                    (7, 'post_blending_qc', 'Post-Blending QC', True, True, 2.0, 6),  # Rollback to blending
+                    (8, 'filling', 'Filling', True, False, 8.0),
+                    (9, 'sorting', 'Sorting', True, False, 4.0),
+                    (10, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
+                    (11, 'bulk_packing', 'Bulk Packing', True, False, 6.0),  # UG: bulk instead of blister
+                    (12, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
+                    (13, 'final_qa', 'Final QA', True, True, 3.0, None, 12),
+                    (14, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
+                ]
             }
         }
         

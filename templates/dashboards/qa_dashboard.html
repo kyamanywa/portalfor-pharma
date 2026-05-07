@@ -1329,7 +1329,7 @@
                 </div>
                 {% endif %}
                 {% for item in pending_drying_dynamic %}
-                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' item.phase_execution.id %}">
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_pk %}#sec-{{ item.section_pk }}{% endif %}">
                     <span class="sec-dot"></span>
                     <span>{{ item.section_title }}</span>
                     <span class="sec-badge">{% if item.action_type == 'qa_fill' %}Fill{% else %}Sign{% endif %}</span>
@@ -1385,7 +1385,7 @@
                 </div>
                 {% endif %}
                 {% for item in pending_filling_dynamic %}
-                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' item.phase_execution.id %}">
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_pk %}#sec-{{ item.section_pk }}{% endif %}">
                     <span class="sec-dot"></span>
                     <span>{{ item.section_title }}</span>
                     <span class="sec-badge">{% if item.action_type == 'qa_fill' %}Fill{% else %}Sign{% endif %}</span>
@@ -1852,7 +1852,7 @@
                     <td>{{ item.submitted_by|default:"&mdash;" }}</td>
                     <td>{{ item.submitted_date|default:"&mdash;" }}</td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}" class="btn btn-primary btn-qa btn-sm">
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% endif %}" class="btn btn-primary btn-qa btn-sm">
                             <i class="fas fa-pen-fancy me-1"></i>Review &amp; Sign
                         </a>
                     </td>
@@ -2348,7 +2348,7 @@
                     </td>
                     <td>{{ item.submitted_by|default:"&mdash;" }}</td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#sec-{{ item.section_pk }}"
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_pk %}#sec-{{ item.section_pk }}{% endif %}"
                            class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-pen-fancy me-1"></i>
                             {% if item.action_type == 'qa_fill' %}Fill &amp; Sign{% else %}Review &amp; Sign{% endif %}

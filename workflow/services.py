@@ -31,6 +31,12 @@ class WorkflowService:
                     template_product_type = 'tablet_type_2'
                 else:
                     template_product_type = PRODUCT_TYPES['TABLET']
+            elif product_is_capsule_like(bmr.product):
+                capsule_type = getattr(bmr.product, 'capsule_type', 'normal') or 'normal'
+                if capsule_type == 'ug':
+                    template_product_type = 'capsule_ug'
+                else:
+                    template_product_type = product_type
             else:
                 template_product_type = product_type
             
@@ -627,10 +633,10 @@ class WorkflowService:
                     'post_blending_qc': 'blending',
                 }
             elif product_is_capsule_like(bmr.product):
-                # Capsules follow their flow
+                # Capsules follow their flow: dispensing -> blending -> post_blending_qc -> filling
                 qc_rollback_mapping = {
                     'post_compression_qc': 'filling',  # Should not happen for capsules
-                    'post_mixing_qc': 'drying',
+                    'post_mixing_qc': 'blending',
                     'post_blending_qc': 'blending',
                 }
             else:

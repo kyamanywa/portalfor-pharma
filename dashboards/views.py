@@ -945,7 +945,11 @@ def qa_dashboard(request):
                         'bmr': pe.bmr,
                         'section_key': sec_key,
                         'section_label': cfg['label'] + ' (QA to fill)',
-                        'submitted_by': 'System',
+                        'submitted_by': (
+                            sec_statuses.get('final_drying_signed_by')
+                            or sec_statuses.get('final_drying_submitted_by')
+                            or ''
+                        ),
                         'submitted_date': sec_statuses.get('final_drying_signed_date', ''),
                     })
 
@@ -963,7 +967,8 @@ def qa_dashboard(request):
 
     pending_blending_signing = []
     for pe in _blending_signing_phases:
-        sec_statuses = (pe.phase_data or {}).get('blending', {}).get('section_statuses', {})
+        _bl_data = (pe.phase_data or {}).get('blending', {})
+        sec_statuses = _bl_data.get('section_statuses', {})
         for sec_key, cfg in BLENDING_SECTIONS.items():
             status = sec_statuses.get(sec_key, 'not_started')
             if cfg.get('qa_signs') and status == 'operator_filled':
@@ -984,9 +989,62 @@ def qa_dashboard(request):
                         'bmr': pe.bmr,
                         'section_key': sec_key,
                         'section_label': cfg['label'] + ' (QA to fill)',
-                        'submitted_by': 'System',
+                        'submitted_by': (
+                            sec_statuses.get('mixing_signed_by')
+                            or sec_statuses.get('mixing_submitted_by')
+                            or ''
+                        ),
                         'submitted_date': sec_statuses.get('mixing_signed_date', ''),
                     })
+
+        # ── Capsule page-9 blending data (sections 1–4) pending QA approval ──
+        if _bl_data.get('_data_status') == 'operator_filled':
+            pending_blending_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'capsule_blending_sects14',
+                'section_label': 'Capsule Blending – Sections 1–4 (Sifting/Equipment)',
+                'submitted_by': _bl_data.get('_submitted_by', ''),
+                'submitted_date': _bl_data.get('_submitted_at', ''),
+                'anchor': 'capsule-blending-sects14',
+            })
+
+        # ── Capsule page-9 blending data (section 5) pending QA approval ──
+        if _bl_data.get('_mixing_status') == 'operator_filled':
+            pending_blending_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'capsule_blending_sect5',
+                'section_label': 'Capsule Blending – Section 5 (Blending Time)',
+                'submitted_by': _bl_data.get('_mixing_submitted_by', ''),
+                'submitted_date': _bl_data.get('_mixing_submitted_at', ''),
+                'anchor': 'capsule-blending-sect5',
+            })
+
+        # ── Capsule page-10 QA report — pending QA to fill (after sect 5 approved) ──
+        if (_bl_data.get('_mixing_status') == 'qa_verified'
+                and _bl_data.get('_qa_report_status', 'not_started') == 'not_started'):
+            pending_blending_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'capsule_blending_qa_report',
+                'section_label': 'Capsule Blending – Page 10 QA Report (LOD & Release)',
+                'submitted_by': '',
+                'submitted_date': '',
+                'anchor': 'capsule-blending-page10',
+            })
+
+        # ── Capsule page-12 yield reconciliation — pending QA to verify ──
+        if _bl_data.get('_yield_status') == 'operator_filled':
+            pending_blending_signing.append({
+                'phase_execution': pe,
+                'bmr': pe.bmr,
+                'section_key': 'capsule_blending_yield',
+                'section_label': 'Capsule Blending – Page 12 Yield Reconciliation',
+                'submitted_by': _bl_data.get('_yield_submitted_by', ''),
+                'submitted_date': _bl_data.get('_yield_submitted_at', ''),
+                'anchor': 'capsule-blending-page12',
+            })
 
     # Flat map for sidebar nav: section_key -> phase_execution_id
     pending_blending_section_map = {}
@@ -1555,6 +1613,27 @@ def qa_dashboard(request):
                     # Skip if IPC already approved
                     if _mix_sec_statuses.get('mix_qa_ipc') == 'qa_approved':
                         continue
+
+                # Prefer the nearest preceding section actor/date for QA-only tasks.
+                _submitter = ''
+                _submit_date = ''
+                for _prev in reversed(_secs):
+                    if _prev.order >= _sec.order:
+                        continue
+                    _prev_data = _phase_block.get(str(_prev.pk), {})
+                    _submitter = (
+                        _prev_data.get('_qa_signed_by')
+                        or _prev_data.get('_submitted_by')
+                        or _phase_block.get('_last_saved_by', '')
+                    )
+                    _submit_date = (
+                        _prev_data.get('_qa_signed_at')
+                        or _prev_data.get('_submitted_at')
+                        or _phase_block.get('_last_saved_at', '')
+                    )
+                    if _submitter or _submit_date:
+                        break
+
                 pending_dynamic_signing.append({
                     'phase_execution': _pe,
                     'bmr': _pe.bmr,
@@ -1563,9 +1642,48 @@ def qa_dashboard(request):
                     'phase_name': _pname,
                     'product_type': _ptype,
                     'action_type': 'qa_fill',
-                    'submitted_by': 'System',
-                    'submitted_date': '',
+                    'submitted_by': _submitter,
+                    'submitted_date': _submit_date,
                 })
+
+    # Capsule filling IPQC: the dynamic template sections (PKs 55-59) use
+    # _section_statuses inside phase_data['filling'], but the actual IPQC
+    # completion is tracked by CAPSULE_FILLING_SECTIONS inside
+    # phase_data['filling_sections']['section_statuses'] (cf_ipqc_1…6).
+    # Check the real statuses so filled sections drop off the dashboard.
+    from dashboards.bmr_form_views import get_capsule_filling_section_statuses as _get_cf_st
+    _CF_IPQC_KEYS = {'cf_ipqc_1', 'cf_ipqc_2', 'cf_ipqc_3', 'cf_ipqc_4', 'cf_ipqc_5', 'cf_ipqc_6'}
+
+    _collapsed_dynamic = []
+    _capsule_filling_seen = set()
+    for _item in pending_dynamic_signing:
+        _is_capsule_filling_ipqc = (
+            _item.get('product_type') == 'capsule'
+            and _item.get('phase_name') == 'filling'
+            and _item.get('action_type') == 'qa_fill'
+            and str(_item.get('section_title', '')).startswith('Capsule Filling In-Process Control')
+        )
+        if _is_capsule_filling_ipqc:
+            _key = (_item['phase_execution'].id, _item['bmr'].id, _item['phase_name'])
+            if _key in _capsule_filling_seen:
+                continue
+            # Only show on QA dashboard when at least one IPQC round is
+            # operator_filled (i.e. actually waiting for QA to sign T2).
+            # Between rounds (operator hasn't submitted next one yet) or when
+            # all are already signed, the row should not appear.
+            _real_st = _get_cf_st(_item['phase_execution'].phase_data or {})
+            _any_needs_qa = any(
+                _real_st.get(k, 'not_started') == 'operator_filled'
+                for k in _CF_IPQC_KEYS
+            )
+            if not _any_needs_qa:
+                continue
+            _capsule_filling_seen.add(_key)
+            _item['section_title'] = 'Capsule Filling In-Process Control — QA to fill'
+            _item['anchor'] = 'cap-fill-ipqc-1'
+        _collapsed_dynamic.append(_item)
+    pending_dynamic_signing = _collapsed_dynamic
+
     dynamic_signing_total = len(pending_dynamic_signing)
     # ── END DYNAMIC PENDING ──────────────────────────────────────────────────────
 
@@ -2562,8 +2680,6 @@ def store_dashboard(request):
         # Filter out material_dispensing that the store already submitted (store_complete flag)
         filtered_phases = []
         for phase in user_phases:
-            # DEBUG: Log what phases are returned
-            print(f"[STORE DEBUG] BMR {bmr.batch_number}: Phase {phase.phase.phase_name}, Status: {phase.status}")
             if phase.phase.phase_name == 'material_dispensing':
                 md_data = (phase.phase_data or {}).get('material_dispensing', {})
                 if md_data.get('store_complete'):
@@ -2603,12 +2719,6 @@ def store_dashboard(request):
         ).count(),
         'total_batches': len(set([p.bmr for p in my_phases])),
     }
-    
-    # DEBUG: Log final counts
-    print(f"[STORE DEBUG] Total my_phases: {len(my_phases)}")
-    print(f"[STORE DEBUG] Pending phases: {stats['pending_phases']}")
-    print(f"[STORE DEBUG] In-progress phases: {stats['in_progress_phases']}")
-    print(f"[STORE DEBUG] Status breakdown: {[f'{p.bmr.batch_number}:{p.status}' for p in my_phases]}")
     
     # Get recently completed releases (last 7 days)
     recently_completed = BatchPhaseExecution.objects.filter(
@@ -2901,6 +3011,8 @@ def operator_dashboard(request):
         phase.lc_submitted = phase.ending_lc_status in ('operator_filled', 'qa_approved')
         # Ending LC QA-approved → gates the Complete button
         phase.ending_lc_approved = phase.ending_lc_status in ('qa_approved', 'not_required')
+        # Beginning LC waiting for QA approval → show operator-friendly status badge
+        phase.lc_waiting_qa = phase.beginning_lc_status == 'operator_filled'
         # Display-friendly phase label
         phase.display_phase_name = phase.phase.get_phase_name_display()
         # PCS section progress for post_coating_sorting phases
@@ -2917,6 +3029,31 @@ def operator_dashboard(request):
             phase.pcs_progress = {'done': done, 'total': 3, 'percent': int(done / 3 * 100)}
         else:
             phase.pcs_progress = None
+        
+        # Sorting section progress for sorting phases
+        if phase_name == 'sorting':
+            sort_top = pd.get('sorting_sections', {})
+            ss = sort_top.get('section_statuses', {})
+            done = 0
+            current_section = ''
+            if ss.get('inspection_recon') == 'qa_signed':
+                done += 1
+            elif ss.get('inspection_recon') == 'operator_filled':
+                current_section = 'Visual Inspection: QA reviewing'
+            if ss.get('personnel') == 'completed':
+                done += 1
+            if ss.get('inprocess_qc') == 'qa_filled':
+                done += 1
+            elif ss.get('inprocess_qc') == 'not_started' and phase.beginning_lc_status == 'qa_approved':
+                current_section = 'Page 26 In-Process QC: QA filling'
+            phase.sorting_progress = {
+                'done': done, 
+                'total': 3, 
+                'percent': int(done / 3 * 100),
+                'current_section': current_section
+            }
+        else:
+            phase.sorting_progress = None
     
     # Statistics
     stats = {

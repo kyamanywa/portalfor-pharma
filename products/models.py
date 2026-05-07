@@ -1,6 +1,7 @@
 from django.db import models
 from workflow.constants import (
     PRODUCT_TYPE_CHOICES, COATING_TYPE_CHOICES, TABLET_TYPE_CHOICES,
+    CAPSULE_TYPE_CHOICES,
     get_product_type_choices, get_coating_type_choices, get_tablet_type_choices
 )
 
@@ -55,6 +56,13 @@ class Product(models.Model):
         choices=TABLET_TYPE_CHOICES,
         blank=True,
         help_text="Only applicable for tablets - normal or tablet type 2"
+    )
+    capsule_type = models.CharField(
+        max_length=20,
+        choices=CAPSULE_TYPE_CHOICES,
+        blank=True,
+        default='normal',
+        help_text="Only applicable for capsules - normal (blister packing) or UG (bulk packing)"
     )
     
     # Batch size configuration - moved from BMR to Product
@@ -883,19 +891,39 @@ class Product(models.Model):
     )
     capsule_body_colour_trade = models.CharField(
         max_length=150, blank=True,
-        help_text="Capsule body colour/print for Trade (e.g., Peach / KAM AMOXY 250)"
+        help_text="Capsule body colour for Trade (e.g., Peach)"
     )
     capsule_cap_colour_trade = models.CharField(
         max_length=150, blank=True,
-        help_text="Capsule cap colour/print for Trade (e.g., Maroon / KPI)"
+        help_text="Capsule cap colour for Trade (e.g., Maroon)"
+    )
+    capsule_body_print_trade = models.CharField(
+        max_length=150, blank=True,
+        help_text="Capsule body printing for Trade (e.g., KAM AMOXY 250)"
+    )
+    capsule_cap_print_trade = models.CharField(
+        max_length=150, blank=True,
+        help_text="Capsule cap printing for Trade (e.g., KPI)"
     )
     capsule_body_colour_ug = models.CharField(
         max_length=150, blank=True,
-        help_text="Capsule body colour/print for UG market (e.g., Peach / KAM AMOXY 250)"
+        help_text="Capsule body colour for UG market (e.g., Peach)"
     )
     capsule_cap_colour_ug = models.CharField(
         max_length=150, blank=True,
-        help_text="Capsule cap colour/print for UG market (e.g., Maroon / UG & KPI LOGO)"
+        help_text="Capsule cap colour for UG market (e.g., Maroon)"
+    )
+    capsule_body_print_ug = models.CharField(
+        max_length=150, blank=True,
+        help_text="Capsule body printing for UG market (e.g., KAM AMOXY 250)"
+    )
+    capsule_cap_print_ug = models.CharField(
+        max_length=150, blank=True,
+        help_text="Capsule cap printing for UG market (e.g., UG & KPI LOGO)"
+    )
+    avg_empty_shell_weight_mg = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Average weight of empty capsule shells in mg (e.g., 91.00)"
     )
     capsule_appearance = models.CharField(
         max_length=300, blank=True,

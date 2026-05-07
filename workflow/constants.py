@@ -27,6 +27,17 @@ TABLET_TYPE_CHOICES = [
     (TABLET_TYPES['TYPE_2'], 'Tablet Type 2'),
 ]
 
+# ============ CAPSULE TYPES ============
+CAPSULE_TYPES = {
+    'NORMAL': 'normal',
+    'UG': 'ug',
+}
+
+CAPSULE_TYPE_CHOICES = [
+    (CAPSULE_TYPES['NORMAL'], 'Normal Capsule (Blister Packing)'),
+    (CAPSULE_TYPES['UG'], 'Capsule UG (Bulk Packing)'),
+]
+
 # ============ COATING TYPES ============
 COATING_TYPES = {
     'COATED': 'coated',
@@ -161,7 +172,6 @@ TABLET_PHASES = {
 }
 
 CAPSULE_PHASES = {
-    PHASE_NAMES['DRYING'],
     PHASE_NAMES['BLENDING'],
     PHASE_NAMES['POST_BLENDING_QC'],
     PHASE_NAMES['FILLING'],
