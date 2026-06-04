@@ -437,8 +437,7 @@ AXES_COOLOFF_TIME = env.int('AXES_COOLOFF_TIME', default=1)  # Lockout duration 
 AXES_LOCKOUT_TEMPLATE = 'accounts/account_locked.html'
 AXES_LOCKOUT_URL = '/accounts/locked/'
 AXES_RESET_ON_SUCCESS = True
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True  # More secure
-AXES_ONLY_USER_FAILURES = False
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]  # Lock by combination of username and IP (more secure)
 AXES_ENABLE_ACCESS_FAILURE_LOG = True
 AXES_USERNAME_FORM_FIELD = 'username'
 AXES_PASSWORD_FORM_FIELD = 'password'
