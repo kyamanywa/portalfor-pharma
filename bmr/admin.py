@@ -4,6 +4,7 @@ from django.utils.html import format_html
 from .models import (
     BMR, BMRMaterial, BMRSignature, BMRRequest, BMRTemplate,
     EquipmentEntry, YieldReconciliationRow, WeightRangeLimit, BMRProcedureStep,
+    BMRIssuanceLog, BMRIssuanceLogEntry,
 )
 from .template_admin import BMRTemplateVisualAdmin
 
@@ -132,3 +133,75 @@ class BMRProcedureStepAdmin(admin.ModelAdmin):
     def description_preview(self, obj):
         return obj.description[:80] + '…' if len(obj.description) > 80 else obj.description
     description_preview.short_description = 'Description'
+
+
+@admin.register(BMRIssuanceLog)
+class BMRIssuanceLogAdmin(admin.ModelAdmin):
+    list_display = [
+        'product', 'sop_reference', 'total_entries', 'latest_batch', 'created_at'
+    ]
+    list_filter = ['created_at']
+    search_fields = ['product__product_name', 'sop_reference']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Product Information', {
+            'fields': ('product', 'sop_reference')
+        }),
+        ('Audit Information', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    def get_batch_number(self, obj):
+        latest = obj.latest_batch
+        return latest.batch_number if latest else 'No batches'
+    get_batch_number.short_description = 'Latest Batch'
+
+
+@admin.register(BMRIssuanceLogEntry)
+class BMRIssuanceLogEntryAdmin(admin.ModelAdmin):
+    list_display = [
+        'entry_number', 'get_product_name', 'get_batch_number', 'issue_date',
+        'issued_by', 'received_by', 'submitted_by', 'received_back_by', 'release_date', 'pack_size', 'created_at'
+    ]
+    list_filter = ['issue_date', 'release_date', 'issued_by', 'received_by', 'submitted_by', 'received_back_by']
+    search_fields = ['bmr__batch_number', 'bmr__product__product_name', 'entry_number', 'remarks']
+    readonly_fields = [
+        'entry_number', 'issue_date', 'bmr', 'active_ingredients', 'issued_by',
+        'issued_by_signature', 'issued_by_date', 'created_at', 'updated_at'
+    ]
+    
+    fieldsets = (
+        ('BMR Information', {
+            'fields': ('issuance_log', 'entry_number', 'bmr', 'issue_date', 'active_ingredients')
+        }),
+        ('Issued By (QA Approval)', {
+            'fields': ('issued_by', 'issued_by_signature', 'issued_by_date')
+        }),
+        ('Received By (Production Officer)', {
+            'fields': ('received_by', 'received_by_signature', 'received_by_date')
+        }),
+        ('Submitted By (QA Final)', {
+            'fields': ('submitted_by', 'submitted_by_signature', 'submitted_by_date')
+        }),
+        ('Received Back By (QA Receives Documentation)', {
+            'fields': ('received_back_by', 'received_back_by_signature', 'received_back_by_date')
+        }),
+        ('Additional Information', {
+            'fields': ('release_date', 'pack_size', 'remarks')
+        }),
+        ('Audit', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    def get_batch_number(self, obj):
+        return obj.bmr.batch_number
+    get_batch_number.short_description = 'Batch No.'
+    get_batch_number.admin_order_field = 'bmr__batch_number'
+    
+    def get_product_name(self, obj):
+        return obj.bmr.product.product_name
+    get_product_name.short_description = 'Product'
+    get_product_name.admin_order_field = 'bmr__product__product_name'

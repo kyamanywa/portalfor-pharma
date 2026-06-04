@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMR Issuance Log - {{ log.product.product_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    {% load static %}
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+    
+    body {
+        background-color: #f5f5f5;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 5px;
+        overflow-x: auto;
+    }
+    
+    .container-fluid {
+        max-width: 100%;
+        padding: 0 10px;
+    }
+    
+    .issuance-register-container {
+        background: white;
+        padding: 15px;
+        border: 2px solid #333;
+        width: 100%;
+        min-width: 1400px;
+    }
+    
+    /* Header Table */
+    .header-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        border: 2px solid #333;
+    }
+    
+    .header-table td {
+        border: 1px solid #333;
+        padding: 15px;
+        vertical-align: middle;
+    }
+    
+    .kpi-logo-cell {
+        width: 20%;
+        text-align: center;
+        padding: 10px !important;
+    }
+    
+    .kpi-logo {
+        max-width: 150px;
+        max-height: 150px;
+        width: auto;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+    }
+    
+    .header-center-cell {
+        width: 55%;
+        text-align: center;
+        padding: 8px 15px !important;
+    }
+    
+    .header-title {
+        font-weight: bold;
+        font-size: 14pt;
+        margin: 0;
+    }
+    
+    .header-subtitle {
+        font-size: 11pt;
+        margin: 0;
+    }
+    
+    .header-sop {
+        font-size: 10pt;
+        margin: 0;
+    }
+    
+    .company-name-cell {
+        width: 30%;
+        text-align: center;
+        font-weight: bold;
+        font-size: 11pt;
+    }
+    
+    /* Data Table */
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 2px solid #333;
+        table-layout: fixed;
+    }
+    
+    .data-table th,
+    .data-table td {
+        border: 1px solid #333;
+        padding: 5px 3px;
+        text-align: center;
+        font-size: 8pt;
+        word-wrap: break-word;
+        overflow: hidden;
+    }
+    
+    .data-table th {
+        background-color: #ffc107;
+        font-weight: bold;
+        vertical-align: middle;
+    }
+    
+    .data-table td {
+        min-height: 40px;
+    }
+    
+    .entry-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .signature-section {
+        margin-top: 20px;
+        border: 2px solid #333;
+    }
+    
+    .signature-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .signature-table th,
+    .signature-table td {
+        border: 1px solid #333;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .signature-table th {
+        background-color: #e9ecef;
+        font-weight: bold;
+    }
+    
+    .signature-status {
+        font-size: 10pt;
+        padding: 10px;
+    }
+    
+    .signed {
+        color: #28a745;
+    }
+    
+    .pending {
+        color: #ffc107;
+    }
+    
+    @media print {
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+        
+        body {
+            background: white;
+            padding: 0;
+        }
+        
+        .no-print {
+            display: none;
+        }
+        
+        .container-fluid {
+            padding: 0;
+        }
+        
+        .issuance-register-container {
+            border: none;
+            padding: 0;
+        }
+    }
+</style>
+</head>
+<body>
+<div class="container-fluid mt-3">
+<div class="row">
+    <div class="col-12">
+        <!-- Action Buttons -->
+        <div class="mb-3 no-print">
+            <a href="{% url 'bmr:issuance_log_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+            <a href="{% url 'bmr:issuance_log_download' log.id %}" class="btn btn-success">
+                <i class="fas fa-download me-2"></i>Download PDF
+            </a>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print me-2"></i>Print
+            </button>
+        </div>
+
+        <!-- BMR Issuance Register -->
+        <div class="issuance-register-container">
+            <!-- Header Section (matching physical form) -->
+            <table class="header-table">
+                <tr>
+                    <td rowspan="3" class="kpi-logo-cell">
+                        <img src="{% static 'Main1.png' %}" alt="KPI Logo" class="kpi-logo">
+                    </td>
+                    <td class="header-center-cell">
+                        <div class="header-title">QA DEPARTMENT BMR ISSUANCE LOG</div>
+                    </td>
+                    <td rowspan="3" class="company-name-cell">
+                        KAMPALA PHARMACEUTICAL<br>INDUSTRIES LTD
+                    </td>
+                </tr>
+                <tr>
+                    <td class="header-center-cell">
+                        <div class="header-subtitle">PRODUCT NAME: {{ log.product.product_name }}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="header-center-cell">
+                        <div class="header-sop">Ref. SOP NO: {{ log.sop_reference }}</div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Data Table (matching physical form) -->
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 35px;">SR<br>No.</th>
+                        <th rowspan="2" style="width: 70px;">Date</th>
+                        <th rowspan="2" style="width: 75px;">Batch<br>No.</th>
+                        <th rowspan="2" style="width: 70px;">Mfg<br>Date</th>
+                        <th rowspan="2" style="width: 70px;">Exp<br>Date</th>
+                        {% for ingredient in active_ingredient_columns %}
+                        <th style="width: 90px;">
+                            {{ ingredient.ingredient_name }}<br>
+                            <small>AR: {{ ingredient.ar_number }}</small>
+                        </th>
+                        {% endfor %}
+                        <th rowspan="2" style="width: 85px;">Batch<br>Size</th>
+                        <th rowspan="2" style="width: 55px;">Issued<br>By</th>
+                        <th rowspan="2" style="width: 55px;">Received<br>By</th>
+                        <th rowspan="2" style="width: 55px;">Submitted<br>By</th>
+                        <th rowspan="2" style="width: 55px;">Received<br>Back By</th>
+                        <th rowspan="2" style="width: 70px;">Release<br>Date</th>
+                        <th rowspan="2" style="width: 65px;">Pack<br>Size</th>
+                        <th rowspan="2" style="width: 100px;">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr class="entry-row">
+                        <td><strong>{{ entry.entry_number }}</strong></td>
+                        <td>{{ entry.issue_date|date:"Y-m-d" }}</td>
+                        <td><strong>{{ entry.bmr.batch_number }}</strong></td>
+                        <td>{{ entry.bmr.manufacturing_date|date:"Y-m-d" }}</td>
+                        <td>{{ entry.bmr.expiry_date|date:"Y-m-d" }}</td>
+                        {% for ar_number in entry.aligned_ingredients %}
+                        <td>{{ ar_number }}</td>
+                        {% endfor %}
+                        <td>{{ entry.bmr.batch_size }} {{ entry.bmr.batch_size_unit }}</td>
+                        <td>
+                            {% if entry.issued_by %}
+                            {{ entry.issued_by.get_full_name|default:entry.issued_by.username }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entry.received_by %}
+                            {{ entry.received_by.get_full_name|default:entry.received_by.username }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entry.submitted_by %}
+                            {{ entry.submitted_by.get_full_name|default:entry.submitted_by.username }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entry.received_back_by %}
+                            {{ entry.received_back_by.get_full_name|default:entry.received_back_by.username }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.release_date|date:"Y-m-d"|default:"—" }}</td>
+                        <td>{{ entry.pack_size|default:"—" }}</td>
+                        <td style="font-size: 8pt;">{{ entry.remarks|truncatewords:10|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Batch Entry Details (for signing) - No Print -->
+        <div class="mt-4 no-print">
+            <h4>Batch Entry Details & Signing</h4>
+            {% for entry in entries %}
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <strong>Entry #{{ entry.entry_number }}</strong> - Batch {{ entry.bmr.batch_number }}
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Issued By:</strong><br>
+                            {% if entry.issued_by %}
+                            <span class="signed">
+                                <i class="fas fa-check-circle"></i> {{ entry.issued_by.get_full_name }}<br>
+                                <small>{{ entry.issued_by_date|date:"Y-m-d H:i" }}</small>
+                            </span>
+                            {% else %}
+                            <span class="pending">Pending</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Received By:</strong><br>
+                            {% if entry.received_by %}
+                            <span class="signed">
+                                <i class="fas fa-check-circle"></i> {{ entry.received_by.get_full_name }}<br>
+                                <small>{{ entry.received_by_date|date:"Y-m-d H:i" }}</small>
+                            </span>
+                            {% elif entry.issued_by and request.user.role == 'production_manager' %}
+                            <form method="post" action="{% url 'bmr:issuance_log_sign_received' entry.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="text" name="signature" class="form-control form-control-sm mb-2" 
+                                       placeholder="Your signature" required>
+                                <button type="submit" class="btn btn-sm btn-primary">Sign</button>
+                            </form>
+                            {% else %}
+                            <span class="pending">Pending</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Submitted By:</strong><br>
+                            {% if entry.submitted_by %}
+                            <span class="signed">
+                                <i class="fas fa-check-circle"></i> {{ entry.submitted_by.get_full_name }}<br>
+                                <small>{{ entry.submitted_by_date|date:"Y-m-d H:i" }}</small>
+                            </span>
+                            {% elif entry.received_by and request.user.role == 'qa' %}
+                            <form method="post" action="{% url 'bmr:issuance_log_sign_submitted' entry.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="text" name="signature" class="form-control form-control-sm mb-2" 
+                                       placeholder="Your signature" required>
+                                <button type="submit" class="btn btn-sm btn-success">Sign Final</button>
+                            </form>
+                            {% else %}
+                            <span class="pending">Pending</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Received Back By:</strong><br>
+                            {% if entry.received_back_by %}
+                            <span class="signed">
+                                <i class="fas fa-check-circle"></i> {{ entry.received_back_by.get_full_name }}<br>
+                                <small>{{ entry.received_back_by_date|date:"Y-m-d H:i" }}</small>
+                            </span>
+                            {% else %}
+                            <span class="pending">Pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <strong>Release Date:</strong> {{ entry.release_date|date:"Y-m-d"|default:"—" }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Pack Size:</strong> {{ entry.pack_size|default:"—" }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Remarks:</strong> {{ entry.remarks|default:"—" }}
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <a href="{% url 'bmr:detail' entry.bmr.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-file-alt me-1"></i>View Full BMR
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>

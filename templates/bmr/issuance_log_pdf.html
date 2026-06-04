@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BMR Issuance Log - {{ log.product.product_name }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 9pt;
+            color: #000;
+        }
+        
+        /* Header Table */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 15px;
+        }
+        
+        .header-table td {
+            border: 1px solid #000;
+            padding: 12px;
+            vertical-align: middle;
+        }
+        
+        .kpi-logo-cell {
+            width: 15%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16pt;
+        }
+        
+        .kpi-logo {
+            max-width: 80px;
+            height: auto;
+        }
+        
+        .header-center-cell {
+            width: 55%;
+            text-align: center;
+            padding: 8px 15px;
+        }
+        
+        .header-title {
+            font-weight: bold;
+            font-size: 13pt;
+            margin: 0;
+        }
+        
+        .header-subtitle {
+            font-size: 10pt;
+            margin: 0;
+        }
+        
+        .header-sop {
+            font-size: 9pt;
+            margin: 0;
+        }
+        
+        .company-name-cell {
+            width: 30%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10pt;
+            line-height: 1.3;
+        }
+        
+        /* Data Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            page-break-inside: avoid;
+        }
+        
+        .data-table th,
+        .data-table td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: center;
+            font-size: 8pt;
+            vertical-align: middle;
+        }
+        
+        .data-table th {
+            background-color: #ffc107;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+        
+        .data-table td {
+            min-height: 30px;
+        }
+        
+        .empty-row td {
+            height: 35px;
+        }
+        
+        /* Signature Section */
+        .signature-section {
+            margin-top: 20px;
+            border: 2px solid #000;
+            page-break-inside: avoid;
+        }
+        
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .signature-table th,
+        .signature-table td {
+            border: 1px solid #000;
+            padding: 15px;
+            text-align: center;
+            font-size: 9pt;
+        }
+        
+        .signature-table th {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        
+        .sig-content {
+            min-height: 50px;
+        }
+        
+        .sig-label {
+            font-weight: bold;
+            font-size: 8pt;
+            margin-bottom: 5px;
+        }
+        
+        .sig-detail {
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+        
+        /* Footer */
+        .footer-text {
+            text-align: center;
+            font-size: 7pt;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Table (matching physical form) -->
+    <table class="header-table">
+        <tr>
+            <td rowspan="3" class="kpi-logo-cell">
+                <img src="{{ logo_path }}" alt="KPI Logo" class="kpi-logo">
+            </td>
+            <td class="header-center-cell">
+                <div class="header-title">QA DEPARTMENT BMR ISSUANCE LOG</div>
+            </td>
+            <td rowspan="3" class="company-name-cell">
+                KAMPALA PHARMACEUTICAL<br>INDUSTRIES LTD
+            </td>
+        </tr>
+        <tr>
+            <td class="header-center-cell">
+                <div class="header-subtitle">PRODUCT NAME: {{ log.product.product_name }}</div>
+            </td>
+        </tr>
+        <tr>
+            <td class="header-center-cell">
+                <div class="header-sop">Ref. SOP NO: {{ log.sop_reference }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Data Table with Yellow Headers -->
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 35px;">SR<br>No.</th>
+                <th rowspan="2" style="width: 70px;">Date</th>
+                <th rowspan="2" style="width: 75px;">Batch<br>No.</th>
+                <th rowspan="2" style="width: 70px;">Mfg<br>Date</th>
+                <th rowspan="2" style="width: 70px;">Exp<br>Date</th>
+                {% for ingredient in active_ingredient_columns %}
+                <th style="width: 90px;">
+                    {{ ingredient.ingredient_name }}<br>
+                    <span style="font-size: 7pt;">AR: {{ ingredient.ar_number }}</span>
+                </th>
+                {% endfor %}
+                <th rowspan="2" style="width: 85px;">Batch<br>Size</th>
+                <th rowspan="2" style="width: 55px;">Issued<br>By</th>
+                <th rowspan="2" style="width: 55px;">Received<br>By</th>
+                <th rowspan="2" style="width: 55px;">Submitted<br>By</th>
+                <th rowspan="2" style="width: 55px;">Received<br>Back By</th>
+                <th rowspan="2" style="width: 70px;">Release<br>Date</th>
+                <th rowspan="2" style="width: 65px;">Pack<br>Size</th>
+                <th rowspan="2" style="width: 100px;">Remarks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td><strong>{{ entry.entry_number }}</strong></td>
+                <td>{{ entry.issue_date|date:"Y-m-d" }}</td>
+                <td><strong>{{ entry.bmr.batch_number }}</strong></td>
+                <td>{{ entry.bmr.manufacturing_date|date:"Y-m-d" }}</td>
+                <td>{{ entry.bmr.expiry_date|date:"Y-m-d" }}</td>
+                {% for ar_number in entry.aligned_ingredients %}
+                <td>{{ ar_number }}</td>
+                {% endfor %}
+                <td>{{ entry.bmr.batch_size }}<br>{{ entry.bmr.batch_size_unit }}</td>
+                <td>
+                    {% if entry.issued_by %}
+                    {{ entry.issued_by.get_full_name|default:entry.issued_by.username }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if entry.received_by %}
+                    {{ entry.received_by.get_full_name|default:entry.received_by.username }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if entry.submitted_by %}
+                    {{ entry.submitted_by.get_full_name|default:entry.submitted_by.username }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if entry.received_back_by %}
+                    {{ entry.received_back_by.get_full_name|default:entry.received_back_by.username }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>{{ entry.release_date|date:"Y-m-d"|default:"—" }}</td>
+                <td style="font-size: 7pt;">{{ entry.pack_size|default:"—" }}</td>
+                <td style="font-size: 7pt;">{{ entry.remarks|truncatewords:8|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+            
+            <!-- Empty rows for manual entry (11 total rows on form) -->
+            {% with empty_rows=11|add:0 %}
+            {% with filled_rows=entries.count %}
+            {% for i in "123456789" %}
+            {% if forloop.counter <= empty_rows|add:"-"|add:filled_rows %}
+            <tr class="empty-row">
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                {% for ingredient in active_ingredient_columns %}
+                <td>&nbsp;</td>
+                {% endfor %}
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            {% endwith %}
+            {% endwith %}
+        </tbody>
+    </table>
+
+    <!-- Footer -->
+    <div class="footer-text">
+        <p>Kampala Pharmaceutical Industries | BMR Issuance Log | Generated: {{ current_date }}</p>
+        <p>This is an official pharmaceutical production document. Unauthorized reproduction is prohibited.</p>
+    </div>
+</body>
+</html>

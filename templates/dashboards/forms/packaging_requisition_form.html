@@ -7,6 +7,8 @@ Context: phase, req, packaging_materials, user_role, today_str
 
 {% with req_status=req.status|default:"not_started" %}
 
+<div id="packaging-materials-requisition"></div>
+
 {# ── STEP 1 ── Production Supervisor submits the request ───────────────────── #}
 {% if req_status == "not_started" and user_role in "production_supervisor,production_manager,packaging_store" %}
 <div class="card border-warning mt-3">

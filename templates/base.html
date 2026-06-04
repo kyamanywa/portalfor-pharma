@@ -13,6 +13,8 @@
     {% load dashboard_permissions %}
     <!-- KPI Design System — single source of truth for all UI styles -->
     <link href="{% static 'css/kpi-design-system.css' %}" rel="stylesheet">
+    <!-- Mobile Responsiveness -->
+    <link href="{% static 'css/mobile-responsive.css' %}" rel="stylesheet">
     {% if request.GET.print == '1' or request.GET.document == '1' %}
     <style>
         body { padding-top: 0 !important; background: #fff !important; }
@@ -165,6 +167,81 @@
     {% if user.is_authenticated %}
     <script src="{% static 'js/realtime_notifications.js' %}"></script>
     {% endif %}
+    
+    <!-- Mobile Menu Toggle Script -->
+    <script>
+    (function() {
+        // Only run on mobile devices
+        if (window.innerWidth <= 575) {
+            // Add mobile overlay for sidebar
+            const overlay = document.createElement('div');
+            overlay.className = 'mobile-overlay';
+            document.body.appendChild(overlay);
+            
+            // Add mobile toggle button if sidebar exists
+            const sidebar = document.querySelector('.qa-sidebar, .admin-sidebar, .operator-sidebar, .manager-sidebar, .left-panel');
+            if (sidebar) {
+                // Hide sidebar by default on mobile
+                sidebar.classList.add('sidebar-collapsed');
+                
+                // Create toggle button
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'sidebar-toggle-btn';
+                toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+                toggleBtn.setAttribute('aria-label', 'Toggle Menu');
+                document.body.appendChild(toggleBtn);
+                
+                // Toggle sidebar when button clicked
+                toggleBtn.addEventListener('click', function() {
+                    if (sidebar.classList.contains('sidebar-collapsed')) {
+                        sidebar.classList.remove('sidebar-collapsed');
+                        sidebar.classList.add('sidebar-mobile-open');
+                        overlay.classList.add('active');
+                        toggleBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    } else {
+                        sidebar.classList.add('sidebar-collapsed');
+                        sidebar.classList.remove('sidebar-mobile-open');
+                        overlay.classList.remove('active');
+                        toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+                    }
+                });
+                
+                // Close sidebar when overlay clicked
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.add('sidebar-collapsed');
+                    sidebar.classList.remove('sidebar-mobile-open');
+                    overlay.classList.remove('active');
+                    toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+                });
+            }
+        }
+        
+        // Re-run on window resize
+        window.addEventListener('resize', function() {
+            const sidebar = document.querySelector('.qa-sidebar, .admin-sidebar, .operator-sidebar, .manager-sidebar, .left-panel');
+            const overlay = document.querySelector('.mobile-overlay');
+            const toggleBtn = document.querySelector('.sidebar-toggle-btn');
+            
+            if (window.innerWidth > 575) {
+                // Desktop: remove mobile classes
+                if (sidebar) {
+                    sidebar.classList.remove('sidebar-collapsed', 'sidebar-mobile-open');
+                }
+                if (overlay) {
+                    overlay.classList.remove('active');
+                }
+                if (toggleBtn) {
+                    toggleBtn.style.display = 'none';
+                }
+            } else {
+                // Mobile: ensure toggle button visible
+                if (toggleBtn) {
+                    toggleBtn.style.display = 'block';
+                }
+            }
+        });
+    })();
+    </script>
     
     {% block scripts %}{% endblock %}
 </body>

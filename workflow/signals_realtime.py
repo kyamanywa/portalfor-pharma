@@ -6,9 +6,15 @@ Sends WebSocket notifications when actions occur across the system
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 import logging
+
+# Try to import channels - it's optional
+try:
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    CHANNELS_AVAILABLE = True
+except ImportError:
+    CHANNELS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +26,9 @@ def phase_execution_saved(sender, instance, created, update_fields, **kwargs):
     """
     Send real-time notification when a phase execution is created or updated
     """
+    if not CHANNELS_AVAILABLE:
+        return  # Channels not installed, skip real-time notifications
+    
     try:
         # Only send notification on updates (status changes), not initial creation
         if not created or (update_fields and 'status' in update_fields):
@@ -80,6 +89,9 @@ def bmr_status_changed(sender, instance, update_fields, **kwargs):
     """
     Send real-time notification when BMR status changes
     """
+    if not CHANNELS_AVAILABLE:
+        return  # Channels not installed, skip real-time notifications
+    
     try:
         if update_fields and 'status' in update_fields:
             layer = get_channel_layer()
@@ -127,6 +139,9 @@ def material_release_updated(sender, instance, update_fields, **kwargs):
     """
     Send real-time notification when material release status changes
     """
+    if not CHANNELS_AVAILABLE:
+        return  # Channels not installed, skip real-time notifications
+    
     try:
         if update_fields and 'status' in update_fields:
             layer = get_channel_layer()

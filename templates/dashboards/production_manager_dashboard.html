@@ -183,6 +183,11 @@
             {% if can_access_pm_bmr_reports or can_access_pm_timeline or can_access_pm_bmr_tracking or can_access_pm_live_tracking or can_access_pm_quarantine %}
             <div class="pm-sidebar-section">Production Management</div>
             <ul class="pm-sidebar-menu">
+                <li>
+                    <a href="{% url 'bmr:issuance_log_list' %}">
+                        <i class="fas fa-file-invoice"></i> BMR Issuance Log
+                    </a>
+                </li>
                 {% if can_access_pm_bmr_reports %}
                 <li>
                     <a href="#" data-section="pm-bmr-reports" class="section-link" id="pm-bmr-reports-link">
@@ -310,6 +315,9 @@
                             </a>
                             <a href="{% url 'bmr:bmr_request_list' %}" class="btn btn-outline-info btn-sm">
                                 <i class="fas fa-list me-1"></i>My BMR Requests
+                            </a>
+                            <a href="{% url 'bmr:issuance_log_list' %}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-file-invoice me-1"></i>BMR Issuance Logs
                             </a>
                             <a href="{% url 'reports:timeline_list' %}" class="btn btn-outline-success btn-sm">
                                 <i class="fas fa-project-diagram me-1"></i>Production Timeline

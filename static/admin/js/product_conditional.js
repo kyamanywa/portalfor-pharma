@@ -1,4 +1,81 @@
 document.addEventListener('DOMContentLoaded', function() {
+
+    // ── Ingredient inline DELETE UX ──────────────────────────────────────────
+    // When the DELETE checkbox is ticked, visually strike through the row so
+    // the user knows it's queued for deletion.  Also show a save-reminder
+    // banner so it's clear they must click "Save" to commit the deletion.
+    (function () {
+        var banner = null;
+
+        function ensureBanner() {
+            if (banner) return;
+            banner = document.createElement('div');
+            banner.id = 'ingredient-delete-banner';
+            banner.style.cssText = [
+                'background:#fff3cd', 'border:1px solid #ffc107',
+                'color:#856404', 'padding:8px 14px', 'border-radius:4px',
+                'margin:8px 0', 'font-weight:bold', 'font-size:13px',
+                'display:none'
+            ].join(';');
+            banner.innerHTML = '⚠️  One or more ingredients are marked for deletion. '
+                + '<strong>Click "Save" at the bottom of the page to confirm.</strong>';
+            // Insert before the ingredient inline table
+            var inlineGroup = document.querySelector('#productingredient_set-group');
+            if (inlineGroup) inlineGroup.insertBefore(banner, inlineGroup.firstChild);
+        }
+
+        function styleRow(row, checked) {
+            if (checked) {
+                row.style.background = '#ffe4e4';
+                row.style.opacity = '0.6';
+                row.querySelectorAll('input:not([type="checkbox"]), select, textarea').forEach(function(el) {
+                    el.style.textDecoration = 'line-through';
+                    el.style.color = '#999';
+                });
+            } else {
+                row.style.background = '';
+                row.style.opacity = '';
+                row.querySelectorAll('input:not([type="checkbox"]), select, textarea').forEach(function(el) {
+                    el.style.textDecoration = '';
+                    el.style.color = '';
+                });
+            }
+        }
+
+        function updateBanner() {
+            ensureBanner();
+            var anyChecked = document.querySelectorAll(
+                '#productingredient_set-group input[type="checkbox"][id$="-DELETE"]:checked'
+            ).length > 0;
+            if (banner) banner.style.display = anyChecked ? 'block' : 'none';
+        }
+
+        function attachDeleteListeners() {
+            document.querySelectorAll(
+                '#productingredient_set-group input[type="checkbox"][id$="-DELETE"]'
+            ).forEach(function(cb) {
+                if (cb.dataset.deleteListenerAttached) return;
+                cb.dataset.deleteListenerAttached = '1';
+                var row = cb.closest('tr');
+                if (!row) return;
+                // Reflect current state on page load (in case browser restores checked state)
+                if (cb.checked) styleRow(row, true);
+                cb.addEventListener('change', function () {
+                    styleRow(row, cb.checked);
+                    updateBanner();
+                });
+            });
+            updateBanner();
+        }
+
+        // Run on load and after Django's "Add another" adds new rows
+        attachDeleteListeners();
+        var observer = new MutationObserver(attachDeleteListeners);
+        var inlineBody = document.querySelector('#productingredient_set-group tbody');
+        if (inlineBody) observer.observe(inlineBody, { childList: true });
+    })();
+    // ── End Ingredient DELETE UX ─────────────────────────────────────────────
+
     const productTypeField = document.querySelector('#id_product_type');
     const coatingTypeRow = document.querySelector('.field-coating_type') && document.querySelector('.field-coating_type').closest('.form-row');
     const tabletTypeRow = document.querySelector('.field-tablet_type') && document.querySelector('.field-tablet_type').closest('.form-row');

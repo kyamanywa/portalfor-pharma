@@ -11,4 +11,10 @@ django-environ==0.11.2
 channels==4.0.0
 channels-redis==4.1.0
 xhtml2pdf==0.2.17
-weasyprint==60.1
+weasyprint>=60.1  # Updated for compatibility with latest dependencies
+
+# Security and Compliance Enhancements
+django-simple-history==3.4.0  # Immutable audit trails for 21 CFR Part 11 compliance
+django-axes==6.1.1  # Brute force protection
+drf-spectacular==0.27.0  # OpenAPI/Swagger documentation
+django-ratelimit==4.1.0  # API rate limiting

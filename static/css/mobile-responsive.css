@@ -1,0 +1,337 @@
+/**
+ * Mobile Responsiveness for KPI Operations System
+ * Fixes sidebar/left panel display on phones and tablets
+ */
+
+/* =================================================================
+   MOBILE BREAKPOINTS
+   ================================================================= */
+
+/* Small phones: < 576px */
+@media (max-width: 575.98px) {
+    
+    /* ===== Dashboard Layouts ===== */
+    
+    /* QA Dashboard & similar flex layouts */
+    .qa-layout,
+    .admin-layout,
+    .operator-layout,
+    .manager-layout {
+        flex-direction: column !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    /* Sidebar/Left Pane */
+    .qa-sidebar,
+    .admin-sidebar,
+    .operator-sidebar,
+    .manager-sidebar,
+    .left-panel {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-height: none !important;
+        position: relative !important;
+    }
+    
+    /* Main Content Area */
+    .qa-main,
+    .admin-main,
+    .operator-main,
+    .manager-main,
+    .main-content {
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    /* Hide sidebar by default on mobile, show toggle button */
+    .sidebar-collapsed {
+        display: none;
+    }
+    
+    .sidebar-toggle-btn {
+        display: block !important;
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1040;
+        background: #0056b3;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 56px;
+        height: 56px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 20px;
+    }
+    
+    /* Make sidebar overlay on mobile when opened */
+    .sidebar-mobile-open {
+        position: fixed !important;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        width: 80% !important;
+        max-width: 300px !important;
+        z-index: 1035;
+        display: block !important;
+        box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+        animation: slideInLeft 0.3s ease-out;
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            transform: translateX(-100%);
+        }
+        to {
+            transform: translateX(0);
+        }
+    }
+    
+    /* Mobile overlay backdrop */
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 56px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1030;
+    }
+    
+    .mobile-overlay.active {
+        display: block;
+    }
+    
+    /* ===== Tables ===== */
+    
+    /* Make tables horizontally scrollable */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    table {
+        min-width: 600px; /* Force horizontal scroll for wide tables */
+    }
+    
+    /* Stack table cells vertically on very small screens */
+    .table-mobile-stack th,
+    .table-mobile-stack td {
+        display: block;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    
+    /* ===== Cards ===== */
+    
+    /* Full width cards on mobile */
+    .col-md-3,
+    .col-md-4,
+    .col-md-6,
+    .col-lg-3,
+    .col-lg-4,
+    .col-lg-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    /* ===== Forms ===== */
+    
+    /* Stack form groups vertically */
+    .form-row {
+        flex-direction: column !important;
+    }
+    
+    .form-row > div {
+        width: 100% !important;
+        margin-bottom: 10px;
+    }
+    
+    /* ===== Buttons ===== */
+    
+    /* Make button groups stack */
+    .btn-group {
+        flex-direction: column !important;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    /* ===== Navigation Tabs ===== */
+    
+    /* Make tabs scrollable horizontally */
+    .nav-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .nav-tabs .nav-link {
+        white-space: nowrap;
+        font-size: 13px;
+        padding: 8px 12px;
+    }
+    
+    /* ===== Modals ===== */
+    
+    .modal-dialog {
+        margin: 10px !important;
+        max-width: calc(100% - 20px) !important;
+    }
+    
+    /* ===== Padding Adjustments ===== */
+    
+    .container,
+    .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+    
+    /* Reduce padding in cards */
+    .card-body {
+        padding: 15px !important;
+    }
+    
+    /* ===== Text Adjustments ===== */
+    
+    /* Smaller headings on mobile */
+    h1 { font-size: 24px !important; }
+    h2 { font-size: 20px !important; }
+    h3 { font-size: 18px !important; }
+    h4 { font-size: 16px !important; }
+    h5 { font-size: 14px !important; }
+    
+    /* ===== Navbar ===== */
+    
+    /* Ensure navbar doesn't overflow */
+    .navbar-brand {
+        font-size: 14px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+    }
+    
+    .navbar-brand img {
+        height: 24px !important;
+    }
+}
+
+/* =================================================================
+   TABLETS: 576px - 767px
+   ================================================================= */
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+    
+    /* Sidebar can be narrower on tablets */
+    .qa-sidebar,
+    .admin-sidebar,
+    .operator-sidebar,
+    .manager-sidebar {
+        width: 200px !important;
+        min-width: 200px !important;
+    }
+    
+    /* Adjust font sizes */
+    .qa-sidebar,
+    .admin-sidebar {
+        font-size: 12px;
+    }
+    
+    /* Make cards 2-column on tablets */
+    .col-md-3,
+    .col-lg-3 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
+/* =================================================================
+   LANDSCAPE PHONES: < 768px
+   ================================================================= */
+
+@media (max-width: 767.98px) {
+    
+    /* Hide desktop-only elements */
+    .d-none-mobile {
+        display: none !important;
+    }
+    
+    /* Show mobile-only elements */
+    .d-block-mobile {
+        display: block !important;
+    }
+    
+    /* Adjust spacing */
+    .mb-4, .my-4 {
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .mt-4, .my-4 {
+        margin-top: 1.5rem !important;
+    }
+}
+
+/* =================================================================
+   UTILITY CLASSES
+   ================================================================= */
+
+/* Mobile sidebar toggle button (hidden on desktop) */
+.sidebar-toggle-btn {
+    display: none;
+}
+
+@media (max-width: 575.98px) {
+    .sidebar-toggle-btn {
+        display: block !important;
+    }
+}
+
+/* Responsive images (but not navbar logo or icons) */
+img:not(.navbar-brand img):not(.icon):not([height]) {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Specific responsive images in content */
+.card img:not([height]),
+.content img,
+article img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Preserve logos and images with explicit height in headers */
+.card-header img[height] {
+    max-width: 100%;
+}
+
+/* Prevent horizontal scroll */
+body {
+    overflow-x: hidden;
+}
+
+/* Make sure content doesn't overflow (but not images with fixed height) */
+*:not(img) {
+    max-width: 100%;
+}
+
+/* Fix for very long text (like batch numbers) */
+.text-break-mobile {
+    word-break: break-all;
+}
+
+@media (max-width: 575.98px) {
+    .batch-number,
+    .product-name,
+    .long-text {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+}

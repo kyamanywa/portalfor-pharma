@@ -8,6 +8,7 @@ import logging
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
 import json
+from simple_history.models import HistoricalRecords  # Audit trail support
 
 # Import template models
 from .template_models import (
@@ -218,6 +219,12 @@ class BMR(models.Model):
     # Comments and Notes
     qa_comments = models.TextField(blank=True)
     regulatory_comments = models.TextField(blank=True)
+    
+    # Audit trail - tracks all changes to BMR (21 CFR Part 11 compliance)
+    history = HistoricalRecords(
+        history_change_reason_field=models.TextField(null=True),
+        excluded_fields=['updated_date'],  # Don't track updated_date changes
+    )
     
     class Meta:
         ordering = ['-created_date']
@@ -721,3 +728,298 @@ class BMRProcedureStep(models.Model):
 
     def __str__(self):
         return f'Step {self.step_number}: {self.description[:60]}'
+
+
+class BMRIssuanceLog(models.Model):
+    """BMR Issuance Log - Product-level register tracking all batches of a product"""
+    
+    # Link to Product (one log per product)
+    product = models.OneToOneField(
+        'products.Product',
+        on_delete=models.CASCADE,
+        related_name='issuance_log',
+        help_text="Product that this log tracks"
+    )
+    
+    # SOP Reference Number (e.g., "NDA/QA/020/SOP")
+    sop_reference = models.CharField(
+        max_length=100,
+        default='NDA/QA/020/SOP',
+        help_text="Standard Operating Procedure reference number"
+    )
+    
+    # Audit fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['product__product_name']
+        verbose_name = 'BMR Issuance Log'
+        verbose_name_plural = 'BMR Issuance Logs'
+    
+    def __str__(self):
+        return f"Issuance Log - {self.product.product_name}"
+    
+    @property
+    def total_entries(self):
+        """Count of batch entries in this log"""
+        return self.entries.count()
+    
+    @property
+    def latest_batch(self):
+        """Get the most recent batch entry"""
+        return self.entries.order_by('-created_at').first()
+
+
+class BMRIssuanceLogEntry(models.Model):
+    """Individual batch entry in a BMR Issuance Log"""
+    
+    # Link to parent log
+    issuance_log = models.ForeignKey(
+        BMRIssuanceLog,
+        on_delete=models.CASCADE,
+        related_name='entries',
+        help_text="Parent issuance log for this product"
+    )
+    
+    # Link to BMR (one entry per batch)
+    bmr = models.OneToOneField(
+        BMR,
+        on_delete=models.CASCADE,
+        related_name='issuance_entry',
+        help_text="BMR record for this batch"
+    )
+    
+    # Entry serial number (auto-incrementing per log)
+    entry_number = models.PositiveIntegerField(
+        help_text="Entry number within this product's log"
+    )
+    
+    # Issue date (when QA approved the BMR request)
+    issue_date = models.DateField(
+        help_text="Date when QA approved the BMR request"
+    )
+    
+    # Active ingredients (JSON field to handle variable number of actives)
+    # Format: [{"ar_number": "AR-001", "ingredient_name": "Doxycycline HCl"}, ...]
+    active_ingredients = models.JSONField(
+        default=list,
+        help_text="List of active ingredients with AR numbers"
+    )
+    
+    # ISSUED BY (QA who approved the BMR request)
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='issued_bmr_entries',
+        help_text="QA officer who approved the production request"
+    )
+    issued_by_signature = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Electronic signature of QA officer"
+    )
+    issued_by_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date and time when QA signed"
+    )
+    
+    # RECEIVED BY (Production Officer who receives the approved BMR)
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='received_bmr_entries',
+        help_text="Production Officer who received the BMR approval"
+    )
+    received_by_signature = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Electronic signature of Production Officer"
+    )
+    received_by_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date and time when Production Officer signed"
+    )
+    
+    # SUBMITTED BY (QA final submission after packing yield reconciliation)
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='submitted_bmr_entries',
+        help_text="QA officer who signs after packing yield reconciliation"
+    )
+    submitted_by_signature = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Electronic signature of QA officer (final submission)"
+    )
+    submitted_by_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date and time when QA signed final submission"
+    )
+    
+    # RECEIVED BACK BY (QA receives back completed batch documentation)
+    received_back_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='received_back_bmr_entries',
+        help_text="QA officer who receives back the completed batch documentation"
+    )
+    received_back_by_signature = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Electronic signature of QA officer receiving back documentation"
+    )
+    received_back_by_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date and time when QA received back documentation"
+    )
+    
+    # Additional fields for issuance log
+    release_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when batch was released after final QA approval"
+    )
+    pack_size = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Final packed quantity (e.g., '1000 blisters')"
+    )
+    remarks = models.TextField(
+        blank=True,
+        help_text="Any additional notes or comments"
+    )
+    
+    # Audit fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['issuance_log', 'entry_number']
+        unique_together = [['issuance_log', 'entry_number']]
+        verbose_name = 'BMR Issuance Log Entry'
+        verbose_name_plural = 'BMR Issuance Log Entries'
+    
+    def __str__(self):
+        return f"Entry #{self.entry_number} - Batch {self.bmr.batch_number}"
+    
+    @property
+    def batch_number(self):
+        """Get batch number from linked BMR"""
+        return self.bmr.batch_number
+    
+    @property
+    def manufacturing_date(self):
+        """Get manufacturing date from linked BMR"""
+        return self.bmr.manufacturing_date
+    
+    @property
+    def expiry_date(self):
+        """Get expiry date from linked BMR"""
+        return self.bmr.expiry_date
+    
+    @property
+    def batch_size(self):
+        """Get batch size from linked BMR"""
+        return self.bmr.batch_size
+    
+    def auto_populate_from_workflow(self):
+        """
+        Auto-populate issuance log fields from completed workflow phases.
+        Called when phases complete to update:
+        - pack_size (from blister_packing or bulk_packing phase)
+        - submitted_by (QA who completed final_qa)
+        - release_date (when QA completed final_qa - product released to finished goods)
+        
+        NOTE: received_by is NOT auto-populated - Production Manager must sign manually
+        """
+        from workflow.models import BatchPhaseExecution
+        
+        phases = BatchPhaseExecution.objects.filter(bmr=self.bmr, status='completed')
+        
+        # Get pack size from blister_packing phase
+        blister_phase = phases.filter(phase__phase_name='blister_packing').first()
+        if blister_phase and blister_phase.phase_data:
+            try:
+                pack_data = blister_phase.phase_data.get('packing_sections', {})
+                machine_setup = pack_data.get('machine_setup', {})
+                pack_size = machine_setup.get('blister_pack_size')
+                if pack_size and not self.pack_size:
+                    self.pack_size = pack_size
+            except Exception as e:
+                pass  # Silently ignore errors
+        
+        # Get pack size from bulk_packing phase if blister not found
+        if not self.pack_size:
+            bulk_phase = phases.filter(phase__phase_name='bulk_packing').first()
+            if bulk_phase and bulk_phase.phase_data:
+                try:
+                    pack_data = bulk_phase.phase_data.get('packing_sections', {})
+                    machine_setup = pack_data.get('machine_setup', {})
+                    pack_size = machine_setup.get('bulk_pack_size')
+                    if pack_size:
+                        self.pack_size = pack_size
+                except Exception as e:
+                    pass
+        
+        # Update submitted_by and release_date from final_qa
+        final_qa = phases.filter(phase__phase_name='final_qa').first()
+        if final_qa and final_qa.completed_by and not self.submitted_by:
+            self.submitted_by = final_qa.completed_by
+            self.submitted_by_signature = final_qa.completed_by.get_full_name() or final_qa.completed_by.username
+            self.submitted_by_date = final_qa.completed_date
+            
+            # Release date is when QA finished final_qa (released to finished goods)
+            if final_qa.completed_date and not self.release_date:
+                self.release_date = final_qa.completed_date.date()
+        
+        # Save if any fields were updated
+        if any([self.pack_size, self.submitted_by, self.release_date]):
+            self.save()
+    
+    @property
+    def batch_size_unit(self):
+        """Get batch size unit from linked BMR"""
+        return self.bmr.batch_size_unit
+    
+    def populate_active_ingredients(self):
+        """Populate active ingredients from product formulation"""
+        product = self.bmr.product
+        actives = product.ingredients.filter(ingredient_type='active').order_by('order')
+        
+        self.active_ingredients = [
+            {
+                'ar_number': ingredient.item_code or 'N/A',
+                'ingredient_name': ingredient.ingredient_name
+            }
+            for ingredient in actives
+        ]
+    
+    def save(self, *args, **kwargs):
+        """Auto-assign entry_number and populate active ingredients"""
+        # Auto-assign entry_number if not set
+        if not self.entry_number:
+            # Get the highest entry number for this log
+            last_entry = BMRIssuanceLogEntry.objects.filter(
+                issuance_log=self.issuance_log
+            ).order_by('-entry_number').first()
+            
+            self.entry_number = (last_entry.entry_number + 1) if last_entry else 1
+        
+        # Auto-populate active ingredients if not already set
+        if not self.active_ingredients:
+            self.populate_active_ingredients()
+        
+        super().save(*args, **kwargs)

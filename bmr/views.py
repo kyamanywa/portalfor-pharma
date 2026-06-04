@@ -343,13 +343,39 @@ def create_bmr_view(request):
                 approved_request.completed_date = timezone.now()
                 approved_request.save()
                 
+                # Create BMR Issuance Log Entry
+                from bmr.models import BMRIssuanceLog, BMRIssuanceLogEntry
+                try:
+                    # Get or create the product-level issuance log
+                    issuance_log, created = BMRIssuanceLog.objects.get_or_create(
+                        product=bmr.product
+                    )
+                    
+                    # Create entry for this batch
+                    entry = BMRIssuanceLogEntry.objects.create(
+                        issuance_log=issuance_log,
+                        bmr=bmr,
+                        issue_date=timezone.now().date(),
+                        issued_by=request.user,  # QA who created the BMR
+                        issued_by_signature=request.user.get_full_name(),
+                        issued_by_date=timezone.now()
+                    )
+                    # Populate active ingredients
+                    entry.populate_active_ingredients()
+                    entry.save()
+                except Exception as e:
+                    # Log error but don't prevent BMR creation
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Error creating BMR Issuance Log Entry: {str(e)}')
+                
                 # Notify the Production Manager who requested the BMR
                 from dashboards.views import create_notification
                 create_notification(
                     recipient=approved_request.requested_by,
                     notification_type='bmr_approved',
                     title=f'BMR Assigned: {bmr.batch_number}',
-                    message=f'Your BMR request for {bmr.product.product_name} has been assigned batch number {bmr.batch_number}. Production can now begin.',
+                    message=f'Your BMR request for {bmr.product.product_name} has been assigned batch number {bmr.batch_number}. Production can now begin. Please sign the BMR Issuance Log.',
                     priority='high',
                     bmr=bmr,
                     phase_execution=None
@@ -1538,6 +1564,267 @@ def reject_bmr_request(request, request_id):
         'bmr_request': bmr_request,
         'title': f'Reject BMR Request: {bmr_request.product.product_name}'
     })
+
+
+# ============================================================================
+# BMR ISSUANCE LOG VIEWS
+# ============================================================================
+
+@login_required
+def bmr_issuance_log_list(request):
+    """View to list all Product-based BMR Issuance Logs"""
+    from bmr.models import BMRIssuanceLog, BMRIssuanceLogEntry
+    from django.db.models import Q, Count
+    
+    # Check permissions - accessible to QA, Production Managers, Regulatory, and Admin
+    if request.user.role not in ['qa', 'production_manager', 'regulatory', 'admin']:
+        messages.error(request, 'You are not authorized to view BMR Issuance Logs')
+        return redirect('dashboards:dashboard_home')
+    
+    # Get all logs with entry counts
+    issuance_logs = BMRIssuanceLog.objects.select_related('product').annotate(
+        entry_count=Count('entries')
+    ).order_by('-updated_at')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        # Search by product name OR batch number
+        issuance_logs = issuance_logs.filter(
+            Q(product__product_name__icontains=search_query) |
+            Q(entries__bmr__batch_number__icontains=search_query)
+        ).distinct()
+    
+    # For Production Managers: Add count of entries needing their signature
+    if request.user.role == 'production_manager':
+        for log in issuance_logs:
+            log.pending_signature_count = log.entries.filter(
+                issued_by__isnull=False,  # Has been issued by QA
+                received_by__isnull=True  # Not yet received by Production Manager
+            ).count()
+    
+    return render(request, 'bmr/issuance_log_list.html', {
+        'issuance_logs': issuance_logs,
+        'search_query': search_query,
+        'title': 'BMR Issuance Logs'
+    })
+
+
+@login_required
+def bmr_issuance_log_detail(request, log_id):
+    """View to display a Product Issuance Log with all its batch entries in table format"""
+    from bmr.models import BMRIssuanceLog
+    
+    # Check permissions
+    if request.user.role not in ['qa', 'production_manager', 'regulatory', 'admin']:
+        messages.error(request, 'You are not authorized to view BMR Issuance Logs')
+        return redirect('dashboards:dashboard_home')
+    
+    issuance_log = get_object_or_404(
+        BMRIssuanceLog.objects.select_related('product').prefetch_related(
+            'entries__bmr',
+            'entries__issued_by',
+            'entries__received_by',
+            'entries__submitted_by'
+        ),
+        id=log_id
+    )
+    
+    # Get all batch entries for this product
+    entries = issuance_log.entries.all().order_by('entry_number')
+    
+    # Get active ingredient columns from CURRENT product formulation
+    # (not from first entry, so deleted ingredients don't show)
+    active_ingredient_columns = []
+    actives = issuance_log.product.ingredients.filter(ingredient_type='active').order_by('order')
+    for ingredient in actives:
+        active_ingredient_columns.append({
+            'ar_number': ingredient.item_code or 'N/A',
+            'ingredient_name': ingredient.ingredient_name
+        })
+    
+    # Align each entry's ingredients to match current formulation columns
+    entries_with_aligned_ingredients = []
+    for entry in entries:
+        # Create a dict mapping ingredient names to AR numbers from this entry
+        entry_ingredients_dict = {ing['ingredient_name']: ing['ar_number'] 
+                                   for ing in entry.active_ingredients}
+        
+        # Build aligned list matching column order
+        aligned_ingredients = []
+        for col in active_ingredient_columns:
+            ar_number = entry_ingredients_dict.get(col['ingredient_name'], '—')
+            aligned_ingredients.append(ar_number)
+        
+        # Attach aligned list to entry object
+        entry.aligned_ingredients = aligned_ingredients
+        entries_with_aligned_ingredients.append(entry)
+    
+    return render(request, 'bmr/issuance_log_detail.html', {
+        'log': issuance_log,
+        'entries': entries_with_aligned_ingredients,
+        'active_ingredient_columns': active_ingredient_columns,
+        'title': f'BMR Issuance Log - {issuance_log.product.product_name}'
+    })
+
+
+@login_required
+def bmr_issuance_log_download(request, log_id):
+    """Download BMR Issuance Log as PDF (product with all/selected batches)"""
+    from bmr.models import BMRIssuanceLog
+    from django.template.loader import render_to_string
+    from weasyprint import HTML
+    from django.utils import timezone
+    from django.conf import settings
+    import os
+    
+    # Check permissions
+    if request.user.role not in ['qa', 'production_manager', 'regulatory', 'admin']:
+        messages.error(request, 'You are not authorized to download BMR Issuance Logs')
+        return redirect('dashboards:dashboard_home')
+    
+    issuance_log = get_object_or_404(
+        BMRIssuanceLog.objects.select_related('product').prefetch_related(
+            'entries__bmr',
+            'entries__issued_by',
+            'entries__received_by',
+            'entries__submitted_by'
+        ),
+        id=log_id
+    )
+    
+    # Get selected entries or all entries
+    entry_ids = request.GET.getlist('entries')
+    if entry_ids:
+        entries = issuance_log.entries.filter(id__in=entry_ids).order_by('entry_number')
+    else:
+        entries = issuance_log.entries.all().order_by('entry_number')
+    
+    # Get active ingredient columns from CURRENT product formulation
+    active_ingredient_columns = []
+    actives = issuance_log.product.ingredients.filter(ingredient_type='active').order_by('order')
+    for ingredient in actives:
+        active_ingredient_columns.append({
+            'ar_number': ingredient.item_code or 'N/A',
+            'ingredient_name': ingredient.ingredient_name
+        })
+    
+    # Align each entry's ingredients to match current formulation columns
+    entries_with_aligned_ingredients = []
+    for entry in entries:
+        # Create a dict mapping ingredient names to AR numbers from this entry
+        entry_ingredients_dict = {ing['ingredient_name']: ing['ar_number'] 
+                                   for ing in entry.active_ingredients}
+        
+        # Build aligned list matching column order
+        aligned_ingredients = []
+        for col in active_ingredient_columns:
+            ar_number = entry_ingredients_dict.get(col['ingredient_name'], '—')
+            aligned_ingredients.append(ar_number)
+        
+        # Attach aligned list to entry object
+        entry.aligned_ingredients = aligned_ingredients
+        entries_with_aligned_ingredients.append(entry)
+    
+    # Get logo absolute path for WeasyPrint (use file:// URI for Windows)
+    logo_file_path = os.path.join(settings.BASE_DIR, 'static', 'Main1.png')
+    logo_path = f'file:///{logo_file_path.replace(chr(92), "/")}'  # Convert backslashes to forward slashes
+    
+    # Render HTML template
+    html_string = render_to_string('bmr/issuance_log_pdf.html', {
+        'log': issuance_log,
+        'entries': entries_with_aligned_ingredients,
+        'active_ingredient_columns': active_ingredient_columns,
+        'company_name': 'Kampala Pharmaceutical Industries',
+        'current_date': timezone.now().strftime('%Y-%m-%d %H:%M'),
+        'logo_path': logo_path
+    })
+    
+    # Generate PDF
+    html = HTML(string=html_string, base_url=request.build_absolute_uri())
+    pdf_file = html.write_pdf()
+    
+    # Create response
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    filename = f"BMR_Issuance_Log_{issuance_log.product.product_name.replace(' ', '_')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+
+@login_required
+def bmr_issuance_log_sign_received(request, entry_id):
+    """Production Officer signs 'Received By' section for a specific batch entry"""
+    if request.user.role != 'production_manager':
+        messages.error(request, 'Only Production Officers can sign the Received By section')
+        return redirect('dashboards:dashboard_home')
+    
+    from bmr.models import BMRIssuanceLogEntry
+    entry = get_object_or_404(BMRIssuanceLogEntry, id=entry_id)
+    
+    if entry.received_by:
+        messages.warning(request, 'This entry has already been signed by Production Officer')
+        return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+    
+    if request.method == 'POST':
+        signature = request.POST.get('signature', '')
+        if not signature:
+            messages.error(request, 'Signature is required')
+            return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+        
+        entry.received_by = request.user
+        entry.received_by_signature = signature
+        entry.received_by_date = timezone.now()
+        entry.save()
+        
+        messages.success(request, f'Batch entry #{entry.entry_number} signed successfully')
+        return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+    
+    return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+
+
+@login_required
+def bmr_issuance_log_sign_submitted(request, entry_id):
+    """QA signs 'Submitted By' section for a specific batch entry after packing"""
+    if request.user.role != 'qa':
+        messages.error(request, 'Only QA officers can sign the Submitted By section')
+        return redirect('dashboards:dashboard_home')
+    
+    from bmr.models import BMRIssuanceLogEntry
+    entry = get_object_or_404(BMRIssuanceLogEntry, id=entry_id)
+    
+    if entry.submitted_by:
+        messages.warning(request, 'This entry has already been signed by QA')
+        return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+    
+    # Check if packing is completed for this batch
+    from workflow.models import BatchPhaseExecution
+    packing_completed = BatchPhaseExecution.objects.filter(
+        bmr=entry.bmr,
+        phase__phase_name__in=['blister_packing', 'bulk_packing'],
+        status='completed'
+    ).exists()
+    
+    if not packing_completed:
+        messages.error(request, 'Cannot sign until packing yield reconciliation is completed')
+        return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+    
+    if request.method == 'POST':
+        signature = request.POST.get('signature', '')
+        if not signature:
+            messages.error(request, 'Signature is required')
+            return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+        
+        entry.submitted_by = request.user
+        entry.submitted_by_signature = signature
+        entry.submitted_by_date = timezone.now()
+        entry.save()
+        
+        messages.success(request, f'Batch entry #{entry.entry_number} final submission signed successfully')
+        return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+    
+    return redirect('bmr:issuance_log_detail', log_id=entry.issuance_log.id)
+
 
 @login_required
 def save_granulation_data(request, bmr_id):

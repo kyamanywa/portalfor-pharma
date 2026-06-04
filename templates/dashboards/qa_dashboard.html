@@ -508,7 +508,7 @@
 <div class="qa-layout">
 
 <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     LEFT SIDEBAR â€” Navigation Tree
+     LEFT SIDEBAR — Navigation Tree
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="qa-sidebar">
 
@@ -555,6 +555,11 @@
             {% else %}
             <span class="nav-badge gray">0</span>
             {% endif %}
+        </a>
+
+        <a class="qa-nav-item" href="{% url 'bmr:issuance_log_list' %}">
+            <span class="nav-icon"><i class="fas fa-file-invoice"></i></span>
+            <span class="nav-label">BMR Issuance Logs</span>
         </a>
 
         <!-- Line Clearances -->
@@ -1185,10 +1190,20 @@
                 <div class="qa-section-item" style="color:#6b7a9e;font-size:11px;padding:4px 12px;">
                     <span>Mixing &amp; Homogenizing Process</span>
                 </div>
+                {% endfor %}
+                {% if mixing_ipc_pending %}
+                {% for pe in mixing_ipc_pending_executions %}
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' pe.id %}#oint-mix-ipc">
+                    <span class="sec-dot" style="background:#28a745;"></span>
+                    <span>Post-Mixing QC IPC &mdash; {{ pe.bmr.batch_number }}</span>
+                    <span class="sec-badge" style="background:#28a745;">Fill</span>
+                </a>
+                {% endfor %}
+                {% else %}
                 <div class="qa-section-item" style="color:#6b7a9e;font-size:11px;padding:4px 12px;">
                     <span>Post-Mixing QC IPC</span>
                 </div>
-                {% endfor %}
+                {% endif %}
                 {% if mixing_lc_ending_pending %}
                 {% for lc in mixing_lc_ending_executions %}
                 <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' lc.id %}">
@@ -1461,7 +1476,7 @@
 
     <!-- Search box -->
     <div class="qa-sidebar-search">
-        <input type="text" id="bmrSearchInput" placeholder="ðŸ”  Search batch / productâ€¦" oninput="filterBMRSearch(this.value)">
+        <input type="text" id="bmrSearchInput" placeholder="ðŸ”  Search batch / product…" oninput="filterBMRSearch(this.value)">
         <div class="bmr-search-results" id="bmrSearchResults"></div>
     </div>
 
@@ -1716,12 +1731,6 @@
                 <i class="fas fa-people-carry me-1"></i>Secondary Packing
                 <span class="qa-tab-count">{{ secondary_sections_total_pending }}</span>
             </div>
-            {% if tab_fp_recon_pending_qa %}
-            <div class="qa-tab" onclick="switchTab('tab-tab-fp-recon', this)" id="section-tab-fp-recon" style="scroll-margin-top:80px;">
-                <i class="fas fa-clipboard-check me-1"></i>Tablet FP Recon
-                <span class="qa-tab-count">{{ tab_fp_recon_pending_qa|length }}</span>
-            </div>
-            {% endif %}
             <div class="qa-tab" onclick="switchTab('tab-final', this)" id="section-final-qa">
                 <i class="fas fa-check-double me-1"></i>Final QA Review
                 <span class="qa-tab-count">{{ final_qa_pending.count|add:final_qa_in_progress.count }}</span>
@@ -1815,8 +1824,8 @@
                     <td><a href="{% url 'bmr:detail' item.bmr.pk %}" class="batch-link">{{ item.bmr.batch_number }}</a></td>
                     <td>{{ item.bmr.product.product_name }}</td>
                     <td><span class="pill pill-blue">{{ item.section_label }}</span></td>
-                    <td>{{ item.submitted_by|default:"â€”" }}</td>
-                    <td>{{ item.submitted_date|default:"â€”" }}</td>
+                    <td>{{ item.submitted_by|default:"—" }}</td>
+                    <td>{{ item.submitted_date|default:"—" }}</td>
                     <td>
                         <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}" class="btn btn-primary btn-qa btn-sm">
                             <i class="fas fa-pen-fancy me-1"></i>Review &amp; Sign
@@ -2118,7 +2127,7 @@
                     <td>{{ item.submitted_by|default:"&mdash;" }}</td>
                     <td><span class="pill pill-amber">Awaiting QA Verification</span></td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}"
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#packaging-materials-requisition"
                            class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-stamp me-1"></i>Review &amp; Verify
                         </a>
@@ -2363,37 +2372,6 @@
             {% endif %}
         </div><!-- end tab-dynamic -->
 
-        <!-- TAB: Tablet FP Reconciliation (QA Verification) -->
-        <div class="qa-tab-content" id="tab-tab-fp-recon">
-            {% if tab_fp_recon_pending_qa %}
-            <div style="padding:12px 16px 4px;font-size:11px;font-weight:700;color:#9aa5c9;text-transform:uppercase;letter-spacing:.8px;">
-                Tablet FP Reconciliation &mdash; Awaiting QA Verification
-            </div>
-            <table class="qa-table">
-                <thead><tr>
-                    <th>Batch No.</th><th>Product</th><th>Submitted By</th><th>Submitted Date</th><th>Actions</th>
-                </tr></thead>
-                <tbody>
-                {% for item in tab_fp_recon_pending_qa %}
-                <tr>
-                    <td><a href="{% url 'bmr:detail' item.bmr.pk %}" class="batch-link">{{ item.bmr.batch_number }}</a></td>
-                    <td>{{ item.bmr.product.product_name }}</td>
-                    <td>{{ item.submitted_by|default:"—" }}</td>
-                    <td>{{ item.submitted_date|default:"—" }}</td>
-                    <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#tab-fp-recon-page" class="btn btn-primary btn-qa btn-sm">
-                            <i class="fas fa-clipboard-check me-1"></i>Verify &amp; Approve
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="qa-empty"><i class="fas fa-check-double" style="color:#0d9f6e;opacity:.5;"></i><p>No tablet FP Reconciliation sheets awaiting QA verification</p></div>
-            {% endif %}
-        </div><!-- end tab-tab-fp-recon -->
-
         <!-- TAB: Final QA Review -->
         <div class="qa-tab-content" id="tab-final">
             {% if final_qa_pending or final_qa_in_progress %}
@@ -2481,7 +2459,7 @@
         <div class="qa-section-header">
             <div class="title">
                 <span class="section-ico" style="background:#fff0f0;color:#e53e3e;"><i class="fas fa-exclamation-triangle"></i></span>
-                Rejected BMRs â€” Rework Required
+                Rejected BMRs — Rework Required
             </div>
             <span class="count-pill bg-danger text-white">{{ rejected_bmrs_for_review.count }} batch{{ rejected_bmrs_for_review.count|pluralize:"es" }}</span>
         </div>
@@ -2520,7 +2498,7 @@
         <div class="qa-section-header">
             <div class="title">
                 <span class="section-ico" style="background:#fffbeb;color:#d4970b;"><i class="fas fa-vial"></i></span>
-                Quarantine Samples â€” Pending Processing
+                Quarantine Samples — Pending Processing
             </div>
             <span class="count-pill bg-warning text-dark">{{ pending_quarantine_samples.count }} sample{{ pending_quarantine_samples.count|pluralize }}</span>
         </div>

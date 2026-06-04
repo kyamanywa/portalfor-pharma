@@ -162,7 +162,8 @@
         form.method = 'POST';
         form.action = `/dashboard/notifications/${notificationId}/mark-read/`;
         
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfEl2 = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrfToken = csrfEl2 ? csrfEl2.value : '{{ csrf_token }}';
         const csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';
         csrfInput.name = 'csrfmiddlewaretoken';
@@ -179,7 +180,8 @@
             form.method = 'POST';
             form.action = '/dashboard/notifications/clear-all/';
             
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+            const csrfToken = csrfEl ? csrfEl.value : '{{ csrf_token }}';
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
             csrfInput.name = 'csrfmiddlewaretoken';

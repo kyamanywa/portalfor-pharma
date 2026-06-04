@@ -1390,7 +1390,7 @@ def qa_dashboard(request):
     # ── Secondary Packaging Sections pending QA sign-off ────────────────────────
     from dashboards.bmr_form_views import SECONDARY_SECTIONS, get_secondary_section_statuses
     _secondary_phases = BatchPhaseExecution.objects.filter(
-        status='in_progress',
+        status__in=['pending', 'in_progress'],
         phase__phase_name='secondary_packaging',
     ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
 
@@ -1463,18 +1463,37 @@ def qa_dashboard(request):
                     })
                     _added_for_spe = True
             elif _skey == 'sec_fp_recon':
-                # Multi-stage: check recon_stage inside section data
-                _fpr_d = _ss_top.get('sec_fp_recon', {})
-                _fpr_stage = _fpr_d.get('recon_stage', 'not_started')
-                if _fpr_stage == 'spv_submitted':
+                # Multi-stage: check recon_stage in BOTH tablet_fp_recon AND secondary_sections_data
+                # Tablets store in: phase_data['tablet_fp_recon']
+                # Ointments/Capsules store in: phase_data['secondary_sections_data']['sec_fp_recon']
+                _fpr_d_tablet = _spd.get('tablet_fp_recon', {})
+                _fpr_stage_tablet = _fpr_d_tablet.get('recon_stage', 'not_started')
+                
+                _fpr_d_oint_caps = _ss_top.get('sec_fp_recon', {})
+                _fpr_stage_oint_caps = _fpr_d_oint_caps.get('recon_stage', 'not_started')
+                
+                if _fpr_stage_tablet == 'spv_submitted':
+                    # Tablet reconciliation pending
                     pending_secondary_signing.append({
                         'phase_execution': _spe,
                         'bmr': _spe.bmr,
-                        'section_key': _skey,
-                        'section_label': 'Finished Product Reconciliation — QA Verification (Page 28)',
+                        'section_key': 'sec_fp_recon',
+                        'section_label': 'Tablet FP Reconciliation — QA Verification',
                         'action_type': 'qa_sign',
-                        'submitted_by': _fpr_d.get('spv_submitted_by', ''),
-                        'submitted_date': _fpr_d.get('spv_submitted_date', ''),
+                        'submitted_by': _fpr_d_tablet.get('spv_submitted_by', ''),
+                        'submitted_date': _fpr_d_tablet.get('spv_submitted_date', ''),
+                    })
+                    _added_for_spe = True
+                elif _fpr_stage_oint_caps == 'spv_submitted':
+                    # Ointment/Capsule reconciliation pending
+                    pending_secondary_signing.append({
+                        'phase_execution': _spe,
+                        'bmr': _spe.bmr,
+                        'section_key': 'sec_fp_recon',
+                        'section_label': 'FP Reconciliation — QA Verification',
+                        'action_type': 'qa_sign',
+                        'submitted_by': _fpr_d_oint_caps.get('spv_submitted_by', ''),
+                        'submitted_date': _fpr_d_oint_caps.get('spv_submitted_date', ''),
                     })
                     _added_for_spe = True
             else:
@@ -1752,9 +1771,17 @@ def qa_dashboard(request):
     ]
     mixing_process_pending = len(mixing_process_pending_executions) > 0
 
+    # Mixing QA IPC Report pending (mix_process approved, mix_qa_ipc not yet approved)
+    mixing_ipc_pending_executions = [
+        pe for pe in _mixing_step4_pending_pes
+        if (pe.phase_data or {}).get('mixing_sections', {}).get('section_statuses', {}).get('mix_process') == 'qa_approved'
+        and (pe.phase_data or {}).get('mixing_sections', {}).get('section_statuses', {}).get('mix_qa_ipc') != 'qa_approved'
+    ]
+    mixing_ipc_pending = len(mixing_ipc_pending_executions) > 0
+
     mixing_total_pending = (int(mixing_lc_beginning_pending) + int(mixing_lc_ending_pending)
         + len(pending_mixing_dynamic) + len(mixing_step4_pending_executions)
-        + len(mixing_process_pending_executions))
+        + len(mixing_process_pending_executions) + len(mixing_ipc_pending_executions))
 
     # ── Tube Filling phase LC + process pending (ointment) ──────────────────────
     tube_filling_lc_beginning_pending = any(
@@ -1863,15 +1890,20 @@ def qa_dashboard(request):
     # ── Tablet FP Reconciliation pending QA verification ─────────────────────
     _tab_fqa_for_qa = list(
         BatchPhaseExecution.objects.filter(
-            phase__phase_name='final_qa',
-            status='in_progress',
+            phase__phase_name='secondary_packaging',
+            status__in=['pending', 'in_progress'],
             bmr__product__product_type='tablet',
         ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
     )
     tab_fp_recon_pending_qa = []
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[QA DEBUG] Found {len(_tab_fqa_for_qa)} secondary_packaging phases for tablets")
     for _tpe in _tab_fqa_for_qa:
         _tpd = _tpe.phase_data or {}
         _tfr = _tpd.get('tablet_fp_recon', {})
+        _recon_stage = _tfr.get('recon_stage', 'not_found')
+        logger.info(f"[QA DEBUG] BMR {_tpe.bmr.batch_number}: recon_stage={_recon_stage}, status={_tpe.status}")
         if _tfr.get('recon_stage') == 'spv_submitted':
             tab_fp_recon_pending_qa.append({
                 'phase_execution': _tpe,
@@ -1879,6 +1911,32 @@ def qa_dashboard(request):
                 'submitted_by': _tfr.get('spv_submitted_by', ''),
                 'submitted_date': _tfr.get('spv_submitted_date', ''),
             })
+    logger.info(f"[QA DEBUG] Filtered to {len(tab_fp_recon_pending_qa)} items with recon_stage=spv_submitted")
+
+    # ── Ointment/Capsule FP Reconciliation pending QA verification ───────────
+    _oint_caps_for_qa = list(
+        BatchPhaseExecution.objects.filter(
+            phase__phase_name='secondary_packaging',
+            status__in=['pending', 'in_progress'],
+            bmr__product__product_type__in=['ointment', 'capsule'],
+        ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:30]
+    )
+    oint_caps_recon_pending_qa = []
+    logger.info(f"[QA DEBUG] Found {len(_oint_caps_for_qa)} secondary_packaging phases for ointments/capsules")
+    for _ope in _oint_caps_for_qa:
+        _opd = _ope.phase_data or {}
+        _sec_data = _opd.get('secondary_sections_data', {})
+        _fp_recon = _sec_data.get('sec_fp_recon', {})
+        _recon_stage = _fp_recon.get('recon_stage', 'not_found')
+        logger.info(f"[QA DEBUG] BMR {_ope.bmr.batch_number}: recon_stage={_recon_stage}, status={_ope.status}, type={_ope.bmr.product.product_type}")
+        if _fp_recon.get('recon_stage') == 'spv_submitted':
+            oint_caps_recon_pending_qa.append({
+                'phase_execution': _ope,
+                'bmr': _ope.bmr,
+                'submitted_by': _fp_recon.get('spv_submitted_by', ''),
+                'submitted_date': _fp_recon.get('spv_submitted_date', ''),
+            })
+    logger.info(f"[QA DEBUG] Filtered to {len(oint_caps_recon_pending_qa)} ointment/capsule items with recon_stage=spv_submitted")
 
     context = {
         'user': request.user,
@@ -1955,6 +2013,8 @@ def qa_dashboard(request):
         'mixing_step4_pending_executions': mixing_step4_pending_executions,
         'mixing_process_pending': mixing_process_pending,
         'mixing_process_pending_executions': mixing_process_pending_executions,
+        'mixing_ipc_pending': mixing_ipc_pending,
+        'mixing_ipc_pending_executions': mixing_ipc_pending_executions,
         'mixing_total_pending': mixing_total_pending,
         'dispensing_lc_beginning_pending': dispensing_lc_beginning_pending,
         'dispensing_lc_ending_pending': dispensing_lc_ending_pending,
@@ -1990,6 +2050,7 @@ def qa_dashboard(request):
         'dashboard_title': 'Quality Assurance Dashboard',
         'operator_history': operator_history,
         'tab_fp_recon_pending_qa': tab_fp_recon_pending_qa,
+        'oint_caps_recon_pending_qa': oint_caps_recon_pending_qa,
     }
     return render(request, 'dashboards/qa_dashboard.html', context)
 

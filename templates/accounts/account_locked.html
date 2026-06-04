@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Locked - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-lg border-0">
+            <!-- KPI Branded Header -->
+            <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #0056b3 0%, #003d82 100%);">
+                {% load static %}
+                <div class="mb-3">
+                    <img src="{% static 'Main Logo.png' %}" alt="KPI Logo" height="50" onerror="this.style.display='none'">
+                </div>
+                <h4 class="mb-1 fw-bold" style="color: white;">
+                    Kampala Pharmaceutical Industries
+                </h4>
+                <p class="mb-0 small" style="color: rgba(255,255,255,0.9);">Operations Management System</p>
+            </div>
+            
+            <!-- Lock Notice Content -->
+            <div class="card-body text-center p-4">
+                <!-- Lock Icon -->
+                <div class="mb-4">
+                    <i class="fas fa-lock" style="font-size: 64px; color: #dc3545;"></i>
+                </div>
+                
+                <h3 class="mb-4 fw-bold">Account Temporarily Locked</h3>
+                
+                <!-- Security Alert -->
+                <div class="alert alert-danger d-flex align-items-center" role="alert">
+                    <i class="fas fa-shield-alt me-3" style="font-size: 24px;"></i>
+                    <div class="text-start">
+                        <strong>Security Notice:</strong> Your account has been temporarily locked due to multiple failed login attempts.
+                    </div>
+                </div>
+                
+                <p class="text-muted mb-4">
+                    This is a security measure to protect your account from unauthorized access.
+                </p>
+                
+                <!-- Action Items -->
+                <div class="card bg-light border-0 mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title text-start mb-3">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            What to do next:
+                        </h5>
+                        <ul class="list-unstyled text-start mb-0">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Wait for <strong>1 hour</strong> and try again
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Ensure you're using the correct credentials
+                            </li>
+                            <li class="mb-0">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Contact IT support if you need immediate access
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Help Contact -->
+                <div class="alert alert-info mb-4" role="alert">
+                    <strong><i class="fas fa-life-ring me-2"></i>Need Help?</strong><br>
+                    <small>Contact: <strong>it@kpi.com</strong> or call the IT helpdesk</small>
+                </div>
+                
+                <!-- Return Button -->
+                <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Return to Login
+                </a>
+            </div>
+            
+            <!-- Footer -->
+            <div class="card-footer text-center text-muted py-3" style="background-color: #f8f9fa;">
+                <small>
+                    <i class="fas fa-lock me-1"></i>
+                    Secure pharmaceutical operations system
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

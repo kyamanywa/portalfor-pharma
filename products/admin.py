@@ -40,6 +40,7 @@ class ProductIngredientInline(admin.TabularInline):
     extra = 2
     fields = ['order', 'ingredient_name', 'item_code', 'ingredient_type', 'quantity_per_unit', 'overage', 'lot_count', 'unit_of_measure', 'supplier']
     ordering = ['order', 'id']
+    can_delete = True
     verbose_name = "Raw Material / Ingredient"
     verbose_name_plural = "Raw Materials / Ingredients (Dispensing Sheet)"
 

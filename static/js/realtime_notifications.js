@@ -374,6 +374,9 @@ class RealTimeNotifications {
 }
 
 // Initialize real-time notifications when DOM is ready
+// NOTE: WebSocket requires ASGI server (Daphne/Uvicorn), not Django runserver
+// Temporarily disabled to prevent connection errors
+/*
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (WebSocket requires auth)
     if (typeof window.userId !== 'undefined' && window.userId) {
@@ -388,6 +391,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('User not authenticated, skipping WebSocket connection');
     }
 });
+*/
 
 // Clean up on page unload
 window.addEventListener('beforeunload', function() {

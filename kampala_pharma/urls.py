@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from dashboards.views import dashboard_home
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 # Import comprehensive API configuration
 try:
@@ -33,6 +34,11 @@ urlpatterns = [
     path('quarantine/', include('quarantine.urls', namespace='quarantine')),
     path('reports/', include('reports.urls', namespace='reports')),
     path('fgs/', include('fgs_management.urls', namespace='fgs_management')),
+    
+    # API Documentation (OpenAPI/Swagger) - NEW!
+    path('api/schema/', SpectacularAPIView.as_view(), name='api-schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='api-schema'), name='api-docs'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='api-schema'), name='api-redoc'),
     
     # Comprehensive API for integrations
     path('api/v1/', include(api_urlpatterns)),

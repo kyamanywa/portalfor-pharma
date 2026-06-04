@@ -60,3 +60,9 @@ class UserSession(models.Model):
     class Meta:
         verbose_name = "User Session"
         verbose_name_plural = "User Sessions"
+
+
+# Import SecuritySettings model
+from .security_settings import SecuritySettings
+
+__all__ = ['CustomUser', 'UserSession', 'SecuritySettings']

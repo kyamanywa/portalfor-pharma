@@ -481,23 +481,62 @@ class WorkflowTemplatePhaseAdmin(admin.ModelAdmin):
 
 # ============ ENHANCED PRODUCTION PHASE ADMIN ============
 
+class PhaseDataAdminForm(forms.ModelForm):
+    """Custom form to provide a large, clearly labelled textarea for phase_data JSON editing."""
+    phase_data = forms.JSONField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'rows': 40,
+            'cols': 120,
+            'style': (
+                'font-family: monospace; font-size: 12px; '
+                'background: #1e1e2e; color: #cdd6f4; '
+                'border: 2px solid #f38ba8; border-radius: 4px; '
+                'padding: 10px; width: 100%;'
+            ),
+        }),
+        help_text=(
+            'WARNING: This is raw JSON. Edit carefully — wrong syntax will corrupt the record. '
+            'Keys are section names (e.g. "blending", "compression_sections"). '
+            'Save a copy before editing.'
+        ),
+    )
+
+    class Meta:
+        model = BatchPhaseExecution
+        fields = '__all__'
+
+
 @admin.register(BatchPhaseExecution)
 class BatchPhaseExecutionAdmin(admin.ModelAdmin):
-    list_display = ['bmr', 'phase', 'status', 'machine_used', 'started_by', 'completed_by', 'started_date', 'completed_date']
-    list_filter = ['status', 'phase__product_type', 'phase__phase_name', 'machine_used', 'breakdown_occurred', 'changeover_occurred', 'started_date', 'completed_date']
-    search_fields = ['bmr__batch_number', 'phase__phase_name', 'operator_comments', 'machine_used__name']
+    form = PhaseDataAdminForm
+    list_display = ['get_bmr_number', 'get_phase_name', 'status', 'started_by', 'completed_by', 'started_date', 'completed_date']
+    list_filter = ['status', 'phase__product_type', 'phase__phase_name', 'breakdown_occurred', 'started_date', 'completed_date']
+    search_fields = ['bmr__batch_number', 'bmr__bmr_number', 'phase__phase_name', 'operator_comments']
     readonly_fields = ['created_date']
     ordering = ['-started_date']
-    
+
     fieldsets = (
-        (None, {
+        ('Batch & Phase', {
             'fields': ('bmr', 'phase', 'status', 'machine_used')
         }),
         ('Execution Details', {
             'fields': ('started_by', 'completed_by', 'started_date', 'completed_date', 'created_date')
         }),
+        ('Workflow State (Admin Control)', {
+            'fields': ('template_section_completed', 'beginning_lc_status', 'ending_lc_status'),
+            'description': 'Use these to unlock/reset phase workflow states if needed.',
+        }),
         ('Comments', {
             'fields': ('operator_comments', 'qa_comments')
+        }),
+        ('⚠ Operator-Filled Phase Data — ADMIN EDIT', {
+            'fields': ('phase_data',),
+            'description': (
+                'All data entered by operators is stored here as JSON. '
+                'You can correct wrong values by editing the JSON directly. '
+                'Be careful with the JSON syntax — use a JSON validator if unsure.'
+            ),
         }),
         ('Breakdown Information', {
             'fields': ('breakdown_occurred', 'breakdown_start_time', 'breakdown_end_time'),
@@ -512,7 +551,31 @@ class BatchPhaseExecutionAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
+    def get_bmr_number(self, obj):
+        return obj.bmr.bmr_number if obj.bmr else '-'
+    get_bmr_number.short_description = 'BMR Number'
+    get_bmr_number.admin_order_field = 'bmr__bmr_number'
+
+    def get_phase_name(self, obj):
+        return obj.phase.phase_name.replace('_', ' ').title() if obj.phase else '-'
+    get_phase_name.short_description = 'Phase'
+    get_phase_name.admin_order_field = 'phase__phase_name'
+
+    def save_model(self, request, obj, form, change):
+        """Log who made admin edits to phase data."""
+        if change and 'phase_data' in form.changed_data:
+            import logging
+            logger = logging.getLogger('django')
+            logger.warning(
+                'ADMIN PHASE DATA EDIT: User=%s edited phase_data for BMR=%s phase=%s (PE id=%s)',
+                request.user.username,
+                obj.bmr.bmr_number if obj.bmr else '?',
+                obj.phase.phase_name if obj.phase else '?',
+                obj.pk,
+            )
+        super().save_model(request, obj, form, change)
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('bmr', 'phase', 'started_by', 'completed_by', 'machine_used')
 

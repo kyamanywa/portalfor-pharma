@@ -937,7 +937,7 @@
         </td></tr>
         <tr style="background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">BEGINNING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;width:15%;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Status</th></tr>
 {% get_phase_lc_items 'dispensing' 'beginning' as config_dispensing_begin %}
-{% with lc_begin_items=lc_items|default:config_dispensing_begin %}
+{% with lc_begin_items=config_dispensing_begin %}
 {% if lc_begin_items %}{% for item in lc_begin_items %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item|linebreaksbr }}</td>
@@ -998,7 +998,7 @@
             <textarea name="dispensing_beginning_remarks" style="width:100%;min-height:35px;border:1px solid #999;padding:4px;font-size:11px;background:#ffffdd;" placeholder="Enter any remarks...">{{ lc_data.dispensing_beginning_remarks|default:'' }}</textarea>
             {% else %}{{ lc_data.dispensing_beginning_remarks|default:"___________________________________________________________________" }}{% endif %}
         </td></tr>
-    {% if edit_mode == 'dispensing' and has_line_clearance %}
+    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
     </table>
     <div class="no-print" style="margin:8px 0 12px 0;">
         {% if user_role != 'qa' and disp_lc.beginning_lc_status == 'not_started' %}
@@ -1021,11 +1021,11 @@
         {% endif %}
     </div>
     {% endif %}
-    {% if edit_mode == 'dispensing' and has_line_clearance %}
+    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <tr id="cap-disp-end-lc" style="scroll-margin-top:70px;background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">ENDING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;width:15%;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Status</th></tr>
 {% get_phase_lc_items 'dispensing' 'ending' as config_dispensing_end %}
-{% with lc_end_list=lc_end_items|default:config_dispensing_end %}
+{% with lc_end_list=config_dispensing_end %}
 {% if lc_end_list %}{% for item in lc_end_list %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item }}</td>
@@ -1126,8 +1126,8 @@
     </table>
     {# ==================== BLENDING LC ==================== #}
     {% with blend_lc=phase_executions.blending %}
-    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}<form method="POST" action="" id="blendingLCForm">{% csrf_token %}{% endif %}
-    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blending' and has_line_clearance %}<form method="POST" action="" id="blendingLCForm">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blending' and has_line_clearance %}
         {% if user_role != 'qa' %}
             {% if blend_lc.beginning_lc_status == 'not_started' %}
             <div class="alert alert-warning no-print" style="margin-bottom:8px;"><i class="fas fa-clipboard-check me-2"></i><strong>BEGINNING LINE CLEARANCE:</strong> Fill the checklist items, sign your columns, then click <strong>Submit to QA</strong>.</div>
@@ -1158,7 +1158,7 @@
         </td></tr>
         <tr style="background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">BEGINNING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;width:15%;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Status</th></tr>
 {% get_phase_lc_items 'blending' 'beginning' as config_blending_begin %}
-{% with lc_begin_items=lc_items|default:config_blending_begin %}
+{% with lc_begin_items=config_blending_begin %}
 {% if lc_begin_items %}{% for item in lc_begin_items %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item|linebreaksbr }}</td>
@@ -1216,7 +1216,7 @@
             <textarea name="blending_beginning_remarks" style="width:100%;min-height:35px;border:1px solid #999;padding:4px;font-size:11px;background:#ffffdd;" placeholder="Enter any remarks...">{{ lc_data.blending_beginning_remarks|default:'' }}</textarea>
             {% else %}{{ lc_data.blending_beginning_remarks|default:"___________________________________________________________________" }}{% endif %}
         </td></tr>
-    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blending' and has_line_clearance %}
     </table>
     <div class="no-print" style="margin:8px 0 12px 0;">
         {% if user_role != 'qa' and blend_lc.beginning_lc_status == 'not_started' %}
@@ -1243,7 +1243,7 @@
     {% endif %}
         <tr id="cap-blend-end-lc" style="scroll-margin-top:70px;background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">ENDING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;width:15%;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Status</th></tr>
 {% get_phase_lc_items 'blending' 'ending' as config_blending_end %}
-{% with lc_end_list=lc_end_items|default:config_blending_end %}
+{% with lc_end_list=config_blending_end %}
 {% if lc_end_list %}{% for item in lc_end_list %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item }}</td>
@@ -1300,7 +1300,7 @@
             {% else %}{{ lc_data.blending_ending_remarks|default:"___________________________________________________________________" }}{% endif %}
         </td></tr>
     </table>
-    {% if edit_mode == 'blending' and has_line_clearance and blend_lc.status == 'in_progress' and blend_lc.template_section_completed or edit_mode == 'qa' and has_line_clearance and blend_lc.status == 'in_progress' and blend_lc.template_section_completed %}
+    {% if edit_mode == 'blending' and has_line_clearance and blend_lc.status == 'in_progress' and blend_lc.template_section_completed or edit_mode == 'qa' and phase_name == 'blending' and has_line_clearance and blend_lc.status == 'in_progress' and blend_lc.template_section_completed %}
     <div class="no-print" style="margin:8px 0;">
         {% if user_role != 'qa' and blend_lc.ending_lc_status == 'not_started' %}
         <div class="d-flex gap-2 justify-content-end">
@@ -1318,7 +1318,7 @@
         {% endif %}
     </div>
     {% endif %}
-    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}</form>{% endif %}
+    {% if edit_mode == 'blending' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blending' and has_line_clearance %}</form>{% endif %}
     {% endwith %}{# end blend_lc #}
 </div>
 
@@ -1337,9 +1337,9 @@
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">MFR No.</td><td style="border:2px solid #000;padding:8px;">{{ bmr.product.mfr_number|default:"-" }}</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Date:</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Shift :</td></tr>
     </table>
     <h5 style="margin:14px 0 8px 0;font-weight:bold;text-align:center;">BLENDING/LUBRICATION</h5>
-    {% if edit_mode == 'blending' %}<form method="POST" action="" id="blendingDataForm">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}<form method="POST" action="" id="blendingDataForm">{% csrf_token %}{% endif %}
     {# ---- Status alerts ---- #}
-    {% if edit_mode == 'blending' %}
+    {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}
     <div class="no-print">
         {# Sifting (sections 1-4) status #}
         {% if blending_data_status == 'not_started' and user_role != 'qa' %}
@@ -1385,8 +1385,8 @@
                     {% blending_equip_mark blending_data forloop.counter as b_eq_mark %}
                     {% if edit_mode == 'blending' and blending_data_status == 'not_started' %}
                     <input type="hidden" name="equip_{{ forloop.counter }}_mark" id="id_equip_{{ forloop.counter }}_mark" value="{{ b_eq_mark }}">
-                    <button type="button" onclick="setEquipMark('id_equip_{{ forloop.counter }}_mark','?')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if b_eq_mark == '?' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">?</button>
-                    <button type="button" onclick="setEquipMark('id_equip_{{ forloop.counter }}_mark','?')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if b_eq_mark == '?' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">?</button>
+                    <button type="button" onclick="setEquipMark('id_equip_{{ forloop.counter }}_mark','✓')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if b_eq_mark == '✓' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">✓</button>
+                    <button type="button" onclick="setEquipMark('id_equip_{{ forloop.counter }}_mark','✗')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if b_eq_mark == '✗' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">✗</button>
                     {% else %}{{ b_eq_mark }}{% endif %}
                 </td>
             </tr>
@@ -1394,17 +1394,17 @@
             <tr>
                 <td style="border:1px solid #000;padding:6px;">Double Cone Blender</td>
                 <td style="border:1px solid #000;padding:6px;text-align:center;">PN-06</td>
-                <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'blending' and blending_data_status == 'not_started' %}<input type="hidden" name="equip_1_mark" id="id_equip_1_mark" value="{{ blending_data.equip_1_mark|default:'' }}"><button type="button" onclick="setEquipMark('id_equip_1_mark','?')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_1_mark == '?' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">?</button><button type="button" onclick="setEquipMark('id_equip_1_mark','?')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_1_mark == '?' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">?</button>{% else %}{{ blending_data.equip_1_mark|default:'' }}{% endif %}</td>
+                <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'blending' and blending_data_status == 'not_started' %}<input type="hidden" name="equip_1_mark" id="id_equip_1_mark" value="{{ blending_data.equip_1_mark|default:'' }}"><button type="button" onclick="setEquipMark('id_equip_1_mark','✓')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_1_mark == '✓' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">✓</button><button type="button" onclick="setEquipMark('id_equip_1_mark','✗')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_1_mark == '✗' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">✗</button>{% else %}{{ blending_data.equip_1_mark|default:'' }}{% endif %}</td>
             </tr>
             <tr>
                 <td style="border:1px solid #000;padding:6px;">Multimill</td>
                 <td style="border:1px solid #000;padding:6px;text-align:center;">PN-09</td>
-                <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'blending' and blending_data_status == 'not_started' %}<input type="hidden" name="equip_2_mark" id="id_equip_2_mark" value="{{ blending_data.equip_2_mark|default:'' }}"><button type="button" onclick="setEquipMark('id_equip_2_mark','?')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_2_mark == '?' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">?</button><button type="button" onclick="setEquipMark('id_equip_2_mark','?')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_2_mark == '?' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">?</button>{% else %}{{ blending_data.equip_2_mark|default:'' }}{% endif %}</td>
+                <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'blending' and blending_data_status == 'not_started' %}<input type="hidden" name="equip_2_mark" id="id_equip_2_mark" value="{{ blending_data.equip_2_mark|default:'' }}"><button type="button" onclick="setEquipMark('id_equip_2_mark','✓')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_2_mark == '✓' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">✓</button><button type="button" onclick="setEquipMark('id_equip_2_mark','✗')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_2_mark == '✗' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">✗</button>{% else %}{{ blending_data.equip_2_mark|default:'' }}{% endif %}</td>
             </tr>
             <tr>
                 <td style="border:1px solid #000;padding:6px;">Mechanical Sifter</td>
                 <td style="border:1px solid #000;padding:6px;text-align:center;">PN-07</td>
-                <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'blending' and blending_data_status == 'not_started' %}<input type="hidden" name="equip_3_mark" id="id_equip_3_mark" value="{{ blending_data.equip_3_mark|default:'' }}"><button type="button" onclick="setEquipMark('id_equip_3_mark','?')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_3_mark == '?' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">?</button><button type="button" onclick="setEquipMark('id_equip_3_mark','?')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_3_mark == '?' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">?</button>{% else %}{{ blending_data.equip_3_mark|default:'' }}{% endif %}</td>
+                <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'blending' and blending_data_status == 'not_started' %}<input type="hidden" name="equip_3_mark" id="id_equip_3_mark" value="{{ blending_data.equip_3_mark|default:'' }}"><button type="button" onclick="setEquipMark('id_equip_3_mark','✓')" style="width:32px;height:28px;border:2px solid #28a745;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_3_mark == '✓' %}background:#28a745;color:#fff;{% else %}background:#fff;color:#28a745;{% endif %}">✓</button><button type="button" onclick="setEquipMark('id_equip_3_mark','✗')" style="width:32px;height:28px;border:2px solid #dc3545;border-radius:4px;cursor:pointer;font-size:15px;font-weight:bold;{% if blending_data.equip_3_mark == '✗' %}background:#dc3545;color:#fff;{% else %}background:#fff;color:#dc3545;{% endif %}">✗</button>{% else %}{{ blending_data.equip_3_mark|default:'' }}{% endif %}</td>
             </tr>
 {% endif %}
         </tbody>
@@ -1416,15 +1416,31 @@
         var container = inp.parentElement;
         container.querySelectorAll('button').forEach(function(btn) {
             var btnVal = btn.textContent.trim();
-            if (btnVal === '?') {
-                btn.style.background = (val === '?') ? '#28a745' : '#fff';
-                btn.style.color     = (val === '?') ? '#fff'     : '#28a745';
+            if (btnVal === '✓') {
+                btn.style.background = (val === '✓') ? '#28a745' : '#fff';
+                btn.style.color     = (val === '✓') ? '#fff'     : '#28a745';
             } else {
-                btn.style.background = (val === '?') ? '#dc3545' : '#fff';
-                btn.style.color     = (val === '?') ? '#fff'     : '#dc3545';
+                btn.style.background = (val === '✗') ? '#dc3545' : '#fff';
+                btn.style.color     = (val === '✗') ? '#fff'     : '#dc3545';
             }
         });
     }
+    function calcBlendTotal() {
+        var total = 0;
+        document.querySelectorAll('.blend-ing-qty').forEach(function(cell) {
+            var v = parseFloat(cell.textContent.trim().replace(/,/g, '')) || 0;
+            total += v;
+        });
+        var lastInput = document.getElementById('id_sift_last_qty');
+        if (lastInput) {
+            total += parseFloat(lastInput.value.replace(/,/g, '')) || 0;
+        }
+        var totalInput = document.getElementById('id_sift_total_weight');
+        if (totalInput) {
+            totalInput.value = total > 0 ? total.toFixed(3) : '';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', calcBlendTotal);
     </script>
     {# -------- SECTION 2: Ingredient List (bordered table) -------- #}
     <p style="font-weight:bold;margin:12px 0 4px 0;">2. Sift using mechanical Sifter with sieves indicated in the table below then transfer into Double Cone Blender.</p>
@@ -1478,7 +1494,7 @@
                 <td style="border:1px solid #000;padding:6px;text-align:center;">{{ forloop.counter }}</td>
                 <td style="border:1px solid #000;padding:6px;">{{ ing.description }}</td>
                 <td style="border:1px solid #000;padding:6px;text-align:center;">{{ bmr.product.sieve_size_lubrication|default:"#20" }}</td>
-                <td style="border:1px solid #000;padding:6px;text-align:center;">{{ ing.total_batch_quantity }}</td>
+                <td style="border:1px solid #000;padding:6px;text-align:center;" class="blend-ing-qty">{{ ing.total_batch_quantity }}</td>
                 <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}background:#ffffdd;{% endif %}">
                     {% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}
                     {% blending_sift_value blending_data forloop.counter 'operator' as bsv_op %}
@@ -1495,8 +1511,8 @@
                     <input type="date" name="sift_{{ forloop.counter }}_supervisor_date" style="width:100%;border:1px solid #ccc;padding:2px;font-size:10px;margin-top:2px;background:#ffffdd;" value="{{ bsv_sp_date }}">
                     {% else %}{% blending_sift_value blending_data forloop.counter 'supervisor' as bsv_sp_r %}<span style="font-size:10px;">{{ bsv_sp_r }}</span>{% endif %}
                 </td>
-                <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if edit_mode == 'blending' and user_role == 'qa' and blending_data_status == 'operator_filled' %}background:#d4edda;{% endif %}">
-                    {% if edit_mode == 'blending' and user_role == 'qa' and blending_data_status == 'operator_filled' %}
+                <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if user_role == 'qa' and phase_name == 'blending' and blending_data_status == 'operator_filled' %}background:#d4edda;{% endif %}">
+                    {% if user_role == 'qa' and phase_name == 'blending' and blending_data_status == 'operator_filled' %}
                     {% blending_sift_value blending_data forloop.counter 'qa' as bsv_qa %}
                     {% blending_sift_value blending_data forloop.counter 'qa_date' as bsv_qa_date %}
                     <input type="text" name="sift_{{ forloop.counter }}_qa" style="width:100%;border:1px solid #28a745;padding:2px;font-size:10px;background:#d4edda;" placeholder="QA sign" value="{{ bsv_qa }}">
@@ -1512,7 +1528,7 @@
                 <td style="border:1px solid #000;padding:6px;">Returned capsule powder (if applicable)</td>
                 <td style="border:1px solid #000;padding:6px;text-align:center;">{{ bmr.product.sieve_size_lubrication|default:"#20" }}</td>
                 <td style="border:1px solid #000;padding:4px;{% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}background:#ffffdd;{% endif %}">
-                    {% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}<input type="text" name="sift_last_qty" style="width:100%;border:1px solid #ccc;padding:2px;font-size:10px;background:#ffffdd;" value="{{ blending_data.sift_last_qty|default:'' }}" placeholder="kg">{% else %}{{ blending_data.sift_last_qty|default:'' }}{% endif %}
+                    {% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}<input type="text" name="sift_last_qty" id="id_sift_last_qty" oninput="calcBlendTotal()" style="width:100%;border:1px solid #ccc;padding:2px;font-size:10px;background:#ffffdd;" value="{{ blending_data.sift_last_qty|default:'' }}" placeholder="kg">{% else %}{{ blending_data.sift_last_qty|default:'' }}{% endif %}
                 </td>
                 <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}background:#ffffdd;{% endif %}">
                     {% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}
@@ -1526,8 +1542,8 @@
                     <input type="date" name="sift_last_supervisor_date" style="width:100%;border:1px solid #ccc;padding:2px;font-size:10px;margin-top:2px;background:#ffffdd;" value="{{ blending_data.sift_last_supervisor_date|default:'' }}">
                     {% else %}<span style="font-size:10px;">{{ blending_data.sift_last_supervisor|default:'' }}</span>{% endif %}
                 </td>
-                <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if edit_mode == 'blending' and user_role == 'qa' and blending_data_status == 'operator_filled' %}background:#d4edda;{% endif %}">
-                    {% if edit_mode == 'blending' and user_role == 'qa' and blending_data_status == 'operator_filled' %}
+                <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if user_role == 'qa' and phase_name == 'blending' and blending_data_status == 'operator_filled' %}background:#d4edda;{% endif %}">
+                    {% if user_role == 'qa' and phase_name == 'blending' and blending_data_status == 'operator_filled' %}
                     <input type="text" name="sift_last_qa" style="width:100%;border:1px solid #28a745;padding:2px;font-size:10px;background:#d4edda;" placeholder="QA sign" value="{{ blending_data.sift_last_qa|default:'' }}">
                     <input type="date" name="sift_last_qa_date" style="width:100%;border:1px solid #28a745;padding:2px;font-size:10px;margin-top:2px;background:#d4edda;" value="{{ blending_data.sift_last_qa_date|default:'' }}">
                     {% else %}<span style="font-size:10px;">{{ blending_data.sift_last_qa|default:'' }}</span>{% endif %}
@@ -1537,14 +1553,14 @@
             <tr style="background:#f8f9fa;">
                 <td colspan="3" style="border:1px solid #000;padding:6px;text-align:right;font-weight:bold;">Total Weight of dry ingredients added</td>
                 <td style="border:1px solid #000;padding:4px;{% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}background:#ffffdd;{% endif %}">
-                    {% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}<input type="text" name="sift_total_weight" style="width:100%;border:1px solid #ccc;padding:2px;font-size:11px;background:#ffffdd;" value="{{ blending_data.sift_total_weight|default:'' }}" placeholder="kg">{% else %}{{ blending_data.sift_total_weight|default:'' }}{% endif %}
+                    {% if edit_mode == 'blending' and user_role != 'qa' and blending_data_status == 'not_started' %}<input type="text" name="sift_total_weight" id="id_sift_total_weight" readonly style="width:100%;border:1px solid #ccc;padding:2px;font-size:11px;background:#e9ecef;" value="{{ blending_data.sift_total_weight|default:'' }}" placeholder="auto-calculated">{% else %}{{ blending_data.sift_total_weight|default:'' }}{% endif %}
                 </td>
                 <td colspan="3" style="border:1px solid #000;padding:6px;"></td>
             </tr>
         </tbody>
     </table>
     {# ---- Section 4 action buttons ---- #}
-    {% if edit_mode == 'blending' %}
+    {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}
     <div class="no-print d-flex gap-2 justify-content-end" style="margin-top:8px;">
         {% if user_role != 'qa' and blending_data_status == 'not_started' %}
         <button type="submit" name="action" value="save_draft" class="btn btn-warning btn-sm"><i class="fas fa-save me-1"></i> Save Draft</button>
@@ -1593,8 +1609,8 @@
                     <input type="date" name="mix_spv_date" style="width:100%;border:1px solid #ccc;padding:2px;font-size:10px;margin-top:2px;background:#ffffdd;" value="{{ blending_data.mix_spv_date|default:'' }}">
                     {% else %}<span style="font-size:10px;">{{ blending_data.mix_spv|default:'' }}</span>{% endif %}
                 </td>
-                <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if edit_mode == 'blending' and user_role == 'qa' and mixing_data_status == 'operator_filled' %}background:#d4edda;{% endif %}">
-                    {% if edit_mode == 'blending' and user_role == 'qa' and mixing_data_status == 'operator_filled' %}
+                <td style="border:1px solid #000;padding:4px;vertical-align:top;{% if user_role == 'qa' and phase_name == 'blending' and mixing_data_status == 'operator_filled' %}background:#d4edda;{% endif %}">
+                    {% if user_role == 'qa' and phase_name == 'blending' and mixing_data_status == 'operator_filled' %}
                     <input type="text" name="mix_qa" style="width:100%;border:1px solid #28a745;padding:2px;font-size:10px;background:#d4edda;" placeholder="QA sign" value="{{ blending_data.mix_qa|default:'' }}">
                     <input type="date" name="mix_qa_date" style="width:100%;border:1px solid #28a745;padding:2px;font-size:10px;margin-top:2px;background:#d4edda;" value="{{ blending_data.mix_qa_date|default:'' }}">
                     {% else %}<span style="font-size:10px;">{{ blending_data.mix_qa|default:'' }}</span>{% endif %}
@@ -1603,7 +1619,7 @@
         </tbody>
     </table>
     <p style="font-size:10px;margin-top:8px;"><strong>NB:</strong> If recoveries are added, Calculate the new batch size.</p>
-    {% if edit_mode == 'blending' %}
+    {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}
     <div class="no-print d-flex gap-2 justify-content-end" style="margin-top:8px;">
         {% if user_role != 'qa' and mixing_data_status == 'not_started' %}
         <button type="submit" name="action" value="save_draft" class="btn btn-warning btn-sm"><i class="fas fa-save me-1"></i> Save Draft</button>
@@ -1617,7 +1633,7 @@
     {% endif %}
     </div>{# end section 5 outer border #}
     {% endif %}{# end blending_data_status == qa_verified guard #}
-    {% if edit_mode == 'blending' %}</form>{% endif %}
+    {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}</form>{% endif %}
 </div>
 
 <!-- ==================== PAGE 10 ==================== -->
@@ -1636,8 +1652,8 @@
     </table>
     <h5 style="margin:14px 0 8px 0;font-weight:bold;text-align:center;">BLENDING/LUBRICATION</h5>
     {# ---- Page 10: QA fills after section 5 approved ---- #}
-    {% if edit_mode == 'blending' and mixing_data_status == 'qa_verified' %}<form method="POST" action="" id="qaReportForm">{% csrf_token %}{% endif %}
-    {% if edit_mode == 'blending' %}
+    {% if edit_mode == 'blending' and mixing_data_status == 'qa_verified' or edit_mode == 'qa' and phase_name == 'blending' and mixing_data_status == 'qa_verified' %}<form method="POST" action="" id="qaReportForm">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}
     <div class="no-print" style="margin-bottom:6px;">
         {% if mixing_data_status != 'qa_verified' %}
         <div class="alert alert-secondary" style="margin-bottom:4px;"><i class="fas fa-lock me-2"></i>Page 10 unlocks after Section 5 (blending time) is QA approved.</div>
@@ -1654,12 +1670,12 @@
     <p style="font-size:11px;">6. Take samples of blended granules as per SOP for sampling blended / lubricated granules and send to QA lab along with this record.</p>
     <p style="font-size:11px;">
         Quantity sampled &nbsp;
-        Top &nbsp;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_qty_top" style="width:70px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qty_top|default:'' }}">{% else %}<span style="display:inline-block;min-width:70px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qty_top|default:'' }}</span>{% endif %} g &nbsp;&nbsp;
-        Middle &nbsp;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_qty_middle" style="width:70px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qty_middle|default:'' }}">{% else %}<span style="display:inline-block;min-width:70px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qty_middle|default:'' }}</span>{% endif %} g &nbsp;&nbsp;
-        Bottom &nbsp;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_qty_bottom" style="width:70px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qty_bottom|default:'' }}">{% else %}<span style="display:inline-block;min-width:70px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qty_bottom|default:'' }}</span>{% endif %} g
+        Top &nbsp;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_qty_top" style="width:70px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qty_top|default:'' }}">{% else %}<span style="display:inline-block;min-width:70px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qty_top|default:'' }}</span>{% endif %} g &nbsp;&nbsp;
+        Middle &nbsp;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_qty_middle" style="width:70px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qty_middle|default:'' }}">{% else %}<span style="display:inline-block;min-width:70px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qty_middle|default:'' }}</span>{% endif %} g &nbsp;&nbsp;
+        Bottom &nbsp;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_qty_bottom" style="width:70px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qty_bottom|default:'' }}">{% else %}<span style="display:inline-block;min-width:70px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qty_bottom|default:'' }}</span>{% endif %} g
     </p>
     <p style="font-size:11px;">
-        Sampled by QA: &nbsp;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_sampled_by_qa" style="width:200px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_sampled_by_qa|default:'' }}">{% else %}<span style="display:inline-block;min-width:200px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_sampled_by_qa|default:'' }}</span>{% endif %}
+        Sampled by QA: &nbsp;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_sampled_by_qa" style="width:200px;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_sampled_by_qa|default:'' }}">{% else %}<span style="display:inline-block;min-width:200px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_sampled_by_qa|default:'' }}</span>{% endif %}
     </p>
     <p style="font-weight:bold;margin:6px 0 4px 0;">QA REPORT</p>
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
@@ -1668,10 +1684,10 @@
             <tr>
                 <td style="border:1px solid #000;padding:6px;">LOD by IR moisture balance (%)</td>
                 <td style="border:1px solid #000;padding:6px;text-align:center;">{{ bmr.product.lod_limits|default:"NMT 1.5" }}</td>
-                <td style="border:1px solid #000;padding:4px;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_moisture_balance_id" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_moisture_balance_id|default:'' }}">{% else %}{{ blending_data.p10_moisture_balance_id|default:'' }}{% endif %}</td>
-                <td style="border:1px solid #000;padding:4px;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_lod_top" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_lod_top|default:'' }}">{% else %}{{ blending_data.p10_lod_top|default:'' }}{% endif %}</td>
-                <td style="border:1px solid #000;padding:4px;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_lod_middle" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_lod_middle|default:'' }}">{% else %}{{ blending_data.p10_lod_middle|default:'' }}{% endif %}</td>
-                <td style="border:1px solid #000;padding:4px;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_lod_bottom" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_lod_bottom|default:'' }}">{% else %}{{ blending_data.p10_lod_bottom|default:'' }}{% endif %}</td>
+                <td style="border:1px solid #000;padding:4px;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_moisture_balance_id" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_moisture_balance_id|default:'' }}">{% else %}{{ blending_data.p10_moisture_balance_id|default:'' }}{% endif %}</td>
+                <td style="border:1px solid #000;padding:4px;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_lod_top" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_lod_top|default:'' }}">{% else %}{{ blending_data.p10_lod_top|default:'' }}{% endif %}</td>
+                <td style="border:1px solid #000;padding:4px;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_lod_middle" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_lod_middle|default:'' }}">{% else %}{{ blending_data.p10_lod_middle|default:'' }}{% endif %}</td>
+                <td style="border:1px solid #000;padding:4px;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}background:#d4edda;{% endif %}">{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_lod_bottom" style="width:100%;border:none;background:#d4edda;padding:2px;font-size:10px;" value="{{ blending_data.p10_lod_bottom|default:'' }}">{% else %}{{ blending_data.p10_lod_bottom|default:'' }}{% endif %}</td>
             </tr>
         </tbody>
     </table>
@@ -1679,7 +1695,7 @@
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:8px;">
                 The samples &nbsp;
-                {% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}
+                {% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}
                 <select name="p10_comply" style="border:1px solid #28a745;background:#d4edda;padding:2px 6px;font-size:11px;">
                     <option value="">-- select --</option>
                     <option value="comply" {% if blending_data.p10_comply == 'comply' %}selected{% endif %}>? Comply</option>
@@ -1693,16 +1709,16 @@
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:8px;width:60%;">
-                QA Officer: (sign) &nbsp;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="text" name="p10_qa_officer_sign" style="width:55%;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qa_officer_sign|default:'' }}">{% else %}<span style="display:inline-block;min-width:55%;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qa_officer_sign|default:'' }}</span>{% endif %}
+                QA Officer: (sign) &nbsp;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="text" name="p10_qa_officer_sign" style="width:55%;border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qa_officer_sign|default:'' }}">{% else %}<span style="display:inline-block;min-width:55%;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qa_officer_sign|default:'' }}</span>{% endif %}
             </td>
             <td style="border:1px solid #000;padding:8px;width:40%;">
-                Date: &nbsp;{% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}<input type="date" name="p10_qa_officer_date" style="border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qa_officer_date|default:'' }}">{% else %}<span style="display:inline-block;min-width:120px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qa_officer_date|default:'' }}</span>{% endif %}
+                Date: &nbsp;{% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}<input type="date" name="p10_qa_officer_date" style="border:none;border-bottom:1px solid #000;padding:1px 2px;font-size:11px;background:#d4edda;" value="{{ blending_data.p10_qa_officer_date|default:'' }}">{% else %}<span style="display:inline-block;min-width:120px;border-bottom:1px solid #000;padding:1px 4px;">{{ blending_data.p10_qa_officer_date|default:'' }}</span>{% endif %}
             </td>
         </tr>
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:8px;">
                 Release procedure: &nbsp;
-                {% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}
+                {% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}
                 <select name="p10_release_proc" style="border:1px solid #28a745;background:#d4edda;padding:2px 6px;font-size:11px;">
                     <option value="">-- select --</option>
                     <option value="yes" {% if blending_data.p10_release_proc == 'yes' %}selected{% endif %}>Yes</option>
@@ -1716,7 +1732,7 @@
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:8px;">
                 Rejection procedure: &nbsp;
-                {% if edit_mode == 'blending' and user_role == 'qa' and qa_report_status == 'not_started' %}
+                {% if user_role == 'qa' and phase_name == 'blending' and qa_report_status == 'not_started' %}
                 <select name="p10_rejection_proc" style="border:1px solid #28a745;background:#d4edda;padding:2px 6px;font-size:11px;">
                     <option value="">-- select --</option>
                     <option value="yes" {% if blending_data.p10_rejection_proc == 'yes' %}selected{% endif %}>Yes</option>
@@ -1728,18 +1744,18 @@
             </td>
         </tr>
     </table>
-    {% if edit_mode == 'blending' and mixing_data_status == 'qa_verified' and user_role == 'qa' and qa_report_status == 'not_started' %}
+    {% if user_role == 'qa' and phase_name == 'blending' and mixing_data_status == 'qa_verified' and qa_report_status == 'not_started' %}
     <div class="no-print d-flex gap-2 justify-content-end" style="margin-top:8px;">
         <button type="submit" name="action" value="save_qa_report" class="btn btn-warning btn-sm"><i class="fas fa-save me-1"></i> Save Draft</button>
         <button type="submit" name="action" value="submit_qa_report" class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i> Submit QA Report</button>
     </div>
     {% endif %}
-    {% if edit_mode == 'blending' and mixing_data_status == 'qa_verified' and user_role == 'qa' and qa_report_status == 'qa_filled' %}
+    {% if user_role == 'qa' and phase_name == 'blending' and mixing_data_status == 'qa_verified' and qa_report_status == 'qa_filled' %}
     <div class="no-print d-flex gap-2 justify-content-end" style="margin-top:8px;">
         <button type="submit" name="action" value="recall_qa_report" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo me-1"></i> Recall QA Report</button>
     </div>
     {% endif %}
-    {% if edit_mode == 'blending' and mixing_data_status == 'qa_verified' %}</form>{% endif %}
+    {% if edit_mode == 'blending' and mixing_data_status == 'qa_verified' or edit_mode == 'qa' and phase_name == 'blending' and mixing_data_status == 'qa_verified' %}</form>{% endif %}
 </div>
 
 <!-- ==================== PAGE 11 ==================== -->
@@ -1943,7 +1959,7 @@
     <p style="font-weight:bold;margin:8px 0 4px 0;">YIELD RECONCILIATION</p>
 
     {# ---- Page 12 status banner ---- #}
-    {% if edit_mode == 'blending' %}
+    {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}
     <div class="no-print" style="margin-bottom:6px;">
         {% if drum_weighing_status != 'operator_filled' %}
         <div class="alert alert-secondary" style="margin-bottom:4px;"><i class="fas fa-lock me-2"></i>Page 12 unlocks after drum weighing (Page 11) is submitted.</div>
@@ -1962,7 +1978,7 @@
     {# ---- Form: operator fills quantities + supervisor signs ---- #}
     {% if edit_mode == 'blending' and drum_weighing_status == 'operator_filled' and yield_status == 'not_started' and user_role != 'qa' %}<form method="POST" action="" id="yieldReconciliationForm">{% csrf_token %}{% endif %}
     {# ---- Form: QA verifies ---- #}
-    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' %}<form method="POST" action="" id="yieldQAForm">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'blending' and yield_status == 'operator_filled' %}<form method="POST" action="" id="yieldQAForm">{% csrf_token %}{% endif %}
 
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <thead><tr style="background:#f0f0f0;">
@@ -1992,7 +2008,7 @@
                     {% endif %}
                 </td>
                 <td style="border:1px solid #000;padding:6px;vertical-align:top;" rowspan="7">
-                    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' %}
+                    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'blending' and yield_status == 'operator_filled' %}
                     <input type="text" name="yr_qa_sign" style="width:100%;border:none;border-bottom:1px solid #28a745;padding:1px 2px;font-size:11px;background:#d4edda;" placeholder="QA sign" value="{{ blending_data.yr_qa_sign|default:'' }}">
                     <input type="date" name="yr_qa_date" style="width:100%;border:none;border-bottom:1px solid #28a745;padding:1px 2px;font-size:10px;margin-top:4px;background:#d4edda;" value="{{ blending_data.yr_qa_date|default:'' }}">
                     {% else %}
@@ -2106,15 +2122,15 @@
     {% endif %}
 
     {# ---- QA verify button ---- #}
-    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' %}
+    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'blending' and yield_status == 'operator_filled' %}
     <div class="no-print d-flex gap-2 justify-content-end" style="margin-top:8px;">
         <button type="submit" name="action" value="qa_verify_yield" class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i> Verify Yield Reconciliation</button>
     </div>
     {% endif %}
-    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' %}</form>{% endif %}
+    {% if edit_mode == 'blending' and yield_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'blending' and yield_status == 'operator_filled' %}</form>{% endif %}
 
     {# ---- QA recall after verification ---- #}
-    {% if edit_mode == 'blending' and yield_status == 'qa_verified' and user_role == 'qa' %}
+    {% if edit_mode == 'blending' and yield_status == 'qa_verified' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'blending' and yield_status == 'qa_verified' %}
     <form method="POST" action="">{% csrf_token %}
         <div class="no-print d-flex gap-2 justify-content-end" style="margin-top:8px;">
             <button type="submit" name="action" value="recall_yield_qa" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo me-1"></i> Recall QA Verification</button>
@@ -2175,8 +2191,8 @@
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">MFR No.</td><td style="border:2px solid #000;padding:8px;">{{ bmr.product.mfr_number|default:"-" }}</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Date:</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Shift :</td></tr>
     </table>
     {% with fill_lc=phase_executions.filling %}
-    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}<form method="POST" action="" id="fillingLCForm">{% csrf_token %}{% endif %}
-    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and phase_name == 'filling' and has_line_clearance %}<form method="POST" action="" id="fillingLCForm">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and phase_name == 'filling' and has_line_clearance %}
         {% if user_role != 'qa' %}
             {% if fill_lc.beginning_lc_status == 'not_started' %}
             <div class="alert alert-warning no-print" style="margin-bottom:8px;"><i class="fas fa-clipboard-check me-2"></i><strong>BEGINNING LINE CLEARANCE:</strong> Fill the checklist items, sign your columns, then click <strong>Submit to QA</strong>.</div>
@@ -2207,7 +2223,7 @@
         </td></tr>
         <tr style="background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">BEGINNING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;width:15%;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Status</th></tr>
 {% get_phase_lc_items 'filling' 'beginning' as config_filling_begin %}
-{% with lc_fill_begin=lc_items|default:config_filling_begin %}
+{% with lc_fill_begin=config_filling_begin %}
 {% if lc_fill_begin %}{% for item in lc_fill_begin %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item|linebreaksbr }}</td>
@@ -2265,7 +2281,7 @@
             <textarea name="filling_beginning_remarks" style="width:100%;min-height:35px;border:1px solid #999;padding:4px;font-size:11px;background:#ffffdd;" placeholder="Enter any remarks...">{{ lc_data.filling_beginning_remarks|default:'' }}</textarea>
             {% else %}{{ lc_data.filling_beginning_remarks|default:"___________________________________________________________________" }}{% endif %}
         </td></tr>
-    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and phase_name == 'filling' and has_line_clearance %}
     </table>
     <div class="no-print" style="margin:8px 0 12px 0;">
         {% if user_role != 'qa' and fill_lc.beginning_lc_status == 'not_started' %}
@@ -2299,7 +2315,7 @@
         {% endif %}
         <tr id="cap-fill-end-lc" style="scroll-margin-top:70px;background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">ENDING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;width:15%;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Status</th></tr>
 {% get_phase_lc_items 'filling' 'ending' as config_filling_end %}
-{% with lc_fill_end=lc_end_items|default:config_filling_end %}
+{% with lc_fill_end=config_filling_end %}
 {% if lc_fill_end %}{% for item in lc_fill_end %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item }}</td>
@@ -2356,7 +2372,7 @@
             {% else %}{{ lc_data.filling_ending_remarks|default:"___________________________________________________________________" }}{% endif %}
         </td></tr>
     </table>
-    {% if edit_mode == 'filling' and has_line_clearance and fill_lc.status == 'in_progress' and fill_lc.template_section_completed or edit_mode == 'qa' and has_line_clearance and fill_lc.status == 'in_progress' and fill_lc.template_section_completed %}
+    {% if edit_mode == 'filling' and has_line_clearance and fill_lc.status == 'in_progress' and fill_lc.template_section_completed or edit_mode == 'qa' and phase_name == 'filling' and has_line_clearance and fill_lc.status == 'in_progress' and fill_lc.template_section_completed %}
     <div class="no-print" style="margin:8px 0;">
         {% if user_role != 'qa' and fill_lc.ending_lc_status == 'not_started' %}
         <div class="d-flex gap-2 justify-content-end">
@@ -2382,7 +2398,7 @@
         {% endif %}
     </div>
     {% endif %}
-    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}</form>{% endif %}
+    {% if edit_mode == 'filling' and has_line_clearance or edit_mode == 'qa' and phase_name == 'filling' and has_line_clearance %}</form>{% endif %}
     {% endwith %}{# end fill_lc #}
 </div>
 
@@ -2532,7 +2548,7 @@
             <button type="submit" name="action" value="recall_section_cf_machine_setup" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo me-1"></i> Re-open for Editing</button>
         </div>
         {% endif %}
-        {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' or edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}</form>{% endif %}
+        {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' or edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}</form>{% endif %}
         {% endwith %}
 
         <table style="width:100%;border-collapse:collapse;border:1px solid #000;margin-top:10px;">
@@ -2799,8 +2815,8 @@
 <div id="cap-fill-ipqc-{{ ipqc_cfg.n }}" style="scroll-margin-top:70px;"></div>
 {% with ipqc=ipqc_cfg.data ipqc_status=ipqc_cfg.status ipqc_n=ipqc_cfg.n page_no=ipqc_cfg.page_no section_key=ipqc_cfg.section_key lc_fill_ok=phase_executions.filling.beginning_lc_status prev_completed=ipqc_cfg.prev_completed %}
 <div style="page-break-before:always;">
-    {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' or edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<form method="POST" action="" id="cfIPQC{{ ipqc_n }}Form">{% csrf_token %}{% endif %}
-    {% if edit_mode == 'filling' %}
+    {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' or edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<form method="POST" action="" id="cfIPQC{{ ipqc_n }}Form">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'filling' or edit_mode == 'qa' and phase_name == 'filling' %}
     <div class="no-print" style="margin-bottom:4px;">
         {% if lc_fill_ok != 'qa_approved' %}<span class="badge bg-secondary"><i class="fas fa-lock me-1"></i> Locked � Beginning Line Clearance must be QA approved first</span>
         {% elif not prev_completed %}<span class="badge bg-secondary"><i class="fas fa-lock me-1"></i> IPQC {{ ipqc_n }}: Locked — complete the previous IPQC first</span>
@@ -2852,19 +2868,19 @@
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:4px;font-size:10px;">Time HH:MM</td>
             <td colspan="3" style="border:1px solid #000;padding:4px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="time" name="cf_ipqc_{{ ipqc_n }}_time1" style="border:1px solid #999;padding:2px;background:#ffffdd;font-size:10px;" value="{{ ipqc.time1|default:'' }}">{% else %}{{ ipqc.time1|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:4px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="time" name="cf_ipqc_{{ ipqc_n }}_time2" style="border:1px solid #999;padding:2px;background:#d4e6f1;font-size:10px;" value="{{ ipqc.time2|default:'' }}">{% else %}{{ ipqc.time2|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:4px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="time" name="cf_ipqc_{{ ipqc_n }}_time2" style="border:1px solid #999;padding:2px;background:#d4e6f1;font-size:10px;" value="{{ ipqc.time2|default:'' }}">{% else %}{{ ipqc.time2|default:'' }}{% endif %}</td>
         </tr>
         <!-- Done by / Operator / QA -->
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:4px;font-size:10px;">Done by:&nbsp;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_done_by" style="width:55%;border:1px solid #999;padding:2px;background:#ffffdd;font-size:10px;" value="{{ ipqc.done_by|default:'' }}">{% else %}{{ ipqc.done_by|default:'' }}{% endif %}</td>
             <td colspan="3" style="border:1px solid #000;padding:4px;font-size:10px;"><strong>Operator:</strong>&nbsp;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_operator" style="width:65%;border:1px solid #999;padding:2px;background:#ffffdd;font-size:10px;" value="{{ ipqc.operator|default:'' }}" placeholder="Sign">{% else %}{{ ipqc.operator|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:4px;font-size:10px;"><strong>QA:</strong>&nbsp;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_qa_sign" style="width:65%;border:1px solid #999;padding:2px;background:#d4e6f1;font-size:10px;" value="{{ ipqc.qa_sign|default:'' }}">{% else %}{{ ipqc.qa_sign|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:4px;font-size:10px;"><strong>QA:</strong>&nbsp;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_qa_sign" style="width:65%;border:1px solid #999;padding:2px;background:#d4e6f1;font-size:10px;" value="{{ ipqc.qa_sign|default:'' }}">{% else %}{{ ipqc.qa_sign|default:'' }}{% endif %}</td>
         </tr>
         <!-- Physical Appearance -->
         <tr style="background:#f5f5f5;">
             <td colspan="2" style="border:1px solid #000;padding:4px;font-weight:bold;font-size:10px;">Physical Appearance</td>
             <td colspan="3" style="border:1px solid #000;padding:3px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_appearance" style="width:95%;border:1px solid #999;padding:2px;background:#ffffdd;font-size:10px;" value="{{ ipqc.t1_appearance|default:'' }}" placeholder="Appearance">{% else %}{{ ipqc.t1_appearance|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:3px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_appearance" style="width:95%;border:1px solid #999;padding:2px;background:#d4e6f1;font-size:10px;" value="{{ ipqc.t2_appearance|default:'' }}" placeholder="Appearance">{% else %}{{ ipqc.t2_appearance|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:3px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_appearance" style="width:95%;border:1px solid #999;padding:2px;background:#d4e6f1;font-size:10px;" value="{{ ipqc.t2_appearance|default:'' }}" placeholder="Appearance">{% else %}{{ ipqc.t2_appearance|default:'' }}{% endif %}</td>
         </tr>
         <!-- Column headers -->
         <tr style="background:#f0f0f0;font-weight:bold;font-size:9px;text-align:center;">
@@ -2884,9 +2900,9 @@
             <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}background:#ffffdd;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t1_w{{ row.no }}" oninput="calcIpqcNet('{{ ipqc_n }}','t1',{{ row.no }})" style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;" value="{{ row.t1_w }}">{% else %}{{ row.t1_w }}{% endif %}</td>
             <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}background:#ffffdd;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t1_e{{ row.no }}" oninput="calcIpqcNet('{{ ipqc_n }}','t1',{{ row.no }})" style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;" value="{{ row.t1_e }}">{% else %}{{ row.t1_e }}{% endif %}</td>
             <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}background:#d4edda;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t1_net{{ row.no }}" id="ipqc_net_{{ ipqc_n }}_t1_{{ row.no }}" readonly style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;cursor:default;" value="{{ row.t1_net }}">{% else %}{{ row.t1_net }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}background:#d4e6f1;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_w{{ row.no }}" oninput="calcIpqcNet('{{ ipqc_n }}','t2',{{ row.no }})" style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;" value="{{ row.t2_w }}">{% else %}{{ row.t2_w }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}background:#d4e6f1;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_e{{ row.no }}" oninput="calcIpqcNet('{{ ipqc_n }}','t2',{{ row.no }})" style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;" value="{{ row.t2_e }}">{% else %}{{ row.t2_e }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}background:#d4edda;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_net{{ row.no }}" id="ipqc_net_{{ ipqc_n }}_t2_{{ row.no }}" readonly style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;cursor:default;" value="{{ row.t2_net }}">{% else %}{{ row.t2_net }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}background:#d4e6f1;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_w{{ row.no }}" oninput="calcIpqcNet('{{ ipqc_n }}','t2',{{ row.no }})" style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;" value="{{ row.t2_w }}">{% else %}{{ row.t2_w }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}background:#d4e6f1;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_e{{ row.no }}" oninput="calcIpqcNet('{{ ipqc_n }}','t2',{{ row.no }})" style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;" value="{{ row.t2_e }}">{% else %}{{ row.t2_e }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:2px;{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}background:#d4edda;{% endif %}font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_net{{ row.no }}" id="ipqc_net_{{ ipqc_n }}_t2_{{ row.no }}" readonly style="width:100%;border:none;padding:1px;background:transparent;font-size:9px;cursor:default;" value="{{ row.t2_net }}">{% else %}{{ row.t2_net }}{% endif %}</td>
         </tr>
         {% endfor %}
         <!-- Summary rows -->
@@ -2895,7 +2911,7 @@
             <td style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t1_total" readonly style="width:100%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t1_total|default:'' }}">{% else %}{{ ipqc.t1_total|default:'' }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;"></td>
             <td style="border:1px solid #000;padding:3px;"></td>
-            <td style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_total" readonly style="width:100%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_total|default:'' }}">{% else %}{{ ipqc.t2_total|default:'' }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_total" readonly style="width:100%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_total|default:'' }}">{% else %}{{ ipqc.t2_total|default:'' }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;"></td>
             <td style="border:1px solid #000;padding:3px;"></td>
         </tr>
@@ -2904,50 +2920,50 @@
             <td style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t1_avg" readonly style="width:100%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t1_avg|default:'' }}">{% else %}{{ ipqc.t1_avg|default:'' }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;"></td>
             <td style="border:1px solid #000;padding:3px;"></td>
-            <td style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_avg" readonly style="width:100%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_avg|default:'' }}">{% else %}{{ ipqc.t2_avg|default:'' }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_avg" readonly style="width:100%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_avg|default:'' }}">{% else %}{{ ipqc.t2_avg|default:'' }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;"></td>
             <td style="border:1px solid #000;padding:3px;"></td>
         </tr>
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:3px;font-size:10px;font-weight:bold;">Range</td>
             <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_range" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t1_range|default:'' }}">{% else %}{{ ipqc.t1_range|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_range" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_range|default:'' }}">{% else %}{{ ipqc.t2_range|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_range" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_range|default:'' }}">{% else %}{{ ipqc.t2_range|default:'' }}{% endif %}</td>
         </tr>
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:3px;font-size:10px;font-weight:bold;">Max. wt. (mg)</td>
             <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t1_max" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t1_max|default:'' }}">{% else %}{{ ipqc.t1_max|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_max" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_max|default:'' }}">{% else %}{{ ipqc.t2_max|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_max" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_max|default:'' }}">{% else %}{{ ipqc.t2_max|default:'' }}{% endif %}</td>
         </tr>
         <tr>
             <td colspan="2" style="border:1px solid #000;padding:3px;font-size:10px;font-weight:bold;">Min. Wt. (mg)</td>
             <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t1_min" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t1_min|default:'' }}">{% else %}{{ ipqc.t1_min|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_min" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_min|default:'' }}">{% else %}{{ ipqc.t2_min|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="number" step="0.01" name="cf_ipqc_{{ ipqc_n }}_t2_min" readonly style="width:95%;border:1px solid #999;padding:1px;background:#e8f5e9;font-size:9px;" value="{{ ipqc.t2_min|default:'' }}">{% else %}{{ ipqc.t2_min|default:'' }}{% endif %}</td>
         </tr>
         <!-- 7 separate Action/Alert rows -->
-        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Action &gt;=+T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_act_lim_p" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_act_lim_p|default:'' }}">{% else %}{{ ipqc.t1_act_lim_p|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_act_lim_p" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_act_lim_p|default:'' }}">{% else %}{{ ipqc.t2_act_lim_p|default:'' }}{% endif %}</td></tr>
-        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Alert +T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_alert_p" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_alert_p|default:'' }}">{% else %}{{ ipqc.t1_alert_p|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_alert_p" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_alert_p|default:'' }}">{% else %}{{ ipqc.t2_alert_p|default:'' }}{% endif %}</td></tr>
-        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Good +T1</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_good_p" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_good_p|default:'' }}">{% else %}{{ ipqc.t1_good_p|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_good_p" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_good_p|default:'' }}">{% else %}{{ ipqc.t2_good_p|default:'' }}{% endif %}</td></tr>
-        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">V. Good Norm</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_vgood" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_vgood|default:'' }}">{% else %}{{ ipqc.t1_vgood|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_vgood" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_vgood|default:'' }}">{% else %}{{ ipqc.t2_vgood|default:'' }}{% endif %}</td></tr>
-        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Good -T1</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_good_m" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_good_m|default:'' }}">{% else %}{{ ipqc.t1_good_m|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_good_m" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_good_m|default:'' }}">{% else %}{{ ipqc.t2_good_m|default:'' }}{% endif %}</td></tr>
-        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Alert -T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_alert_m" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_alert_m|default:'' }}">{% else %}{{ ipqc.t1_alert_m|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_alert_m" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_alert_m|default:'' }}">{% else %}{{ ipqc.t2_alert_m|default:'' }}{% endif %}</td></tr>
-        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Action &lt;=-T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_act_lim_m" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_act_lim_m|default:'' }}">{% else %}{{ ipqc.t1_act_lim_m|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_act_lim_m" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_act_lim_m|default:'' }}">{% else %}{{ ipqc.t2_act_lim_m|default:'' }}{% endif %}</td></tr>
+        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Action &gt;=+T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_act_lim_p" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_act_lim_p|default:'' }}">{% else %}{{ ipqc.t1_act_lim_p|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_act_lim_p" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_act_lim_p|default:'' }}">{% else %}{{ ipqc.t2_act_lim_p|default:'' }}{% endif %}</td></tr>
+        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Alert +T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_alert_p" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_alert_p|default:'' }}">{% else %}{{ ipqc.t1_alert_p|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_alert_p" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_alert_p|default:'' }}">{% else %}{{ ipqc.t2_alert_p|default:'' }}{% endif %}</td></tr>
+        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Good +T1</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_good_p" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_good_p|default:'' }}">{% else %}{{ ipqc.t1_good_p|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_good_p" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_good_p|default:'' }}">{% else %}{{ ipqc.t2_good_p|default:'' }}{% endif %}</td></tr>
+        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">V. Good Norm</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_vgood" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_vgood|default:'' }}">{% else %}{{ ipqc.t1_vgood|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_vgood" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_vgood|default:'' }}">{% else %}{{ ipqc.t2_vgood|default:'' }}{% endif %}</td></tr>
+        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Good -T1</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_good_m" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_good_m|default:'' }}">{% else %}{{ ipqc.t1_good_m|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_good_m" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_good_m|default:'' }}">{% else %}{{ ipqc.t2_good_m|default:'' }}{% endif %}</td></tr>
+        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Alert -T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_alert_m" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_alert_m|default:'' }}">{% else %}{{ ipqc.t1_alert_m|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_alert_m" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_alert_m|default:'' }}">{% else %}{{ ipqc.t2_alert_m|default:'' }}{% endif %}</td></tr>
+        <tr><td colspan="2" style="border:1px solid #000;padding:3px;font-size:9px;">Action &lt;=-T2</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_act_lim_m" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_act_lim_m|default:'' }}">{% else %}{{ ipqc.t1_act_lim_m|default:'' }}{% endif %}</td><td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_act_lim_m" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_act_lim_m|default:'' }}">{% else %}{{ ipqc.t2_act_lim_m|default:'' }}{% endif %}</td></tr>
         <!-- Disintegration row -->
         <tr>
             <td style="border:1px solid #000;padding:3px;font-size:10px;">Disintegration</td>
             <td style="border:1px solid #000;padding:3px;font-size:9px;">NMT {{ bmr.product.disintegration_time_max|default:"30" }} min</td>
             <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_disintegration" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_disintegration|default:'' }}" placeholder="minutes">{% else %}{{ ipqc.t1_disintegration|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_disintegration" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_disintegration|default:'' }}" placeholder="minutes">{% else %}{{ ipqc.t2_disintegration|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_disintegration" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_disintegration|default:'' }}" placeholder="minutes">{% else %}{{ ipqc.t2_disintegration|default:'' }}{% endif %}</td>
         </tr>
         {% if bmr.product.lock_length_min and bmr.product.lock_length_max %}
         <tr>
             <td style="border:1px solid #000;padding:3px;font-size:10px;">Lock Length(mm)</td>
             <td style="border:1px solid #000;padding:3px;font-size:9px;">{{ bmr.product.lock_length_min }}&#8211;{{ bmr.product.lock_length_max }}</td>
             <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t1_lock_length" style="width:95%;border:1px solid #999;padding:1px;background:#ffffdd;font-size:9px;" value="{{ ipqc.t1_lock_length|default:'' }}" placeholder="mm">{% else %}{{ ipqc.t1_lock_length|default:'' }}{% endif %}</td>
-            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_lock_length" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_lock_length|default:'' }}" placeholder="mm">{% else %}{{ ipqc.t2_lock_length|default:'' }}{% endif %}</td>
+            <td colspan="3" style="border:1px solid #000;padding:3px;font-size:9px;">{% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' and user_role == 'qa' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}<input type="text" name="cf_ipqc_{{ ipqc_n }}_t2_lock_length" style="width:95%;border:1px solid #999;padding:1px;background:#d4e6f1;font-size:9px;" value="{{ ipqc.t2_lock_length|default:'' }}" placeholder="mm">{% else %}{{ ipqc.t2_lock_length|default:'' }}{% endif %}</td>
         </tr>
         {% endif %}
     </table>
-    {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' %}
+    {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' %}
     <div class="no-print d-flex gap-2 justify-content-end" style="margin:6px 0;">
         {% if ipqc_status == 'not_started' and prev_completed and user_role != 'qa' %}
         <button type="submit" name="action" value="save_draft_section_{{ section_key }}" class="btn btn-warning btn-sm"><i class="fas fa-save me-1"></i> Save Draft</button>
@@ -2961,7 +2977,7 @@
         {% endif %}
     </div>
     {% endif %}
-    {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' or edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}</form>{% endif %}
+    {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'not_started' or edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' or edit_mode == 'qa' and phase_name == 'filling' and lc_fill_ok == 'qa_approved' and ipqc_status == 'operator_filled' %}</form>{% endif %}
 </div>
 {% endwith %}
 {% endfor %}
@@ -3209,8 +3225,8 @@ function cfBtCalcTotals() {
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">MFR No.</td><td style="border:2px solid #000;padding:8px;">{{ bmr.product.mfr_number|default:"-" }}</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Date:</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Shift :</td></tr>
     </table>
     {% with sort_lc=phase_executions.sorting %}
-    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}<form method="POST" action="" id="sortingLCForm">{% csrf_token %}{% endif %}
-    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and phase_name == 'sorting' and has_line_clearance %}<form method="POST" action="" id="sortingLCForm">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and phase_name == 'sorting' and has_line_clearance %}
         {% if user_role != 'qa' %}
             {% if sort_lc.beginning_lc_status == 'not_started' %}
             <div class="alert alert-warning no-print" style="margin-bottom:8px;"><i class="fas fa-clipboard-check me-2"></i><strong>BEGINNING LINE CLEARANCE:</strong> Fill the checklist items, sign your columns, then click <strong>Submit to QA</strong>.</div>
@@ -3297,7 +3313,7 @@ function cfBtCalcTotals() {
             <textarea name="sorting_beginning_remarks" style="width:100%;min-height:35px;border:1px solid #999;padding:4px;font-size:11px;background:#ffffdd;" placeholder="Enter any remarks...">{{ lc_data.sorting_beginning_remarks|default:'' }}</textarea>
             {% else %}{{ lc_data.sorting_beginning_remarks|default:"___________________________________________________________________" }}{% endif %}
         </td></tr>
-    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and phase_name == 'sorting' and has_line_clearance %}
     </table>
     <div class="no-print" style="margin:8px 0 12px 0;">
         {% if user_role != 'qa' and sort_lc.beginning_lc_status == 'not_started' %}
@@ -3400,7 +3416,7 @@ function cfBtCalcTotals() {
             {% else %}{{ lc_data.sorting_ending_remarks|default:"___________________________________________________________________" }}{% endif %}
         </td></tr>
     </table>
-    {% if edit_mode == 'sorting' and has_line_clearance and sort_lc.template_section_completed or edit_mode == 'qa' and has_line_clearance and sort_lc.template_section_completed %}
+    {% if edit_mode == 'sorting' and has_line_clearance and sort_lc.template_section_completed or edit_mode == 'qa' and phase_name == 'sorting' and has_line_clearance and sort_lc.template_section_completed %}
     <div class="no-print" style="margin:8px 0;">
         {% if user_role != 'qa' and sort_lc.ending_lc_status == 'not_started' %}
         <div class="d-flex gap-2 justify-content-end">
@@ -3416,7 +3432,7 @@ function cfBtCalcTotals() {
         {% endif %}
     </div>
     {% endif %}
-    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}</form>{% endif %}
+    {% if edit_mode == 'sorting' and has_line_clearance or edit_mode == 'qa' and phase_name == 'sorting' and has_line_clearance %}</form>{% endif %}
     {% endwith %}{# end sort_lc #}
 </div>
 <div class="no-print" style="margin:40px 0;text-align:center;border-top:3px dashed #aaa;border-bottom:3px dashed #aaa;padding:8px 0;color:#999;font-size:11px;letter-spacing:2px;">&#8212;&#8212; PAGE BREAK &#8212;&#8212;</div>
@@ -3504,7 +3520,7 @@ function cfBtCalcTotals() {
                     </tr>
                     <tr>
                         <td style="border:1px solid #000;padding:4px;font-size:11px;width:55%;">1. Weight of capsules received for inspection and sorting</td>
-                        <td style="border:1px solid #000;padding:4px;text-align:center;width:30%;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_weight_received" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_weight_received|default:'' }}">{% else %}<strong>{{ ir.recon_weight_received|default:'___' }}</strong>{% endif %}</td>
+                        <td style="border:1px solid #000;padding:4px;text-align:center;width:30%;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_weight_received" id="ir_recon_weight_received" oninput="calcSortingRecon()" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_weight_received|default:'' }}">{% else %}<strong>{{ ir.recon_weight_received|default:'___' }}</strong>{% endif %}</td>
                         <td style="border:1px solid #000;padding:4px;text-align:center;width:15%;font-size:11px;">Kg</td>
                     </tr>
                     <tr>
@@ -3519,18 +3535,32 @@ function cfBtCalcTotals() {
                     </tr>
                     <tr>
                         <td style="border:1px solid #000;padding:4px;font-size:11px;">4. Recyclables (recyclables recorded in BMR reconciliation sheet)</td>
-                        <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_recyclables" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_recyclables|default:'' }}">{% else %}<strong>{{ ir.recon_recyclables|default:'___' }}</strong>{% endif %}</td>
+                        <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_recyclables" id="ir_recon_recyclables" oninput="calcSortingRecon()" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_recyclables|default:'' }}">{% else %}<strong>{{ ir.recon_recyclables|default:'___' }}</strong>{% endif %}</td>
                         <td style="border:1px solid #000;padding:4px;text-align:center;font-size:11px;">Kg</td>
                     </tr>
                     <tr>
                         <td style="border:1px solid #000;padding:4px;font-size:11px;">5. Total rejects of capsules</td>
-                        <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_rejects" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_rejects|default:'' }}">{% else %}<strong>{{ ir.recon_rejects|default:'___' }}</strong>{% endif %}</td>
+                        <td style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_rejects" id="ir_recon_rejects" oninput="calcSortingRecon()" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_rejects|default:'' }}">{% else %}<strong>{{ ir.recon_rejects|default:'___' }}</strong>{% endif %}</td>
                         <td style="border:1px solid #000;padding:4px;text-align:center;font-size:11px;">Kg</td>
                     </tr>
                     <tr>
                         <td style="border:1px solid #000;padding:4px;font-size:11px;">6. Total loss after inspection and sorting</td>
-                        <td colspan="2" style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_total_loss" style="width:100px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_total_loss|default:'' }}"> Kg &nbsp; <input type="number" step="0.01" name="recon_loss_percent" style="width:70px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ ir.recon_loss_percent|default:'' }}"> %{% else %}<strong>{{ ir.recon_total_loss|default:'___' }}</strong> Kg &nbsp; <strong>{{ ir.recon_loss_percent|default:'___' }}</strong> %{% endif %}</td>
+                        <td colspan="2" style="border:1px solid #000;padding:4px;text-align:center;">{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<input type="number" step="0.001" name="recon_total_loss" id="ir_recon_total_loss" readonly style="width:100px;border:1px solid #aaa;padding:2px;background:#e8f4f8;cursor:not-allowed;" title="Auto-calculated: Recyclables + Rejects" value="{{ ir.recon_total_loss|default:'' }}"> Kg &nbsp; <input type="number" step="0.01" name="recon_loss_percent" id="ir_recon_loss_percent" readonly style="width:70px;border:1px solid #aaa;padding:2px;background:#e8f4f8;cursor:not-allowed;" title="Auto-calculated: (Total Loss / Weight Received) × 100" value="{{ ir.recon_loss_percent|default:'' }}"> %{% else %}<strong>{{ ir.recon_total_loss|default:'___' }}</strong> Kg &nbsp; <strong>{{ ir.recon_loss_percent|default:'___' }}</strong> %{% endif %}</td>
                     </tr>
+                    <script>
+                    function calcSortingRecon() {
+                        var received = parseFloat(document.getElementById('ir_recon_weight_received') && document.getElementById('ir_recon_weight_received').value) || 0;
+                        var recyclables = parseFloat(document.getElementById('ir_recon_recyclables') && document.getElementById('ir_recon_recyclables').value) || 0;
+                        var rejects = parseFloat(document.getElementById('ir_recon_rejects') && document.getElementById('ir_recon_rejects').value) || 0;
+                        var lossKg = recyclables + rejects;
+                        var lossPct = received > 0 ? (lossKg / received * 100) : 0;
+                        var lossEl = document.getElementById('ir_recon_total_loss');
+                        var pctEl = document.getElementById('ir_recon_loss_percent');
+                        if (lossEl) lossEl.value = lossKg > 0 ? lossKg.toFixed(3) : '';
+                        if (pctEl) pctEl.value = lossPct > 0 ? lossPct.toFixed(2) : '';
+                    }
+                    document.addEventListener('DOMContentLoaded', calcSortingRecon);
+                    </script>
                     <tr>
                         <td colspan="3" style="border:1px solid #000;padding:4px;font-size:11px;">Comments:&nbsp;{% if edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'not_started' or edit_mode == 'sorting' and sort_ok == 'qa_approved' and ir_status == 'recalled' %}<textarea name="sorting_comments" style="width:85%;border:1px solid #999;padding:2px;font-size:11px;background:#ffffdd;display:inline-block;vertical-align:middle;" placeholder="Sorting comments...">{{ ir.sorting_comments|default:'' }}</textarea>{% else %}{{ ir.sorting_comments|default:'' }}{% endif %}</td>
                     </tr>
@@ -4036,8 +4066,8 @@ function cfBtCalcTotals() {
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH No.</td><td style="border:2px solid #000;padding:8px;"><strong>{{ bmr.batch_number }}</strong></td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Exp. Date :</td><td style="border:2px solid #000;padding:8px;">{{ bmr.expiry_date|date:"d/m/Y"|default:"-" }}</td></tr>
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">MFR No.</td><td style="border:2px solid #000;padding:8px;">{{ bmr.product.mfr_number|default:"-" }}</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Date:</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Shift :</td></tr>
     </table>
-    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}<form method="POST" action="" id="packingLCForm">{% csrf_token %}{% endif %}
-    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blister_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'bulk_packing' and has_line_clearance %}<form method="POST" action="" id="packingLCForm">{% csrf_token %}{% endif %}
+    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blister_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'bulk_packing' and has_line_clearance %}
         {% if user_role != 'qa' %}
             {% if phase_execution.beginning_lc_status == 'not_started' %}
             <div class="alert alert-warning no-print" style="margin-bottom:8px;"><i class="fas fa-clipboard-check me-2"></i><strong>BEGINNING LINE CLEARANCE:</strong> Fill the checklist items, sign your columns, then click <strong>Submit to QA</strong>.</div>
@@ -4070,6 +4100,7 @@ function cfBtCalcTotals() {
             {% endif %}
         {% endif %}
     {% endif %}
+    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blister_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'bulk_packing' and has_line_clearance %}
     <div id="cap-pkg-begin-lc" style="scroll-margin-top:70px;"></div>
     <h5 style="margin:14px 0 8px 0;font-weight:bold;text-align:center;">PACKAGING LINE CLEARANCE FORM</h5>
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
@@ -4082,7 +4113,7 @@ function cfBtCalcTotals() {
         </td></tr>
         <tr style="background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">BEGINNING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;width:15%;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;width:15%;">Status</th></tr>
 {% get_phase_lc_items packing_lc_phase 'beginning' as config_pkg_begin %}
-{% with lc_pkg_begin_items=lc_items|default:config_pkg_begin %}
+{% with lc_pkg_begin_items=config_pkg_begin %}
 {% if lc_pkg_begin_items %}{% for item in lc_pkg_begin_items %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item|linebreaksbr }}</td>
@@ -4141,7 +4172,7 @@ function cfBtCalcTotals() {
             <textarea name="{{ edit_mode }}_beginning_remarks" style="width:100%;min-height:35px;border:1px solid #999;padding:4px;font-size:11px;background:#ffffdd;" placeholder="Enter any remarks...">{% if packing_lc_phase == 'bulk_packing' %}{{ lc_data.bulk_packing_beginning_remarks|default:'' }}{% else %}{{ lc_data.blister_packing_beginning_remarks|default:'' }}{% endif %}</textarea>
             {% else %}{% if packing_lc_phase == 'bulk_packing' %}{{ lc_data.bulk_packing_beginning_remarks|default:"___________________________________________________________________" }}{% else %}{{ lc_data.blister_packing_beginning_remarks|default:"___________________________________________________________________" }}{% endif %}{% endif %}
         </td></tr>
-    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blister_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'bulk_packing' and has_line_clearance %}
     </table>
     <div class="no-print" style="margin:8px 0 12px 0;">
         {% if user_role != 'qa' and phase_execution.beginning_lc_status == 'not_started' %}
@@ -4162,12 +4193,12 @@ function cfBtCalcTotals() {
         {% endif %}
     </div>
     {% endif %}
-    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blister_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'bulk_packing' and has_line_clearance %}
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
     {% endif %}
         <tr id="cap-pkg-end-lc" style="scroll-margin-top:70px;background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:40%;">ENDING ACTIVITIES</th><th style="border:2px solid #000;padding:6px;">Done by Operator<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;">Checked by Supervisor<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;">Verified by QA<br>(Sign &amp; Date)</th><th style="border:2px solid #000;padding:6px;">Status</th></tr>
 {% get_phase_lc_items packing_lc_phase 'ending' as config_pkg_end %}
-{% with lc_pkg_end_items=lc_end_items|default:config_pkg_end %}
+{% with lc_pkg_end_items=config_pkg_end %}
 {% if lc_pkg_end_items %}{% for item in lc_pkg_end_items %}
         <tr {% if forloop.counter|divisibleby:2 %}style="background:#ffffdd;"{% endif %}>
             <td style="border:1px solid #000;padding:6px;">{{ forloop.counter }}. {{ item }}</td>
@@ -4224,7 +4255,7 @@ function cfBtCalcTotals() {
             {% else %}{% if packing_lc_phase == 'bulk_packing' %}{{ lc_data.bulk_packing_ending_remarks|default:"___________________________________________________________________" }}{% else %}{{ lc_data.blister_packing_ending_remarks|default:"___________________________________________________________________" }}{% endif %}{% endif %}
         </td></tr>
     </table>
-    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blister_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'bulk_packing' and has_line_clearance %}
     <div class="no-print" style="margin:8px 0 12px 0;">
         {% if user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and phase_execution.beginning_lc_status == 'qa_approved' and all_packing_sections_complete %}
         <div class="d-flex gap-2 justify-content-end">
@@ -4242,7 +4273,8 @@ function cfBtCalcTotals() {
         {% endif %}
     </div>
     {% endif %}
-    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}</form>{% endif %}
+    {% if edit_mode == 'blister_packing' and has_line_clearance or edit_mode == 'bulk_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'blister_packing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'bulk_packing' and has_line_clearance %}</form>{% endif %}
+    {% endif %}{# end packing LC visibility gate #}
 </div>
 
 <!-- ==================== PAGE 29 ==================== -->
@@ -4912,8 +4944,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_1" id="bg_1" oninput="calcBulkRow(1)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_1|default:'' }}">{% else %}{{ bt_d.bulk_gross_1|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_1" id="bt_1" oninput="calcBulkRow(1)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_1|default:'' }}">{% else %}{{ bt_d.bulk_tare_1|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_1" id="bn_1" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_1|default:'' }}">{% else %}{{ bt_d.bulk_net_1|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_1" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_1|default:'' }}">{% else %}{{ bt_d.bulk_delivered_1|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_1" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_1|default:'' }}">{% else %}{{ bt_d.bulk_received_1|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_1" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_1|default:'' }}"><input type="date" name="bulk_delivered_date_1" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_1|default:'' }}">{% else %}{{ bt_d.bulk_delivered_1|default:"" }}{% if bt_d.bulk_delivered_date_1 %}<br>{{ bt_d.bulk_delivered_date_1 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_1" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_1|default:'' }}"><input type="date" name="bulk_received_date_1" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_1|default:'' }}">{% else %}{{ bt_d.bulk_received_1|default:"" }}{% if bt_d.bulk_received_date_1 %}<br>{{ bt_d.bulk_received_date_1 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_2" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_2|default:'' }}">{% else %}{{ bt_d.bulk_date_2|default:"" }}{% endif %}</td>
@@ -4921,8 +4953,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_2" id="bg_2" oninput="calcBulkRow(2)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_2|default:'' }}">{% else %}{{ bt_d.bulk_gross_2|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_2" id="bt_2" oninput="calcBulkRow(2)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_2|default:'' }}">{% else %}{{ bt_d.bulk_tare_2|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_2" id="bn_2" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_2|default:'' }}">{% else %}{{ bt_d.bulk_net_2|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_2" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_2|default:'' }}">{% else %}{{ bt_d.bulk_delivered_2|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_2" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_2|default:'' }}">{% else %}{{ bt_d.bulk_received_2|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_2" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_2|default:'' }}"><input type="date" name="bulk_delivered_date_2" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_2|default:'' }}">{% else %}{{ bt_d.bulk_delivered_2|default:"" }}{% if bt_d.bulk_delivered_date_2 %}<br>{{ bt_d.bulk_delivered_date_2 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_2" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_2|default:'' }}"><input type="date" name="bulk_received_date_2" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_2|default:'' }}">{% else %}{{ bt_d.bulk_received_2|default:"" }}{% if bt_d.bulk_received_date_2 %}<br>{{ bt_d.bulk_received_date_2 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_3" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_3|default:'' }}">{% else %}{{ bt_d.bulk_date_3|default:"" }}{% endif %}</td>
@@ -4930,8 +4962,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_3" id="bg_3" oninput="calcBulkRow(3)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_3|default:'' }}">{% else %}{{ bt_d.bulk_gross_3|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_3" id="bt_3" oninput="calcBulkRow(3)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_3|default:'' }}">{% else %}{{ bt_d.bulk_tare_3|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_3" id="bn_3" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_3|default:'' }}">{% else %}{{ bt_d.bulk_net_3|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_3" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_3|default:'' }}">{% else %}{{ bt_d.bulk_delivered_3|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_3" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_3|default:'' }}">{% else %}{{ bt_d.bulk_received_3|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_3" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_3|default:'' }}"><input type="date" name="bulk_delivered_date_3" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_3|default:'' }}">{% else %}{{ bt_d.bulk_delivered_3|default:"" }}{% if bt_d.bulk_delivered_date_3 %}<br>{{ bt_d.bulk_delivered_date_3 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_3" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_3|default:'' }}"><input type="date" name="bulk_received_date_3" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_3|default:'' }}">{% else %}{{ bt_d.bulk_received_3|default:"" }}{% if bt_d.bulk_received_date_3 %}<br>{{ bt_d.bulk_received_date_3 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_4" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_4|default:'' }}">{% else %}{{ bt_d.bulk_date_4|default:"" }}{% endif %}</td>
@@ -4939,8 +4971,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_4" id="bg_4" oninput="calcBulkRow(4)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_4|default:'' }}">{% else %}{{ bt_d.bulk_gross_4|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_4" id="bt_4" oninput="calcBulkRow(4)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_4|default:'' }}">{% else %}{{ bt_d.bulk_tare_4|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_4" id="bn_4" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_4|default:'' }}">{% else %}{{ bt_d.bulk_net_4|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_4" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_4|default:'' }}">{% else %}{{ bt_d.bulk_delivered_4|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_4" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_4|default:'' }}">{% else %}{{ bt_d.bulk_received_4|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_4" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_4|default:'' }}"><input type="date" name="bulk_delivered_date_4" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_4|default:'' }}">{% else %}{{ bt_d.bulk_delivered_4|default:"" }}{% if bt_d.bulk_delivered_date_4 %}<br>{{ bt_d.bulk_delivered_date_4 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_4" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_4|default:'' }}"><input type="date" name="bulk_received_date_4" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_4|default:'' }}">{% else %}{{ bt_d.bulk_received_4|default:"" }}{% if bt_d.bulk_received_date_4 %}<br>{{ bt_d.bulk_received_date_4 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_5" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_5|default:'' }}">{% else %}{{ bt_d.bulk_date_5|default:"" }}{% endif %}</td>
@@ -4948,8 +4980,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_5" id="bg_5" oninput="calcBulkRow(5)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_5|default:'' }}">{% else %}{{ bt_d.bulk_gross_5|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_5" id="bt_5" oninput="calcBulkRow(5)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_5|default:'' }}">{% else %}{{ bt_d.bulk_tare_5|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_5" id="bn_5" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_5|default:'' }}">{% else %}{{ bt_d.bulk_net_5|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_5" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_5|default:'' }}">{% else %}{{ bt_d.bulk_delivered_5|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_5" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_5|default:'' }}">{% else %}{{ bt_d.bulk_received_5|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_5" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_5|default:'' }}"><input type="date" name="bulk_delivered_date_5" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_5|default:'' }}">{% else %}{{ bt_d.bulk_delivered_5|default:"" }}{% if bt_d.bulk_delivered_date_5 %}<br>{{ bt_d.bulk_delivered_date_5 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_5" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_5|default:'' }}"><input type="date" name="bulk_received_date_5" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_5|default:'' }}">{% else %}{{ bt_d.bulk_received_5|default:"" }}{% if bt_d.bulk_received_date_5 %}<br>{{ bt_d.bulk_received_date_5 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_6" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_6|default:'' }}">{% else %}{{ bt_d.bulk_date_6|default:"" }}{% endif %}</td>
@@ -4957,8 +4989,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_6" id="bg_6" oninput="calcBulkRow(6)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_6|default:'' }}">{% else %}{{ bt_d.bulk_gross_6|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_6" id="bt_6" oninput="calcBulkRow(6)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_6|default:'' }}">{% else %}{{ bt_d.bulk_tare_6|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_6" id="bn_6" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_6|default:'' }}">{% else %}{{ bt_d.bulk_net_6|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_6" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_6|default:'' }}">{% else %}{{ bt_d.bulk_delivered_6|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_6" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_6|default:'' }}">{% else %}{{ bt_d.bulk_received_6|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_6" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_6|default:'' }}"><input type="date" name="bulk_delivered_date_6" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_6|default:'' }}">{% else %}{{ bt_d.bulk_delivered_6|default:"" }}{% if bt_d.bulk_delivered_date_6 %}<br>{{ bt_d.bulk_delivered_date_6 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_6" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_6|default:'' }}"><input type="date" name="bulk_received_date_6" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_6|default:'' }}">{% else %}{{ bt_d.bulk_received_6|default:"" }}{% if bt_d.bulk_received_date_6 %}<br>{{ bt_d.bulk_received_date_6 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_7" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_7|default:'' }}">{% else %}{{ bt_d.bulk_date_7|default:"" }}{% endif %}</td>
@@ -4966,8 +4998,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_7" id="bg_7" oninput="calcBulkRow(7)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_7|default:'' }}">{% else %}{{ bt_d.bulk_gross_7|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_7" id="bt_7" oninput="calcBulkRow(7)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_7|default:'' }}">{% else %}{{ bt_d.bulk_tare_7|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_7" id="bn_7" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_7|default:'' }}">{% else %}{{ bt_d.bulk_net_7|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_7" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_7|default:'' }}">{% else %}{{ bt_d.bulk_delivered_7|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_7" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_7|default:'' }}">{% else %}{{ bt_d.bulk_received_7|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_7" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_7|default:'' }}"><input type="date" name="bulk_delivered_date_7" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_7|default:'' }}">{% else %}{{ bt_d.bulk_delivered_7|default:"" }}{% if bt_d.bulk_delivered_date_7 %}<br>{{ bt_d.bulk_delivered_date_7 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_7" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_7|default:'' }}"><input type="date" name="bulk_received_date_7" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_7|default:'' }}">{% else %}{{ bt_d.bulk_received_7|default:"" }}{% if bt_d.bulk_received_date_7 %}<br>{{ bt_d.bulk_received_date_7 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_8" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_8|default:'' }}">{% else %}{{ bt_d.bulk_date_8|default:"" }}{% endif %}</td>
@@ -4975,8 +5007,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_8" id="bg_8" oninput="calcBulkRow(8)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_8|default:'' }}">{% else %}{{ bt_d.bulk_gross_8|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_8" id="bt_8" oninput="calcBulkRow(8)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_8|default:'' }}">{% else %}{{ bt_d.bulk_tare_8|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_8" id="bn_8" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_8|default:'' }}">{% else %}{{ bt_d.bulk_net_8|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_8" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_8|default:'' }}">{% else %}{{ bt_d.bulk_delivered_8|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_8" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_8|default:'' }}">{% else %}{{ bt_d.bulk_received_8|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_8" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_8|default:'' }}"><input type="date" name="bulk_delivered_date_8" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_8|default:'' }}">{% else %}{{ bt_d.bulk_delivered_8|default:"" }}{% if bt_d.bulk_delivered_date_8 %}<br>{{ bt_d.bulk_delivered_date_8 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_8" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_8|default:'' }}"><input type="date" name="bulk_received_date_8" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_8|default:'' }}">{% else %}{{ bt_d.bulk_received_8|default:"" }}{% if bt_d.bulk_received_date_8 %}<br>{{ bt_d.bulk_received_date_8 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_9" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_9|default:'' }}">{% else %}{{ bt_d.bulk_date_9|default:"" }}{% endif %}</td>
@@ -4984,8 +5016,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_9" id="bg_9" oninput="calcBulkRow(9)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_9|default:'' }}">{% else %}{{ bt_d.bulk_gross_9|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_9" id="bt_9" oninput="calcBulkRow(9)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_9|default:'' }}">{% else %}{{ bt_d.bulk_tare_9|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_9" id="bn_9" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_9|default:'' }}">{% else %}{{ bt_d.bulk_net_9|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_9" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_9|default:'' }}">{% else %}{{ bt_d.bulk_delivered_9|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_9" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_9|default:'' }}">{% else %}{{ bt_d.bulk_received_9|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_9" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_9|default:'' }}"><input type="date" name="bulk_delivered_date_9" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_9|default:'' }}">{% else %}{{ bt_d.bulk_delivered_9|default:"" }}{% if bt_d.bulk_delivered_date_9 %}<br>{{ bt_d.bulk_delivered_date_9 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_9" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_9|default:'' }}"><input type="date" name="bulk_received_date_9" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_9|default:'' }}">{% else %}{{ bt_d.bulk_received_9|default:"" }}{% if bt_d.bulk_received_date_9 %}<br>{{ bt_d.bulk_received_date_9 }}{% endif %}{% endif %}</td>
         </tr>
         <tr>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="date" name="bulk_date_10" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_date_10|default:'' }}">{% else %}{{ bt_d.bulk_date_10|default:"" }}{% endif %}</td>
@@ -4993,8 +5025,8 @@ function cfBtCalcTotals() {
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_gross_10" id="bg_10" oninput="calcBulkRow(10)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_gross_10|default:'' }}">{% else %}{{ bt_d.bulk_gross_10|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_tare_10" id="bt_10" oninput="calcBulkRow(10)" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_tare_10|default:'' }}">{% else %}{{ bt_d.bulk_tare_10|default:"" }}{% endif %}</td>
             <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="number" step="0.001" name="bulk_net_10" id="bn_10" readonly style="width:100%;border:none;background:#e8f5e9;font-size:11px;cursor:default;" value="{{ bt_d.bulk_net_10|default:'' }}">{% else %}{{ bt_d.bulk_net_10|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_10" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_delivered_10|default:'' }}">{% else %}{{ bt_d.bulk_delivered_10|default:"" }}{% endif %}</td>
-            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_10" style="width:100%;border:none;background:#fce4ec;font-size:11px;" value="{{ bt_d.bulk_received_10|default:'' }}">{% else %}{{ bt_d.bulk_received_10|default:"" }}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_delivered_10" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_delivered_10|default:'' }}"><input type="date" name="bulk_delivered_date_10" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_delivered_date_10|default:'' }}">{% else %}{{ bt_d.bulk_delivered_10|default:"" }}{% if bt_d.bulk_delivered_date_10 %}<br>{{ bt_d.bulk_delivered_date_10 }}{% endif %}{% endif %}</td>
+            <td style="border:1px solid #000;padding:3px;">{% if packing_bt_editable %}<input type="text" name="bulk_received_10" placeholder="Sign" style="width:100%;border:none;background:#fce4ec;font-size:10px;" value="{{ bt_d.bulk_received_10|default:'' }}"><input type="date" name="bulk_received_date_10" style="width:100%;border:none;background:#fce4ec;font-size:10px;margin-top:2px;" value="{{ bt_d.bulk_received_date_10|default:'' }}">{% else %}{{ bt_d.bulk_received_10|default:"" }}{% if bt_d.bulk_received_date_10 %}<br>{{ bt_d.bulk_received_date_10 }}{% endif %}{% endif %}</td>
         </tr>
         <tr style="font-weight:bold;background:#f8f9fa;">
             <td colspan="2" style="border:1px solid #000;padding:4px;text-align:right;">Total:</td>
@@ -6404,12 +6436,12 @@ function cfBtCalcTotals() {
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_batch_no" placeholder="Batch" style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_mfg_date" placeholder="Mfg" style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_exp_date" placeholder="Exp" style="{{ ins }}"></td>
-                <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_leaflet" placeholder="Y/N" style="{{ ins }}"></td>
-                <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_legible" placeholder="Y/N" style="{{ ins }}"></td>
+                <td style="border:1px solid #000;padding:2px;"><select name="sec_ipc_p55_row_leaflet" style="{{ ins }}"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
+                <td style="border:1px solid #000;padding:2px;"><select name="sec_ipc_p55_row_legible" style="{{ ins }}"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_blisters" placeholder="No." style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_pack_size" placeholder="Size" style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_rejected" placeholder="Qty" style="{{ ins }}"></td>
-                <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_closing" placeholder="Y/N" style="{{ ins }}"></td>
+                <td style="border:1px solid #000;padding:2px;"><select name="sec_ipc_p55_row_closing" style="{{ ins }}"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_done_by" placeholder="Sign" style="{{ ins }}"></td>
             </tr>
             {% endwith %}
@@ -6422,12 +6454,12 @@ function cfBtCalcTotals() {
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_batch_no" placeholder="Batch" style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_mfg_date" placeholder="Mfg" style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_exp_date" placeholder="Exp" style="{{ ins }}"></td>
-                <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_leaflet" placeholder="Y/N" style="{{ ins }}"></td>
-                <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_legible" placeholder="Y/N" style="{{ ins }}"></td>
+                <td style="border:1px solid #000;padding:2px;"><select name="sec_ipc_p55_row_leaflet" style="{{ ins }}"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
+                <td style="border:1px solid #000;padding:2px;"><select name="sec_ipc_p55_row_legible" style="{{ ins }}"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_blisters" placeholder="No." style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_pack_size" placeholder="Size" style="{{ ins }}"></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_rejected" placeholder="Qty" style="{{ ins }}"></td>
-                <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_closing" placeholder="Y/N" style="{{ ins }}"></td>
+                <td style="border:1px solid #000;padding:2px;"><select name="sec_ipc_p55_row_closing" style="{{ ins }}"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:2px;"><input type="text" name="sec_ipc_p55_row_done_by" placeholder="QA Sign" style="{{ ins }}"></td>
             </tr>
             {% endwith %}
@@ -6532,22 +6564,22 @@ function cfBtCalcTotals() {
             <tr style="background:#fffde7;">
                 <td style="border:1px solid #000;padding:3px;"><input type="date" name="sec_ipc_p56_row_date" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
                 <td style="border:1px solid #000;padding:3px;"><input type="time" name="sec_ipc_p56_row_time" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_correctness" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_correctness" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_unit_qty" placeholder="Qty" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_printed_details" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_packing_slips" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_sealing" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_printed_details" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_packing_slips" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_sealing" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_done_by" placeholder="Sign" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
             </tr>
             {% elif sec_ipc_p56_qa_turn %}
             <tr style="background:#e8f5e9;">
                 <td style="border:1px solid #000;padding:3px;"><input type="date" name="sec_ipc_p56_row_date" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
                 <td style="border:1px solid #000;padding:3px;"><input type="time" name="sec_ipc_p56_row_time" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_correctness" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_correctness" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_unit_qty" placeholder="Qty" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_printed_details" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_packing_slips" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
-                <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_sealing" placeholder="Y/N" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_printed_details" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_packing_slips" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
+                <td style="border:1px solid #000;padding:3px;"><select name="sec_ipc_p56_row_sealing" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"><option value=""></option><option value="✓">✓</option><option value="✗">✗</option></select></td>
                 <td style="border:1px solid #000;padding:3px;"><input type="text" name="sec_ipc_p56_row_done_by" placeholder="QA Sign" style="width:100%;border:none;background:transparent;padding:1px;font-size:11px;"></td>
             </tr>
             {% endif %}
@@ -6611,7 +6643,7 @@ function cfBtCalcTotals() {
         <tr><td colspan="4" style="border:2px solid #000;padding:8px;text-align:center;font-weight:bold;font-size:14px;">SECONDARY PACKAGING</td></tr>
     </table>
     <div style="border:2px solid #000;padding:10px;margin-top:0;">
-    <div id="cap-spk-sec-fp-recon" style="scroll-margin-top:65px;"></div>
+    <div id="sec_fp_recon" style="scroll-margin-top:80px;"></div>
     {% with recon_d=secondary_sections_data.sec_fp_recon %}
     {% with recon_stage=sec_fp_recon_stage %}
     <h5 style="margin:14px 0 8px 0;font-weight:bold;text-align:center;">FINISHED PRODUCT RECONCILIATION SHEET</h5>
@@ -7390,11 +7422,32 @@ function cfBtCalcTotals() {
     {% elif phase_execution.ending_lc_status == 'operator_filled' %}
         <meta name="cap-scroll-target" content="cap-disp-end-lc">
     {% endif %}
+{% elif edit_mode == 'qa' and phase_name == 'sorting' %}
+    {# QA on sorting phase: scroll to first section needing QA action #}
+    {% with sort_lc=phase_executions.sorting %}
+    {% if sort_lc.beginning_lc_status == 'operator_filled' %}
+        <meta name="cap-scroll-target" content="cap-sort-begin-lc">
+    {% else %}
+        {% with ir_status=sorting_section_statuses.inspection_recon ipqc_status=sorting_section_statuses.inprocess_qc %}
+        {% if ir_status == 'operator_filled' %}
+            <meta name="cap-scroll-target" content="cap-sort-inspect-recon">
+        {% elif ipqc_status == 'operator_filled' %}
+            <meta name="cap-scroll-target" content="cap-sort-inprocess-qc">
+        {% elif sort_lc.ending_lc_status == 'operator_filled' %}
+            <meta name="cap-scroll-target" content="cap-sort-end-lc">
+        {% endif %}
+        {% endwith %}
+    {% endif %}
+    {% endwith %}
 {% elif edit_mode == 'blister_packing' or edit_mode == 'bulk_packing' %}
     {% with pkg_lc=phase_execution pkg_req_status=packaging_req_data.status|default:"not_started" ms_ss=packing_section_statuses.machine_setup pe_ss=packing_section_statuses.packing_execution yr_ss=packing_section_statuses.yield_reconciliation cs_ss=packing_section_statuses.coding_setup cr_ss=packing_section_statuses.coding_reconciliation bt_ss=packing_section_statuses.bulk_transfer i47_ss=packing_section_statuses.ipc_page_47 i48_ss=packing_section_statuses.ipc_page_48 i49_ss=packing_section_statuses.ipc_page_49 %}
     {% if user_role == 'qa' %}
-        {# QA: scroll to first packing section awaiting QA sign-off, then LC #}
-        {% if ms_ss == 'operator_filled' %}
+        {# QA: LC first, then body sections in workflow order #}
+        {% if pkg_lc.beginning_lc_status == 'operator_filled' %}
+            <meta name="cap-scroll-target" content="cap-pkg-begin-lc">
+        {% elif pkg_req_status == 'store_filled' %}
+            <meta name="cap-scroll-target" content="cap-pkg-req">
+        {% elif ms_ss == 'operator_filled' %}
             <meta name="cap-scroll-target" content="packing-sec-machine_setup">
         {% elif yr_ss == 'operator_filled' %}
             <meta name="cap-scroll-target" content="packing-sec-yield_reconciliation">
@@ -7402,21 +7455,17 @@ function cfBtCalcTotals() {
             <meta name="cap-scroll-target" content="packing-sec-coding_setup">
         {% elif cr_ss == 'operator_filled' %}
             <meta name="cap-scroll-target" content="packing-sec-coding_reconciliation">
-        {% elif i47_ss == 'operator_filled' %}
+        {% elif packing_ipc47_qa_turn %}
             <meta name="cap-scroll-target" content="packing-sec-ipc_page_47">
-        {% elif i48_ss == 'operator_filled' %}
+        {% elif packing_ipc48_qa_turn %}
             <meta name="cap-scroll-target" content="packing-sec-ipc_page_48">
-        {% elif i49_ss == 'operator_filled' %}
+        {% elif packing_ipc49_qa_turn %}
             <meta name="cap-scroll-target" content="packing-sec-ipc_page_49">
-        {% elif pkg_lc.beginning_lc_status == 'operator_filled' %}
-            <meta name="cap-scroll-target" content="cap-pkg-begin-lc">
         {% elif pkg_lc.ending_lc_status == 'operator_filled' %}
             <meta name="cap-scroll-target" content="cap-pkg-end-lc">
-        {% elif pkg_req_status == 'store_filled' %}
-            <meta name="cap-scroll-target" content="cap-pkg-req">
         {% endif %}
     {% else %}
-        {# Operator: scroll to first unlocked section not yet started #}
+        {# Operator: scroll to the next unlocked section in workflow order #}
         {% if pkg_lc.beginning_lc_status != 'qa_approved' %}
             <meta name="cap-scroll-target" content="cap-pkg-begin-lc">
         {% elif ms_ss == 'not_started' %}
@@ -7431,12 +7480,14 @@ function cfBtCalcTotals() {
             <meta name="cap-scroll-target" content="packing-sec-coding_reconciliation">
         {% elif cr_ss == 'qa_signed' and bt_ss == 'not_started' %}
             <meta name="cap-scroll-target" content="packing-sec-bulk_transfer">
-        {% elif bt_ss == 'completed' and i47_ss == 'not_started' %}
+        {% elif packing_ipc47_editable %}
             <meta name="cap-scroll-target" content="packing-sec-ipc_page_47">
-        {% elif i47_ss == 'qa_signed' and i48_ss == 'not_started' %}
+        {% elif packing_ipc48_editable %}
             <meta name="cap-scroll-target" content="packing-sec-ipc_page_48">
-        {% elif i48_ss == 'qa_signed' and i49_ss == 'not_started' %}
+        {% elif packing_ipc49_editable %}
             <meta name="cap-scroll-target" content="packing-sec-ipc_page_49">
+        {% elif pkg_lc.template_section_completed and pkg_lc.ending_lc_status == 'not_started' %}
+            <meta name="cap-scroll-target" content="cap-pkg-end-lc">
         {% endif %}
     {% endif %}
     {% endwith %}
@@ -7548,15 +7599,15 @@ function cfBtCalcTotals() {
     {% if user_role == 'qa' %}
         {% if sort_lc.beginning_lc_status == 'operator_filled' %}
             <meta name="cap-scroll-target" content="cap-sort-begin-lc">
-        {% elif sort_lc.ending_lc_status == 'operator_filled' %}
-            <meta name="cap-scroll-target" content="cap-sort-end-lc">
         {% else %}
             {# QA: Auto-scroll to pending sections in order #}
             {% with ir_status=sorting_section_statuses.inspection_recon ipqc_status=sorting_section_statuses.inprocess_qc %}
             {% if ir_status == 'operator_filled' %}
                 <meta name="cap-scroll-target" content="cap-sort-inspect-recon">
-            {% elif ipqc_status == 'not_started' and sort_lc.beginning_lc_status == 'qa_approved' %}
+            {% elif ipqc_status == 'operator_filled' %}
                 <meta name="cap-scroll-target" content="cap-sort-inprocess-qc">
+            {% elif sort_lc.ending_lc_status == 'operator_filled' %}
+                <meta name="cap-scroll-target" content="cap-sort-end-lc">
             {% endif %}
             {% endwith %}
         {% endif %}
@@ -7876,7 +7927,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var el = document.getElementById('packing-sec-ipc_page_49');
     {% elif edit_mode in 'blister_packing bulk_packing' and all_packing_sections_complete and phase_execution.beginning_lc_status == 'qa_approved' and phase_execution.ending_lc_status == 'not_started' and user_role != 'qa' %}
     var el = document.getElementById('cap-pkg-end-lc');
-    {% elif edit_mode in 'blister_packing bulk_packing qa' and phase_execution.ending_lc_status == 'operator_filled' and user_role == 'qa' %}
+    {% elif edit_mode in 'blister_packing bulk_packing' and phase_execution.ending_lc_status == 'operator_filled' and user_role == 'qa' %}
     var el = document.getElementById('cap-pkg-end-lc');
     {% else %}
     var el = null;

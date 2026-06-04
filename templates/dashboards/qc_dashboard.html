@@ -213,9 +213,9 @@
 {% block content %}
 <div class="qc-layout">
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+<!-- ================================================================
      LEFT SIDEBAR
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+================================================================ -->
 <div class="qc-sidebar">
 
     <div class="qc-sidebar-header">
@@ -283,18 +283,18 @@
     </nav>
 
     <div class="qc-sidebar-search">
-        <input type="text" id="qcBatchSearch" placeholder="Search batch numberâ€¦" oninput="filterQcTable(this.value)">
+        <input type="text" id="qcBatchSearch" placeholder="Search batch number…" oninput="filterQcTable(this.value)">
     </div>
 </div><!-- /sidebar -->
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+<!-- ================================================================
      MAIN CONTENT
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+================================================================ -->
 <div class="qc-main">
 
     <div class="qc-page-header">
         <h4><i class="fas fa-microscope me-2 text-primary"></i>Quality Control Dashboard</h4>
-        <div class="sub">Product Testing &amp; Quality Verification â€” {{ user.get_full_name|default:user.username }}</div>
+        <div class="sub">Product Testing &amp; Quality Verification — {{ user.get_full_name|default:user.username }}</div>
     </div>
 
     <!-- KPI Cards -->
@@ -403,8 +403,8 @@
                         <td><a href="{% url 'bmr:detail' phase.bmr.pk %}" class="batch-link">{{ phase.bmr.batch_number }}</a></td>
                         <td>{{ phase.bmr.product.product_name }}</td>
                         <td><span class="pill pill-blue">{{ phase.phase.get_phase_name_display }}</span></td>
-                        <td>{{ phase.started_date|date:"M d, H:i"|default:"â€”" }}</td>
-                        <td>{{ phase.started_by.get_full_name|default:"â€”" }}</td>
+                        <td>{{ phase.started_date|date:"M d, H:i"|default:"—" }}</td>
+                        <td>{{ phase.started_by.get_full_name|default:"—" }}</td>
                         <td>
                             <div class="d-flex gap-1 flex-wrap">
                                 <button class="btn btn-success btn-qc"
@@ -580,7 +580,7 @@
                     <div>
                         <label class="form-label fw-semibold">Test Results / Comments</label>
                         <textarea class="form-control" id="test_comments" name="test_results" rows="4"
-                                  placeholder="Document test parameters, observations and findingsâ€¦"></textarea>
+                                  placeholder="Document test parameters, observations and findings…"></textarea>
                         <small class="form-text text-muted">Required for Reject/Fail decisions.</small>
                     </div>
                     <input type="hidden" id="test_phase_id" name="phase_id">

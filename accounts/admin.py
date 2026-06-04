@@ -6,7 +6,7 @@ from django.urls import path
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-from .models import CustomUser, UserSession
+from .models import CustomUser, UserSession, SecuritySettings
 
 # Unregister the default Group admin if we don't need it
 # admin.site.unregister(Group)
@@ -125,3 +125,95 @@ class UserSessionAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'ip_address')
     readonly_fields = ('login_time',)
     ordering = ('-login_time',)
+
+
+@admin.register(SecuritySettings)
+class SecuritySettingsAdmin(admin.ModelAdmin):
+    """
+    Admin interface for security configuration.
+    Only one instance exists - click to edit settings.
+    """
+    list_display = (
+        'get_title',
+        'axes_enabled',
+        'axes_failure_limit',
+        'get_cooloff_display',
+        'password_min_length',
+        'session_timeout_hours',
+        'last_updated',
+    )
+    
+    fieldsets = (
+        ('🔒 Brute Force Protection', {
+            'fields': (
+                'axes_enabled',
+                'axes_failure_limit',
+                'axes_cooloff_hours',
+            ),
+            'description': 'Configure automatic account lockout after failed login attempts.'
+        }),
+        ('🔑 Password Security', {
+            'fields': ('password_min_length',),
+            'description': 'Set password complexity requirements.'
+        }),
+        ('⏱️ Session Management', {
+            'fields': ('session_timeout_hours',),
+            'description': 'Configure automatic logout timeouts.'
+        }),
+        ('📝 Audit Trail', {
+            'fields': ('last_updated', 'updated_by'),
+            'classes': ('collapse',),
+        }),
+    )
+    
+    readonly_fields = ('last_updated', 'updated_by')
+    
+    def get_title(self, obj):
+        return "Security Configuration"
+    get_title.short_description = "Configuration"
+    
+    def get_cooloff_display(self, obj):
+        minutes = obj.get_cooloff_minutes()
+        if minutes < 60:
+            return f"{int(minutes)} minutes"
+        else:
+            hours = minutes / 60
+            return f"{hours:.1f} hour(s)"
+    get_cooloff_display.short_description = "Lockout Duration"
+    
+    def has_add_permission(self, request):
+        """Only allow one instance"""
+        return not SecuritySettings.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of settings"""
+        return False
+    
+    def save_model(self, request, obj, form, change):
+        """Track who updated the settings"""
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+        messages.success(
+            request,
+            f"✅ Security settings updated! Changes will apply after server restart."
+        )
+    
+    def changelist_view(self, request, extra_context=None):
+        """
+        If no settings exist, create one and redirect to edit.
+        If settings exist, redirect directly to edit page.
+        """
+        if not SecuritySettings.objects.exists():
+            # Create default settings
+            obj = SecuritySettings.objects.create()
+            obj.updated_by = request.user
+            obj.save()
+        
+        # Always redirect to the single settings instance
+        obj = SecuritySettings.objects.first()
+        return redirect('admin:accounts_securitysettings_change', obj.pk)
+    
+    class Media:
+        css = {
+            'all': ('admin/css/forms.css',)
+        }

@@ -259,6 +259,12 @@
             <span class="nav-label">View All BMRs</span>
             <span class="nav-badge gray">{{ stats.total_bmrs }}</span>
         </a>
+
+        <a class="qa-nav-item" href="{% url 'bmr:issuance_log_list' %}">
+            <span class="nav-icon"><i class="fas fa-file-invoice"></i></span>
+            <span class="nav-label">BMR Issuance Logs</span>
+        </a>
+        </a>
     </nav>
 
     <div class="qa-sidebar-search">

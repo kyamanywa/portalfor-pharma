@@ -312,7 +312,7 @@ COMPRESSION_SECTIONS = {
     'bulk_transfer':  {'label': 'Bulk Transfer / Reconciliation (Page 37)',   'qa_signs': False, 'qa_only': False, 'order': 7},
 }
 
-# IPC pages â€” each page has its own independent 4-step Op1â†’QA1â†’Op2â†’QA2 cycle
+# IPC pages — each page has its own independent 4-step Op1â†’QA1â†’Op2â†’QA2 cycle
 IPC_PAGES = ['p27', 'p28', 'p29', 'p30', 'p31', 'p32', 'p33', 'p34', 'p35']
 
 
@@ -571,7 +571,8 @@ PACKING_SECTIONS = {
 IPC_ROW_FIELDS = {
     'ipc_page_47': ['date', 'time', 'appear', 'printed', 'passfail', 'doneby'],
     'ipc_page_48': ['date', 'time', 'temp', 'nblisters', 'obs', 'passfail', 'doneby'],
-    'ipc_page_49': ['date', 'time', 'coding_clear', 'coding_correct', 'packsize', 'blisterc', 'knurling', 'doneby'],
+    # Keep keys in sync with template input names (ipc49_row_*) and display fields.
+    'ipc_page_49': ['date', 'time', 'coding', 'packsize', 'blisterc', 'knurling', 'doneby'],
 }
 
 # Column fields for secondary packing IPC pages — row-by-row operator/QA flow
@@ -1056,7 +1057,7 @@ SECONDARY_SECTIONS = {
     },
     'sec_fp_recon': {
         'label':    'Finished Product Reconciliation (Page 28)',
-        'qa_signs': False,
+        'qa_signs': True,
         'qa_only':  False,
         'order':    8,
     },
@@ -1076,23 +1077,44 @@ SECONDARY_SKIP_BY_PRODUCT = {
     'capsule':  {'sec_packing_process'},  # capsule has no packing process page
 }
 
-def all_secondary_sections_complete(phase_data, product_type=None):
-    """Return True when every secondary packaging section (except sec_fp_recon) is in its final state.
-    sec_fp_recon is filled AFTER ending LC, so it must not gate ending LC.
-    Skips sections that don't exist for the given product_type."""
-    skip = SECONDARY_SKIP_BY_PRODUCT.get(product_type, set())
+def all_secondary_excl_recon(phase_data, product_type=None):
+    """Return True when every secondary packaging section EXCEPT sec_fp_recon is in its final state.
+    Used to gate the FP Reconciliation form — it unlocks once all packing/IPC sections are done."""
+    skip = SECONDARY_SKIP_BY_PRODUCT.get(product_type, set()) | {'sec_fp_recon'}
     statuses = get_secondary_section_statuses(phase_data)
     for key, cfg in SECONDARY_SECTIONS.items():
-        if key == 'sec_fp_recon':
-            continue  # FP Recon is filled after ending LC
         if key in skip:
-            continue  # Section doesn't exist for this product type
+            continue
         status = statuses.get(key, 'not_started')
         if cfg.get('qa_only'):
             if status != 'qa_filled':
                 return False
         elif cfg.get('qa_signs'):
-            if status != 'qa_signed':
+            # Accept both 'qa_signed' and 'completed' as valid final states
+            if status not in ('qa_signed', 'completed'):
+                return False
+        else:
+            if status != 'completed':
+                return False
+    return True
+
+
+def all_secondary_sections_complete(phase_data, product_type=None):
+    """Return True when ALL secondary packaging sections including sec_fp_recon are in their final state.
+    Gates the Ending Line Clearance — it unlocks only after FP Reconciliation is completed (PM-approved).
+    Skips sections that don't exist for the given product_type."""
+    skip = SECONDARY_SKIP_BY_PRODUCT.get(product_type, set())
+    statuses = get_secondary_section_statuses(phase_data)
+    for key, cfg in SECONDARY_SECTIONS.items():
+        if key in skip:
+            continue
+        status = statuses.get(key, 'not_started')
+        if cfg.get('qa_only'):
+            if status != 'qa_filled':
+                return False
+        elif cfg.get('qa_signs'):
+            # Accept both 'qa_signed' (after QA approval) and 'completed' (after PM approval for FP Recon)
+            if status not in ('qa_signed', 'completed'):
                 return False
         else:
             if status != 'completed':
@@ -1102,13 +1124,11 @@ def all_secondary_sections_complete(phase_data, product_type=None):
 
 def secondary_phase_fully_done(phase_data, pe):
     """Return True when the entire secondary packaging phase is ready for completion.
-    Requires: all sections complete (excl FP Recon) + FP Recon completed + both LCs approved."""
+    Requires: all sections including FP Recon completed + both LCs approved."""
     _ptype = getattr(getattr(pe.bmr, 'product', None), 'product_type', None)
     if not all_secondary_sections_complete(phase_data, product_type=_ptype):
         return False
-    statuses = get_secondary_section_statuses(phase_data)
-    if statuses.get('sec_fp_recon', 'not_started') != 'completed':
-        return False
+    # all_secondary_sections_complete already checks sec_fp_recon is qa_signed
     if pe.beginning_lc_status != 'qa_approved' or pe.ending_lc_status != 'qa_approved':
         return False
     return True
@@ -1122,12 +1142,12 @@ def _save_compression_section_data(section_key, request, fc, user_name):
         for key in request.POST:
             if key.startswith('equip_'):
                 s[key] = 'on'
-        # Un-checked checkboxes are absent from POST â€” clear any that were previously on
-        # (we only set present keys; absent means unchecked â€” remove stale ones)
+        # Un-checked checkboxes are absent from POST — clear any that were previously on
+        # (we only set present keys; absent means unchecked — remove stale ones)
         for existing_key in list(s.keys()):
             if existing_key.startswith('equip_') and existing_key not in request.POST:
                 s.pop(existing_key, None)
-        # Operator / signature fields â€” use exact names from compression_table.html
+        # Operator / signature fields — use exact names from compression_table.html
         s['cleaned_by']         = request.POST.get('cleaned_by', '')
         s['cleaned_date']       = request.POST.get('cleaned_date', '')
         s['machine_set_by']     = request.POST.get('machine_set_by', '')
@@ -1598,6 +1618,11 @@ def phase_form_view(request, phase_execution_id):
             if _page_dates:
                 _fd_ps.setdefault('page_dates', {}).update(_page_dates)
             BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=_fd_ps)
+            # Keep in-memory existing_data in sync so any downstream handler
+            # that saves via existing_data does not overwrite the shifts/dates
+            # we just persisted.
+            existing_data.setdefault('page_shifts', {}).update(_page_shifts)
+            existing_data.setdefault('page_dates', {}).update(_page_dates)
 
     # =========================================================
     # NOTE: Dynamic template engine removed during cleanup.
@@ -2157,16 +2182,16 @@ def phase_form_view(request, phase_execution_id):
                         if all_sections_complete(fd):
                             _update_fields['template_section_completed'] = True
                             print(f"[GRAN QA_SIGN] All sections complete - template_section_completed=True", file=sys.stderr)
-                        # Use queryset.update() â€” direct DB write, bypasses all instance-level caching
+                        # Use queryset.update() — direct DB write, bypasses all instance-level caching
                         BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_update_fields)
                         # Verify the save
                         _verify = BatchPhaseExecution.objects.values('phase_data').get(pk=phase_execution.pk)
                         _saved_status = _verify['phase_data'].get('granulation', {}).get('section_statuses', {}).get(section_key)
-                        print(f"[GRAN QA_SIGN] SAVED â€” DB now shows {section_key!r} status = {_saved_status!r}  signed_by={user_name!r}", file=sys.stderr)
-                        messages.success(request, f"{cfg['label']} â€” QA signed âœ“")
+                        print(f"[GRAN QA_SIGN] SAVED — DB now shows {section_key!r} status = {_saved_status!r}  signed_by={user_name!r}", file=sys.stderr)
+                        messages.success(request, f"{cfg['label']} — QA signed ✓")
                     else:
-                        print(f"[GRAN QA_SIGN] BLOCKED â€” status is {fs.get(section_key)!r} not operator_filled", file=sys.stderr)
-                        messages.warning(request, f"{cfg['label']} â€” cannot sign (status: {fs.get(section_key)}).")
+                        print(f"[GRAN QA_SIGN] BLOCKED — status is {fs.get(section_key)!r} not operator_filled", file=sys.stderr)
+                        messages.warning(request, f"{cfg['label']} — cannot sign (status: {fs.get(section_key)}).")
                 return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
 
             elif action.startswith('qa_fill_section_'):
@@ -2210,7 +2235,7 @@ def phase_form_view(request, phase_execution_id):
                         _update_fields_fill['template_section_completed'] = True
                         print(f"[GRAN QA_FILL] All sections complete - template_section_completed=True", file=sys.stderr)
                     BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_update_fields_fill)
-                    messages.success(request, f"{cfg['label']} â€” QA report saved âœ“")
+                    messages.success(request, f"{cfg['label']} — QA report saved ✓")
                 return redirect('dashboards:qa_dashboard')
 
             elif action.startswith('recall_section_'):
@@ -2243,7 +2268,7 @@ def phase_form_view(request, phase_execution_id):
                         BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=fd)
                         messages.success(request, f"{cfg['label']} re-opened for editing.")
                     else:
-                        messages.warning(request, f"{cfg['label']} cannot be recalled â€” already signed/approved.")
+                        messages.warning(request, f"{cfg['label']} cannot be recalled — already signed/approved.")
                 return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
             # â”€â”€ END EARLY-EXIT â”€â”€
 
@@ -2448,7 +2473,7 @@ def phase_form_view(request, phase_execution_id):
                 'remarks': request.POST.get('reconciliation_remarks', ''),
             }
             
-            # Build the granulation data dict â€” preserve existing section_statuses
+            # Build the granulation data dict — preserve existing section_statuses
             phase_data = existing_data.copy()
             prev_granulation = phase_data.get('granulation', {})
             prev_section_statuses = prev_granulation.get('section_statuses', {})
@@ -2587,9 +2612,18 @@ def phase_form_view(request, phase_execution_id):
                                 lot['quantity_per_lot'] = calculated_qty
         
         # Determine edit_mode
-        # For packing phases, QA must get edit_mode=phase_name so the template can show
-        # QA sign forms (gated by user_role=='qa' inside the template, not edit_mode).
-        if hasattr(request.user, 'role') and request.user.role == 'qa' and phase_name not in ('blister_packing', 'bulk_packing', 'secondary_packaging', 'final_qa'):
+        # For some phases, QA must stay on edit_mode=phase_name because templates
+        # explicitly gate editable LC/section blocks by phase edit_mode.
+        qa_phase_mode_phases = (
+            'blister_packing',
+            'bulk_packing',
+            'secondary_packaging',
+            'final_qa',
+            'sorting',
+            'post_coating_sorting',
+            'packaging_material_release',
+        )
+        if hasattr(request.user, 'role') and request.user.role == 'qa' and phase_name not in qa_phase_mode_phases:
             edit_mode = 'qa'
         elif phase_name == 'granulation' and request.user.role == 'granulation_operator':
             edit_mode = 'granulation'
@@ -2677,13 +2711,13 @@ def phase_form_view(request, phase_execution_id):
                             if _all_done:
                                 _upd['template_section_completed'] = True
                             BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
-                            messages.success(request, f"{cfg['label']} â€” QA signed \u2713")
+                            messages.success(request, f"{cfg['label']} — QA signed \u2713")
                         else:
-                            messages.warning(request, f"{cfg['label']} â€” cannot sign (status: {fs.get(skey)}).")
+                            messages.warning(request, f"{cfg['label']} — cannot sign (status: {fs.get(skey)}).")
                     return redirect('dashboards:qa_dashboard')
 
                 elif action.startswith('qa_fill_section_blending_'):
-                    # (qa_fill handler below â€” no fallthrough to generic code)
+                    # (qa_fill handler below — no fallthrough to generic code)
                     skey = action.replace('qa_fill_section_blending_', '')
                     if skey in BLENDING_SECTIONS:
                         cfg = BLENDING_SECTIONS[skey]
@@ -2708,6 +2742,7 @@ def phase_form_view(request, phase_execution_id):
                                 'release_procedure':    request.POST.get('qa_release_procedure', ''),
                                 'rejection_procedure':  request.POST.get('qa_rejection_procedure', ''),
                                 'qa_sign':              request.POST.get('qa_sign_sampling', '') or _buser,
+                                'qa_sign_date':         request.POST.get('qa_sign_sampling_date', ''),
                             }
                         fb['section_statuses'] = fs
                         fd['blending'] = fb
@@ -2716,7 +2751,7 @@ def phase_form_view(request, phase_execution_id):
                         if _all_done:
                             _upd['template_section_completed'] = True
                         BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
-                        messages.success(request, f"{cfg['label']} â€” QA report saved \u2713")
+                        messages.success(request, f"{cfg['label']} — QA report saved \u2713")
                     return redirect('dashboards:qa_dashboard')
 
                 elif action.startswith('recall_section_blending_'):
@@ -2987,7 +3022,7 @@ def phase_form_view(request, phase_execution_id):
                             if fps.get(_prev_pg, 'not_started') != 'qa_signed':
                                 _ipc_prev_ok = False
                                 messages.warning(request,
-                                    f"Page {_ipc_page[1:]} is locked â€” complete & QA-sign Page {_prev_pg[1:]} first.")
+                                    f"Page {_ipc_page[1:]} is locked — complete & QA-sign Page {_prev_pg[1:]} first.")
                                 return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
                     if cur == _req and _ipc_prev_ok:
                         fps[_ipc_page] = _nxt
@@ -3013,10 +3048,10 @@ def phase_form_view(request, phase_execution_id):
                             _upd['template_section_completed'] = True
                         BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
                         messages.success(request,
-                            f"IPC Page {_ipc_page[1:]} â€” {_ipc_step.upper()} submitted \u2713")
+                            f"IPC Page {_ipc_page[1:]} — {_ipc_step.upper()} submitted \u2713")
                     else:
                         messages.warning(request,
-                            f"IPC Page {_ipc_page[1:]} â€” cannot submit {_ipc_step} (status: {cur})")
+                            f"IPC Page {_ipc_page[1:]} — cannot submit {_ipc_step} (status: {cur})")
                     return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
 
                 # â”€â”€ IPC per-page recall â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -3056,12 +3091,12 @@ def phase_form_view(request, phase_execution_id):
                         if skey == 'reconciliation':
                             _ipc_ok = all(v == 'qa_signed' for v in get_ipc_page_statuses(fd).values())
                             if not _ipc_ok:
-                                messages.warning(request, 'Section 10 is locked â€” complete and QA-sign all IPC pages (Section 9, pages 27â€“35) first.')
+                                messages.warning(request, 'Section 10 is locked — complete and QA-sign all IPC pages (Section 9, pages 27–35) first.')
                                 return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
                         # Gate Bulk Transfer behind Reconciliation being qa_signed by the Production Pharmacist
                         if skey == 'bulk_transfer':
                             if fs.get('reconciliation', 'not_started') != 'qa_signed':
-                                messages.warning(request, 'Bulk Transfer is locked â€” Reconciliation (Section 10) must be signed by the Production Pharmacist first.')
+                                messages.warning(request, 'Bulk Transfer is locked — Reconciliation (Section 10) must be signed by the Production Pharmacist first.')
                                 return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
                         if fs.get(skey, 'not_started') == 'not_started':
                             fs[skey] = 'operator_filled' if cfg.get('qa_signs') else 'completed'
@@ -3121,10 +3156,10 @@ def phase_form_view(request, phase_execution_id):
                             if _all_done:
                                 _upd['template_section_completed'] = True
                             BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
-                            messages.success(request, f"{cfg['label']} â€” QA signed \u2713")
+                            messages.success(request, f"{cfg['label']} — QA signed \u2713")
                         else:
-                            messages.warning(request, f"{cfg['label']} â€” cannot sign (status: {fs.get(skey)}).")
-                    # Reconciliation is signed by Regulatory (Production Pharmacist) â€” redirect to their dashboard
+                            messages.warning(request, f"{cfg['label']} — cannot sign (status: {fs.get(skey)}).")
+                    # Reconciliation is signed by Regulatory (Production Pharmacist) — redirect to their dashboard
                     if skey == 'reconciliation':
                         return redirect('dashboards:regulatory_dashboard')
                     return redirect('dashboards:qa_dashboard')
@@ -3151,7 +3186,7 @@ def phase_form_view(request, phase_execution_id):
                             messages.warning(request, f"{cfg['label']} cannot be recalled.")
                     return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
 
-                # Fallthrough for save_draft and complete (handled below) â€” do NOT return.
+                # Fallthrough for save_draft and complete (handled below) — do NOT return.
             # â”€â”€ END COMPRESSION EARLY-EXIT â”€â”€
 
             # ── PACKING EARLY-EXIT: blister_packing / bulk_packing section actions ──
@@ -3176,6 +3211,8 @@ def phase_form_view(request, phase_execution_id):
 
                         # Gate: enforce section sequencing — each section requires its predecessor
                         _SECTION_PREREQUISITES = {
+                            'initial_weights':        ('dies_punches', 'qa_signed', 'Dies & Punches (Section 7) must be QA-signed first.'),
+                            'inprocess_qc':           ('initial_weights', 'qa_signed', 'Initial Weights (Section 8) must be QA-signed first.'),
                             'packing_execution':      ('machine_setup', 'qa_signed', 'Machine Setup must be QA-signed first.'),
                             'yield_reconciliation':    ('packing_execution', 'completed', 'Packing Execution must be completed first.'),
                             'coding_setup':            ('yield_reconciliation', 'qa_signed', 'Yield Reconciliation must be QA-signed first.'),
@@ -3263,8 +3300,10 @@ def phase_form_view(request, phase_execution_id):
                                     bt[f'bulk_gross_{i}']     = request.POST.get(f'bulk_gross_{i}', '')
                                     bt[f'bulk_tare_{i}']      = request.POST.get(f'bulk_tare_{i}', '')
                                     bt[f'bulk_net_{i}']       = request.POST.get(f'bulk_net_{i}', '')
-                                    bt[f'bulk_delivered_{i}'] = request.POST.get(f'bulk_delivered_{i}', '')
-                                    bt[f'bulk_received_{i}']  = request.POST.get(f'bulk_received_{i}', '')
+                                    bt[f'bulk_delivered_{i}']      = request.POST.get(f'bulk_delivered_{i}', '')
+                                    bt[f'bulk_delivered_date_{i}'] = request.POST.get(f'bulk_delivered_date_{i}', '')
+                                    bt[f'bulk_received_{i}']       = request.POST.get(f'bulk_received_{i}', '')
+                                    bt[f'bulk_received_date_{i}']  = request.POST.get(f'bulk_received_date_{i}', '')
                                 bt['bulk_total_tablets']       = request.POST.get('bulk_total_tablets', '')
                                 bt['bulk_avg_weight']           = request.POST.get('bulk_avg_weight', '')
                                 bt['bulk_total_gross']          = request.POST.get('bulk_total_gross', '')
@@ -4311,6 +4350,117 @@ def phase_form_view(request, phase_execution_id):
                             BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
                             messages.success(request, f"{SECONDARY_SECTIONS[_skey]['label']} complete \u2713")
                     return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
+
+                # ── TABLET FP RECONCILIATION (Page 57) — secondary packing phase ──
+                elif action == 'tab_fp_recon_save_draft':
+                    # Production saves a draft of the FP Reconciliation
+                    _fresh = BatchPhaseExecution.objects.get(pk=phase_execution.pk)
+                    fd = _sjson.loads(_sjson.dumps(_fresh.phase_data or {}))
+                    rec = fd.setdefault('tablet_fp_recon', {})
+                    # FP Recon Sheet rows (up to 10)
+                    for i in range(1, 11):
+                        for fld in ('qty_packed', 'retention_sample', 'actual_qty',
+                                    'qty_delivered', 'delivery_note', 'delivery_date'):
+                            k = f'tab_fp_{fld}_{i}'
+                            rec[k] = request.POST.get(k, '')
+                    # Final Batch Reconciliation fields
+                    for fld in ('theo_yield_qty', 'theo_yield_units', 'theo_yield_pct',
+                                'yield_1st_qty', 'yield_1st_units', 'yield_1st_pct',
+                                'qc_samples_qty', 'qc_samples_units', 'qc_samples_pct',
+                                'rework_qty', 'rework_units', 'rework_pct',
+                                'rework_powder_qty', 'rework_powder_units', 'rework_powder_pct',
+                                'rework_tablets_qty', 'rework_tablets_units', 'rework_tablets_pct',
+                                'rejects_qty', 'rejects_units', 'rejects_pct',
+                                'rejects_powder_qty', 'rejects_powder_units', 'rejects_powder_pct',
+                                'rejects_tablets_qty', 'rejects_tablets_units', 'rejects_tablets_pct',
+                                'total_yield_qty', 'total_yield_units', 'total_yield_pct',
+                                'shortage_qty', 'shortage_units', 'shortage_pct'):
+                        rec[f'tab_fp_{fld}'] = request.POST.get(f'tab_fp_{fld}', '')
+                    rec['_draft_saved'] = _snow
+                    rec['_draft_saved_by'] = _suser
+                    fd['tablet_fp_recon'] = rec
+                    BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=fd)
+                    messages.info(request, 'FP Reconciliation draft saved.')
+                    return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
+
+                elif action == 'tab_fp_recon_submit':
+                    # Production submits FP Recon + Supervisor signs → send to QA
+                    _fresh = BatchPhaseExecution.objects.get(pk=phase_execution.pk)
+                    fd = _sjson.loads(_sjson.dumps(_fresh.phase_data or {}))
+                    rec = fd.setdefault('tablet_fp_recon', {})
+                    cur_stage = rec.get('recon_stage', 'not_started')
+                    if cur_stage in ('not_started', ''):
+                        # Save FP Recon Sheet rows
+                        for i in range(1, 11):
+                            for fld in ('qty_packed', 'retention_sample', 'actual_qty',
+                                        'qty_delivered', 'delivery_note', 'delivery_date'):
+                                k = f'tab_fp_{fld}_{i}'
+                                rec[k] = request.POST.get(k, '')
+                        # Save Final Batch Reconciliation fields
+                        for fld in ('theo_yield_qty', 'theo_yield_units', 'theo_yield_pct',
+                                    'yield_1st_qty', 'yield_1st_units', 'yield_1st_pct',
+                                    'qc_samples_qty', 'qc_samples_units', 'qc_samples_pct',
+                                    'rework_qty', 'rework_units', 'rework_pct',
+                                    'rework_powder_qty', 'rework_powder_units', 'rework_powder_pct',
+                                    'rework_tablets_qty', 'rework_tablets_units', 'rework_tablets_pct',
+                                    'rejects_qty', 'rejects_units', 'rejects_pct',
+                                    'rejects_powder_qty', 'rejects_powder_units', 'rejects_powder_pct',
+                                    'rejects_tablets_qty', 'rejects_tablets_units', 'rejects_tablets_pct',
+                                    'total_yield_qty', 'total_yield_units', 'total_yield_pct',
+                                    'shortage_qty', 'shortage_units', 'shortage_pct'):
+                            rec[f'tab_fp_{fld}'] = request.POST.get(f'tab_fp_{fld}', '')
+                        # Supervisor sign
+                        rec['tab_fp_spv_sign'] = request.POST.get('tab_fp_spv_sign', '')
+                        rec['tab_fp_spv_date'] = request.POST.get('tab_fp_spv_date', '')
+                        rec['recon_stage'] = 'spv_submitted'
+                        rec['spv_submitted_by'] = _suser
+                        rec['spv_submitted_date'] = _snow
+                        fd['tablet_fp_recon'] = rec
+                        # Mark sec_fp_recon section as completed
+                        fs_top = fd.setdefault('secondary_sections', {})
+                        fs = fs_top.setdefault('section_statuses', {})
+                        fs['sec_fp_recon'] = 'completed'
+                        fs_top['section_statuses'] = fs
+                        fd['secondary_sections'] = fs_top
+                        # Check if all sections are now complete
+                        _fully_done = secondary_phase_fully_done(fd, _fresh)
+                        _upd = {'phase_data': fd}
+                        if _fully_done:
+                            _upd['template_section_completed'] = True
+                        BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
+                        messages.success(request, 'FP Reconciliation submitted — awaiting QA verification.')
+                    else:
+                        messages.warning(request, 'FP Reconciliation already submitted.')
+                    return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
+
+                elif action == 'tab_fp_recon_qa_approve':
+                    # QA verifies and signs the FP reconciliation
+                    _fresh = BatchPhaseExecution.objects.get(pk=phase_execution.pk)
+                    fd = _sjson.loads(_sjson.dumps(_fresh.phase_data or {}))
+                    rec = fd.setdefault('tablet_fp_recon', {})
+                    if rec.get('recon_stage') == 'spv_submitted':
+                        rec['tab_fp_qao_sign'] = request.POST.get('tab_fp_qao_sign', '') or _suser
+                        rec['tab_fp_qao_date'] = request.POST.get('tab_fp_qao_date', '')
+                        rec['recon_stage'] = 'qa_approved'
+                        rec['qa_approved_by'] = _suser
+                        rec['qa_approved_date'] = _snow
+                        fd['tablet_fp_recon'] = rec
+                        # Mark sec_fp_recon section as qa_signed
+                        fs_top = fd.setdefault('secondary_sections', {})
+                        fs = fs_top.setdefault('section_statuses', {})
+                        fs['sec_fp_recon'] = 'qa_signed'
+                        fs_top['section_statuses'] = fs
+                        fd['secondary_sections'] = fs_top
+                        # Check if all sections are now complete
+                        _fully_done = secondary_phase_fully_done(fd, _fresh)
+                        _upd = {'phase_data': fd}
+                        if _fully_done:
+                            _upd['template_section_completed'] = True
+                        BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
+                        messages.success(request, 'FP Reconciliation QA-verified ✓')
+                    else:
+                        messages.warning(request, 'Cannot verify — not in correct stage.')
+                    return redirect(reverse('dashboards:qa_dashboard') + '#section-secondary-sections')
 
                 else:
                     messages.warning(request, 'Unrecognised secondary packing action. Please use the section buttons.')
@@ -5399,9 +5549,9 @@ def phase_form_view(request, phase_execution_id):
                             if _all_done:
                                 _upd['template_section_completed'] = True
                             BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
-                            messages.success(request, f"{cfg['label']} â€” QA verified \u2713")
+                            messages.success(request, f"{cfg['label']} — QA verified \u2713")
                         else:
-                            messages.warning(request, f"{cfg['label']} â€” cannot verify (status: {fs.get(skey)}). Submit the form first.")
+                            messages.warning(request, f"{cfg['label']} — cannot verify (status: {fs.get(skey)}). Submit the form first.")
                     return redirect('dashboards:qa_dashboard')
 
                 elif action.startswith('qa_fill_section_sorting_'):
@@ -5436,7 +5586,7 @@ def phase_form_view(request, phase_execution_id):
                         if _all_done:
                             _upd['template_section_completed'] = True
                         BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(**_upd)
-                        messages.success(request, f"{cfg['label']} â€” In-Process QC saved \u2713")
+                        messages.success(request, f"{cfg['label']} — In-Process QC saved \u2713")
                     return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
 
                 elif action.startswith('recall_section_sorting_'):
@@ -5468,7 +5618,7 @@ def phase_form_view(request, phase_execution_id):
                             messages.warning(request, f"{cfg['label']} cannot be recalled.")
                     return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
 
-                # â”€â”€ Draft saves (no status change â€” operator can return later) â”€â”€
+                # â”€â”€ Draft saves (no status change — operator can return later) â”€â”€
                 elif action == 'save_draft_section_sorting_inspection_recon':
                     _fresh = BatchPhaseExecution.objects.get(pk=phase_execution.pk)
                     fd = _sjson.loads(_sjson.dumps(_fresh.phase_data or {}))
@@ -5491,9 +5641,9 @@ def phase_form_view(request, phase_execution_id):
                         fs_top['inspection_recon'] = ir
                         fd['sorting_sections'] = fs_top
                         BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=fd)
-                        messages.success(request, 'Draft saved âœ“  come back any time to complete this section.')
+                        messages.success(request, 'Draft saved ✓  come back any time to complete this section.')
                     else:
-                        messages.warning(request, 'Section A is already submitted â€” cannot overwrite with draft.')
+                        messages.warning(request, 'Section A is already submitted — cannot overwrite with draft.')
                     return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
 
                 elif action == 'save_draft_section_sorting_personnel':
@@ -5512,9 +5662,9 @@ def phase_form_view(request, phase_execution_id):
                         fs_top['personnel'] = pr
                         fd['sorting_sections'] = fs_top
                         BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=fd)
-                        messages.success(request, 'Personnel draft saved âœ“  return any time to complete.')
+                        messages.success(request, 'Personnel draft saved ✓  return any time to complete.')
                     else:
-                        messages.warning(request, 'Section B is already submitted â€” cannot overwrite with draft.')
+                        messages.warning(request, 'Section B is already submitted — cannot overwrite with draft.')
                     return redirect(reverse('dashboards:phase_form', args=[phase_execution.id]))
 
                 # â”€â”€ If action is not a section action, skip (no legacy form anymore) â”€â”€
@@ -6244,7 +6394,7 @@ def phase_form_view(request, phase_execution_id):
     context = {
         'phase_execution': phase_execution,
         'phase_executions': _phase_exec_dict,
-        # Per-phase execution objects â€” always available so the template can show
+        # Per-phase execution objects — always available so the template can show
         # data from any prior phase regardless of which phase is currently active.
         'compression_execution': _compression_execution,
         'granulation_execution': _granulation_execution,
@@ -6272,7 +6422,7 @@ def phase_form_view(request, phase_execution_id):
         'user_role': request.user.role,
         'is_draft': existing_data.get(phase_name, {}).get('is_draft', False),
         'granulation_data': existing_data.get('granulation', {}),
-        # Theoretical yield (kg) from granulation reconciliation row A â€” used in compression reconciliation Section 10
+        # Theoretical yield (kg) from granulation reconciliation row A — used in compression reconciliation Section 10
         'gran_theoretical_kg': existing_data.get('granulation', {}).get('yield_reconciliation', {}).get('a_qty', ''),
         'blending_data': existing_data.get('blending', {}),
         'blending_data_status': existing_data.get('blending', {}).get('_data_status', 'not_started'),
@@ -6287,7 +6437,7 @@ def phase_form_view(request, phase_execution_id):
         'compression_data': existing_data.get('compression_sections', {}).get('setup', {}),
         'sorting_data': existing_data.get('sorting', {}),
         'packing_data': existing_data.get(phase_name, {}) if phase_name in ('blister_packing', 'bulk_packing', 'secondary_packaging') else {},
-        # Section statuses â€” always computed from existing_data (all phases merged)
+        # Section statuses — always computed from existing_data (all phases merged)
         # so every operator sees correct status badges on every prior phase.
         'section_statuses': get_section_statuses(existing_data),
         'GRANULATION_SECTIONS': GRANULATION_SECTIONS,
@@ -6496,6 +6646,7 @@ def phase_form_view(request, phase_execution_id):
         'secondary_section_statuses': get_secondary_section_statuses(existing_data),
         'SECONDARY_SECTIONS': SECONDARY_SECTIONS,
         'all_secondary_sections_complete': all_secondary_sections_complete(existing_data, product_type=getattr(product, 'product_type', None)),
+        'sec_fp_recon_unlocked': all_secondary_excl_recon(existing_data, product_type=getattr(product, 'product_type', None)),
         'secondary_sections_data': existing_data.get('secondary_sections', {}),
         'sec_proc_stage': existing_data.get('secondary_sections', {}).get('sec_packing_procedure', {}).get('proc_stage', 'not_started'),
         # Ointment mixing sections
@@ -6644,6 +6795,59 @@ def save_form_draft(request):
     
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def save_page_field(request):
+    """
+    AJAX endpoint: auto-save per-page shift and date fields without a full form submit.
+    Expects POST body: phase_execution_id, field_name (e.g. shift_page_27), field_value.
+    Returns JSON {status: ok} or {status: error, error: ...}.
+    """
+    try:
+        phase_execution_id = request.POST.get('phase_execution_id')
+        field_name = request.POST.get('field_name', '').strip()
+        field_value = request.POST.get('field_value', '').strip()
+
+        if not phase_execution_id or not field_name:
+            return JsonResponse({'status': 'error', 'error': 'Missing parameters'}, status=400)
+
+        # Only allow shift_page_* and date_page_* fields
+        if not (field_name.startswith('shift_page_') or field_name.startswith('date_page_')):
+            return JsonResponse({'status': 'error', 'error': 'Invalid field name'}, status=400)
+
+        phase_execution = get_object_or_404(BatchPhaseExecution, pk=phase_execution_id)
+
+        # Permission: any operator role, the starter of this phase, or privileged roles
+        user_role = getattr(request.user, 'role', '')
+        is_privileged = user_role in ('qa', 'production_manager', 'admin') or request.user.is_staff
+        is_operator = user_role.endswith('_operator')
+        is_starter = phase_execution.started_by_id == request.user.pk
+        if not (is_starter or is_privileged or is_operator):
+            return JsonResponse({'status': 'error', 'error': 'Permission denied'}, status=403)
+
+        # Build the page key (shift_page_27 → page_27, date_page_27 → page_27)
+        if field_name.startswith('shift_page_'):
+            store_key = field_name.replace('shift_page_', 'page_')
+            bucket = 'page_shifts'
+        else:
+            store_key = field_name.replace('date_page_', 'page_')
+            bucket = 'page_dates'
+
+        # Atomic update: read fresh, mutate, write
+        fresh = BatchPhaseExecution.objects.get(pk=phase_execution.pk)
+        data = json.loads(json.dumps(fresh.phase_data or {}))
+        if field_value:
+            data.setdefault(bucket, {})[store_key] = field_value
+        else:
+            data.get(bucket, {}).pop(store_key, None)
+        BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=data)
+
+        return JsonResponse({'status': 'ok'})
+    except Exception as e:
+        logger.exception('save_page_field error')
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

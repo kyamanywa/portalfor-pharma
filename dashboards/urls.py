@@ -31,6 +31,7 @@ urlpatterns = [
     path('bmr-forms/granulation/<int:phase_execution_id>/', bmr_form_views.phase_form_view, name='granulation_form'),  # Legacy
     path('api/save-form-draft/', bmr_form_views.save_form_draft, name='save_form_draft'),
     path('api/dynamic-save/', bmr_form_views.dynamic_save, name='dynamic_save'),
+    path('api/save-page-field/', bmr_form_views.save_page_field, name='save_page_field'),
     path('bmr-forms/packaging-req/<int:phase_execution_id>/', bmr_form_views.packaging_req_action, name='packaging_req_action'),
     
     # Phase Notifications & Timing
