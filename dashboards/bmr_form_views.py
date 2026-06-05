@@ -83,6 +83,58 @@ def _build_product_content_context(product):
         ),
     }
 
+
+def _phase_aliases(phase_name):
+    """Return equivalent phase labels used across workflow and template naming."""
+    alias_map = {
+        'material_dispensing': {'material_dispensing', 'dispensing'},
+        'dispensing': {'material_dispensing', 'dispensing'},
+        'raw_material_release': {'raw_material_release', 'store'},
+        'store': {'raw_material_release', 'store'},
+    }
+    return alias_map.get(phase_name, {phase_name})
+
+
+def _can_edit_page_header_field(phase_execution, user, page_no):
+    """
+    Enforce phase-scoped header date/shift edits.
+
+    Privileged users (QA/PM/admin/staff) can edit any page header.
+    Operators/starters can edit only headers for pages in their current phase.
+    """
+    role = getattr(user, 'role', '')
+    is_privileged = role in ('qa', 'production_manager', 'admin') or user.is_staff
+    if is_privileged:
+        return True
+
+    is_operator = role.endswith('_operator')
+    is_starter = phase_execution.started_by_id == user.pk
+    if not (is_operator or is_starter):
+        return False
+
+    tpl = BMRTemplate.for_product(phase_execution.bmr.product)
+    if not tpl:
+        # Fail closed for non-privileged users if page ownership cannot be mapped.
+        return False
+
+    page_phases = set(
+        p for p in BMRTemplateSection.objects.filter(
+            template=tpl,
+            page_number=page_no,
+            is_visible=True,
+        ).values_list('phase_name', flat=True)
+        if p
+    )
+    if not page_phases:
+        return False
+
+    current_phase_aliases = _phase_aliases(phase_execution.phase.phase_name)
+    expanded_page_phases = set()
+    for pname in page_phases:
+        expanded_page_phases.update(_phase_aliases(pname))
+
+    return bool(current_phase_aliases.intersection(expanded_page_phases))
+
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Granulation section-by-section signing configuration
 # Each section is submitted / signed independently.
@@ -1655,9 +1707,19 @@ def phase_form_view(request, phase_execution_id):
         _page_dates = {}
         for _k in request.POST:
             if _k.startswith('shift_page_') and request.POST[_k]:
-                _page_shifts[_k.replace('shift_page_', 'page_')] = request.POST[_k]
+                try:
+                    _page_no = int(_k.replace('shift_page_', ''))
+                except (TypeError, ValueError):
+                    _page_no = None
+                if _page_no and _can_edit_page_header_field(phase_execution, request.user, _page_no):
+                    _page_shifts[_k.replace('shift_page_', 'page_')] = request.POST[_k]
             if _k.startswith('date_page_') and request.POST[_k]:
-                _page_dates[_k.replace('date_page_', 'page_')] = request.POST[_k]
+                try:
+                    _page_no = int(_k.replace('date_page_', ''))
+                except (TypeError, ValueError):
+                    _page_no = None
+                if _page_no and _can_edit_page_header_field(phase_execution, request.user, _page_no):
+                    _page_dates[_k.replace('date_page_', 'page_')] = request.POST[_k]
         if _page_shifts or _page_dates:
             # Keep page header date/shift consistent across the whole BMR.
             # Otherwise values can appear to revert when users move to another
@@ -6872,7 +6934,7 @@ def save_page_field(request):
 
         phase_execution = get_object_or_404(BatchPhaseExecution, pk=phase_execution_id)
 
-        # Permission: any operator role, the starter of this phase, or privileged roles
+        # Permission gate (role + page ownership check below)
         user_role = getattr(request.user, 'role', '')
         is_privileged = user_role in ('qa', 'production_manager', 'admin') or request.user.is_staff
         is_operator = user_role.endswith('_operator')
@@ -6887,6 +6949,14 @@ def save_page_field(request):
         else:
             store_key = field_name.replace('date_page_', 'page_')
             bucket = 'page_dates'
+
+        try:
+            page_no = int(store_key.replace('page_', ''))
+        except (TypeError, ValueError):
+            return JsonResponse({'status': 'error', 'error': 'Invalid page key'}, status=400)
+
+        if not _can_edit_page_header_field(phase_execution, request.user, page_no):
+            return JsonResponse({'status': 'error', 'error': 'Page header edit not allowed for this phase'}, status=403)
 
         # Atomic update across all executions in this BMR so page fields remain
         # stable when moving between phases/roles.
