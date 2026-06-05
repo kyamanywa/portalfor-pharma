@@ -1659,13 +1659,17 @@ def phase_form_view(request, phase_execution_id):
             if _k.startswith('date_page_') and request.POST[_k]:
                 _page_dates[_k.replace('date_page_', 'page_')] = request.POST[_k]
         if _page_shifts or _page_dates:
-            _fresh_ps = BatchPhaseExecution.objects.get(pk=phase_execution.pk)
-            _fd_ps = json.loads(json.dumps(_fresh_ps.phase_data or {}))
-            if _page_shifts:
-                _fd_ps.setdefault('page_shifts', {}).update(_page_shifts)
-            if _page_dates:
-                _fd_ps.setdefault('page_dates', {}).update(_page_dates)
-            BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=_fd_ps)
+            # Keep page header date/shift consistent across the whole BMR.
+            # Otherwise values can appear to revert when users move to another
+            # phase execution (operator -> QA or next phase).
+            _all_execs = BatchPhaseExecution.objects.filter(bmr=bmr).only('id', 'phase_data')
+            for _pe in _all_execs:
+                _fd_ps = json.loads(json.dumps(_pe.phase_data or {}))
+                if _page_shifts:
+                    _fd_ps.setdefault('page_shifts', {}).update(_page_shifts)
+                if _page_dates:
+                    _fd_ps.setdefault('page_dates', {}).update(_page_dates)
+                BatchPhaseExecution.objects.filter(pk=_pe.pk).update(phase_data=_fd_ps)
             # Keep in-memory existing_data in sync so any downstream handler
             # that saves via existing_data does not overwrite the shifts/dates
             # we just persisted.
@@ -6884,14 +6888,16 @@ def save_page_field(request):
             store_key = field_name.replace('date_page_', 'page_')
             bucket = 'page_dates'
 
-        # Atomic update: read fresh, mutate, write
-        fresh = BatchPhaseExecution.objects.get(pk=phase_execution.pk)
-        data = json.loads(json.dumps(fresh.phase_data or {}))
-        if field_value:
-            data.setdefault(bucket, {})[store_key] = field_value
-        else:
-            data.get(bucket, {}).pop(store_key, None)
-        BatchPhaseExecution.objects.filter(pk=phase_execution.pk).update(phase_data=data)
+        # Atomic update across all executions in this BMR so page fields remain
+        # stable when moving between phases/roles.
+        all_execs = BatchPhaseExecution.objects.filter(bmr=phase_execution.bmr).only('id', 'phase_data')
+        for pe in all_execs:
+            data = json.loads(json.dumps(pe.phase_data or {}))
+            if field_value:
+                data.setdefault(bucket, {})[store_key] = field_value
+            else:
+                data.get(bucket, {}).pop(store_key, None)
+            BatchPhaseExecution.objects.filter(pk=pe.pk).update(phase_data=data)
 
         return JsonResponse({'status': 'ok'})
     except Exception as e:
