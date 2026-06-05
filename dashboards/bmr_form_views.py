@@ -114,8 +114,9 @@ def _can_edit_page_header_field(phase_execution, user, page_no):
 
     tpl = BMRTemplate.for_product(phase_execution.bmr.product)
     if not tpl:
-        # Fail closed for non-privileged users if page ownership cannot be mapped.
-        return False
+        # Legacy fallback: no template metadata available for this product.
+        # Keep role gate above, but do not block header save.
+        return True
 
     page_phases = set(
         p for p in BMRTemplateSection.objects.filter(
@@ -126,7 +127,9 @@ def _can_edit_page_header_field(phase_execution, user, page_no):
         if p
     )
     if not page_phases:
-        return False
+        # Legacy fallback: page is not represented in template metadata
+        # (common in hardcoded tablet pages). Allow save to avoid false 403.
+        return True
 
     current_phase_aliases = _phase_aliases(phase_execution.phase.phase_name)
     expanded_page_phases = set()

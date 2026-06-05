@@ -20317,8 +20317,17 @@
             .then(function(r){ return r.json(); })
             .then(function(data){
                 if (indicator) {
-                    indicator.textContent = data.status === 'ok' ? '\u2713 Saved' : '\u2717 Error';
-                    indicator.style.color = data.status === 'ok' ? 'green' : 'red';
+                    var isLocked = (data && data.error && String(data.error).toLowerCase().indexOf('not allowed') !== -1);
+                    if (data.status === 'ok') {
+                        indicator.textContent = '\u2713 Saved';
+                        indicator.style.color = 'green';
+                    } else if (isLocked) {
+                        indicator.textContent = '\ud83d\udd12 Locked';
+                        indicator.style.color = '#a16207';
+                    } else {
+                        indicator.textContent = '\u2717 Error';
+                        indicator.style.color = 'red';
+                    }
                     setTimeout(function(){ if(indicator) indicator.textContent = ''; }, 2500);
                 }
             })
