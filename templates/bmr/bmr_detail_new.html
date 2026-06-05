@@ -2540,14 +2540,14 @@
     <!-- PAGE 8: DISPENSING LINE CLEARANCE -->
     {% if edit_mode == 'dispensing' and phase_execution.status != 'in_progress' %}<div id="edit-section"></div>{% endif %}
     {% if phase_execution.process_signing_status == 'qa_signed' or dispensing_data.qa_sign %}
-    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
     <form method="POST" action="" id="dispensingLCForm">
         {% csrf_token %}
     {% endif %}
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
 
         <!-- Edit mode alert banners (no-print) -->
-        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
             {% if user_role != 'qa' %}
                 {% if phase_execution.beginning_lc_status == 'not_started' %}
                 <div class="alert alert-warning no-print" style="margin-bottom: 10px;">
@@ -2787,7 +2787,7 @@
         </table>
 
         <!-- LC Submit / QA Approve buttons (inline, no-print) -->
-        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
         <div class="no-print" style="margin-top: 10px; margin-bottom: 15px;">
             {% if user_role != 'qa' and phase_execution.beginning_lc_status == 'not_started' %}
             <div class="d-flex gap-2 justify-content-end">
@@ -2923,7 +2923,7 @@
         </table>
 
         <!-- Ending LC Submit / QA Approve buttons -->
-        {% if edit_mode == 'dispensing' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed or edit_mode == 'qa' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed %}
+        {% if edit_mode == 'dispensing' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed %}
         <div class="no-print" style="margin-top: 10px;">
             {% if user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' %}
             <div class="d-flex gap-2 justify-content-end">
@@ -2949,7 +2949,7 @@
         {% endif %}
 
     </div>
-    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
+    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
     </form>
     {% endif %}
     {% else %}{# process_signing_status != qa_signed - LC locked #}
@@ -7166,8 +7166,8 @@
                             {% if sp_date %}<br><small>{{ sp_date }}</small>{% endif %}
                             {% endif %}
                         </td>
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <input type="text" name="compression_beginning_item{{ forloop.counter }}_qa"
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'compression' 'beginning' forloop.counter 'qa' %}">
@@ -7181,8 +7181,8 @@
                             {% endif %}
                         </td>
                         <!-- STATUS (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <select name="compression_beginning_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'compression' 'beginning' forloop.counter 'status' as st %}{% if st == 'ok' %}selected{% endif %}>OK</option>
@@ -7345,8 +7345,8 @@
                             {% if esp_date %}<br><small>{{ esp_date }}</small>{% endif %}
                             {% endif %}
                         </td>
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <input type="text" name="compression_ending_item{{ forloop.counter }}_qa"
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'compression' 'ending' forloop.counter 'qa' %}">
@@ -7360,8 +7360,8 @@
                             {% endif %}
                         </td>
                         <!-- STATUS (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <select name="compression_ending_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'compression' 'ending' forloop.counter 'status' as est %}{% if est == 'ok' %}selected{% endif %}>OK</option>
