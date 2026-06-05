@@ -196,11 +196,59 @@ BLENDING_SECTIONS = {
 
 
 def get_blending_section_statuses(phase_data):
-    """Get per-section statuses for blending from phase_data, with defaults."""
-    sections = phase_data.get('blending', {}).get('section_statuses', {})
-    result = {}
-    for key in BLENDING_SECTIONS:
-        result[key] = sections.get(key, 'not_started')
+    """Get per-section statuses for blending from phase_data, with defaults.
+
+    Backward compatibility:
+    Older blending records used legacy keys (e.g. ``_mixing_status``) instead of
+    ``section_statuses``. When section status is missing, infer it from legacy
+    values so QA gates (especially QA Sampling activation) continue to work.
+    """
+    blending = phase_data.get('blending', {})
+    sections = blending.get('section_statuses', {})
+
+    result = {key: sections.get(key, 'not_started') for key in BLENDING_SECTIONS}
+
+    def _legacy_to_section(legacy_value, qa_only=False, qa_signs=False):
+        if legacy_value in ('qa_verified', 'qa_signed'):
+            if qa_only:
+                return 'qa_filled'
+            if qa_signs:
+                return 'qa_signed'
+            return 'completed'
+        if legacy_value in ('operator_filled', 'submitted'):
+            if qa_only:
+                return 'not_started'
+            if qa_signs:
+                return 'operator_filled'
+            return 'completed'
+        return 'not_started'
+
+    # Infer missing statuses from legacy blending keys.
+    if result.get('sifting') == 'not_started':
+        result['sifting'] = _legacy_to_section(
+            blending.get('_data_status', 'not_started'), qa_signs=True
+        )
+
+    if result.get('mixing') == 'not_started':
+        result['mixing'] = _legacy_to_section(
+            blending.get('_mixing_status', 'not_started'), qa_signs=True
+        )
+
+    if result.get('qa_sampling') == 'not_started':
+        result['qa_sampling'] = _legacy_to_section(
+            blending.get('_qa_report_status', 'not_started'), qa_only=True
+        )
+
+    if result.get('yield_drums') == 'not_started':
+        result['yield_drums'] = _legacy_to_section(
+            blending.get('_drum_weighing_status', 'not_started')
+        )
+
+    if result.get('yield_reconciliation') == 'not_started':
+        result['yield_reconciliation'] = _legacy_to_section(
+            blending.get('_yield_status', 'not_started'), qa_signs=True
+        )
+
     return result
 
 

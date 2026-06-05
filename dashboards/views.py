@@ -915,7 +915,11 @@ def qa_dashboard(request):
 
     # Pending process form QA signing — per-section items awaiting QA signatures
     # Build a list of { phase_execution, section_key, section_label } for each section pending QA
-    from dashboards.bmr_form_views import GRANULATION_SECTIONS, BLENDING_SECTIONS
+    from dashboards.bmr_form_views import (
+        GRANULATION_SECTIONS,
+        BLENDING_SECTIONS,
+        get_blending_section_statuses,
+    )
     _process_signing_phases = BatchPhaseExecution.objects.filter(
         status='in_progress',
         phase__phase_name='granulation',
@@ -968,7 +972,7 @@ def qa_dashboard(request):
     pending_blending_signing = []
     for pe in _blending_signing_phases:
         _bl_data = (pe.phase_data or {}).get('blending', {})
-        sec_statuses = _bl_data.get('section_statuses', {})
+        sec_statuses = get_blending_section_statuses(pe.phase_data or {})
         for sec_key, cfg in BLENDING_SECTIONS.items():
             status = sec_statuses.get(sec_key, 'not_started')
             if cfg.get('qa_signs') and status == 'operator_filled':
