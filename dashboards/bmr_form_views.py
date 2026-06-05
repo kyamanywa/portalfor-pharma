@@ -2663,6 +2663,7 @@ def phase_form_view(request, phase_execution_id):
         # For some phases, QA must stay on edit_mode=phase_name because templates
         # explicitly gate editable LC/section blocks by phase edit_mode.
         qa_phase_mode_phases = (
+            'blending',
             'blister_packing',
             'bulk_packing',
             'secondary_packaging',
