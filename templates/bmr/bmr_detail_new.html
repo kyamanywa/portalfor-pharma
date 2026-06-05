@@ -2728,8 +2728,8 @@
                         </td>
                         
                         <!-- QA COLUMN - only editable when QA is reviewing -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <input type="text" name="dispensing_beginning_item{{ forloop.counter }}_qa" 
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'dispensing' 'beginning' forloop.counter 'qa' %}">
@@ -2744,8 +2744,8 @@
                         </td>
                         
                         <!-- STATUS COLUMN (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <select name="dispensing_beginning_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'dispensing' 'beginning' forloop.counter 'status' as st %}{% if st == 'ok' %}selected{% endif %}>OK</option>
@@ -2870,8 +2870,8 @@
                         </td>
                         
                         <!-- QA COLUMN -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <input type="text" name="dispensing_ending_item{{ forloop.counter }}_qa" 
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'dispensing' 'ending' forloop.counter 'qa' %}">
@@ -2886,8 +2886,8 @@
                         </td>
                         
                         <!-- STATUS (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <select name="dispensing_ending_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'dispensing' 'ending' forloop.counter 'status' as est %}{% if est == 'ok' %}selected{% endif %}>OK</option>
