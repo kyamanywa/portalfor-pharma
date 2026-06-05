@@ -7881,7 +7881,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         document.querySelectorAll('input.bmr-date-input').forEach(function(inp) {
-            if (!form.querySelector('input[name="' + inp.name + '"]')) {
+            var existing = form.querySelector('input[name="' + inp.name + '"]');
+            if (existing) {
+                existing.value = inp.value || '';
+            } else {
                 var h = document.createElement('input');
                 h.type = 'hidden';
                 h.name = inp.name;

@@ -20354,6 +20354,27 @@
                 saveField(el.name, el.value, getOrCreateIndicator(el));
             }
         });
+
+        // Fallback: ensure page header dates are posted on any form submit.
+        // This avoids data loss when a date change event is not fired before submit.
+        document.addEventListener('submit', function(e) {
+            var form = e.target;
+            if (!form || form.tagName !== 'FORM') return;
+
+            document.querySelectorAll('input.bmr-date-input').forEach(function(inp) {
+                if (!inp.name) return;
+                var existing = form.querySelector('input[name="' + inp.name + '"]');
+                if (existing) {
+                    existing.value = inp.value || '';
+                } else {
+                    var h = document.createElement('input');
+                    h.type = 'hidden';
+                    h.name = inp.name;
+                    h.value = inp.value || '';
+                    form.appendChild(h);
+                }
+            });
+        });
     })();
     // â”€â”€ End auto-save shift/date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 </script>

@@ -12222,6 +12222,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         });
 
+        document.querySelectorAll('input.bmr-date-input').forEach(function(inp) {
+
+            var existingDate = form.querySelector('input[name="' + inp.name + '"]');
+
+            if (existingDate) {
+
+                existingDate.value = inp.value || '';
+
+            } else {
+
+                var hd = document.createElement('input');
+
+                hd.type = 'hidden'; hd.name = inp.name; hd.value = inp.value || '';
+
+                form.appendChild(hd);
+
+            }
+
+        });
+
     });
 
 });
