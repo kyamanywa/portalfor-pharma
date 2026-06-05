@@ -6415,8 +6415,12 @@
 
             <div style="margin-bottom:20px;font-size:12px;">
                 QA Officer (sign &amp; date):&nbsp;
-                {% if edit_mode == 'blending' and user_role == 'qa' and blending_section_statuses.qa_sampling == 'not_started' and blending_section_statuses.mixing == 'qa_signed' %}<input type="text" name="qa_sign_sampling" class="form-control form-control-sm d-inline-block" style="width:280px;background:#d4edda;border:1px solid #28a745;" placeholder="QA name + date">
-                {% else %}{{ blending_data.qa_sampling.qa_sign|default:"" }}{% endif %}
+                {% if edit_mode == 'blending' and user_role == 'qa' and blending_section_statuses.qa_sampling == 'not_started' and blending_section_statuses.mixing == 'qa_signed' %}
+                <input type="text" name="qa_sign_sampling" class="form-control form-control-sm d-inline-block" style="width:280px;background:#d4edda;border:1px solid #28a745;" placeholder="QA name">
+                <input type="date" name="qa_sign_sampling_date" class="form-control form-control-sm d-inline-block ms-2" style="width:170px;background:#d4edda;border:1px solid #28a745;" value="{{ blending_data.qa_sampling.qa_sign_date|default:'' }}">
+                {% else %}
+                {{ blending_data.qa_sampling.qa_sign|default:"" }}{% if blending_data.qa_sampling.qa_sign_date %}<br><small>{{ blending_data.qa_sampling.qa_sign_date }}</small>{% endif %}
+                {% endif %}
             </div>
 
             <!-- Release/Reject decision -->
