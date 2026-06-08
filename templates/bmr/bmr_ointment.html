@@ -6874,111 +6874,111 @@
 
     {% if ssblc == 'qa_approved' %}<a href="#oint-sec-begin-lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ Begin LC</a>
 
-    {% elif ssblc == 'operator_filled' %}<a href="#oint-sec-begin-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">â³ Begin LC</a>
+    {% elif ssblc == 'operator_filled' %}<a href="#oint-sec-begin-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] Begin LC</a>
 
-    {% else %}<a href="#oint-sec-begin-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘  Begin LC</a>{% endif %}
+    {% else %}<a href="#oint-sec-begin-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[1] Begin LC</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 2: Packing Process & Instructions (Page 21) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-process" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘¡ Process</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-process" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[2] Process</a>
 
-    {% else %}<a href="#oint-sec-process" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ Process</a>{% endif %}
+    {% else %}<a href="#oint-sec-process" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Process</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 3: Packing Coding Control (Page 22) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-coding" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘¢ Coding</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-coding" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[3] Coding</a>
 
-    {% else %}<a href="#oint-sec-coding" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ Coding</a>{% endif %}
+    {% else %}<a href="#oint-sec-coding" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Coding</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 4: Packing Procedure (Page 23) #}
 
     {% if secondary_section_statuses.sec_packing_procedure == 'qa_signed' %}<a href="#oint-sec-procedure" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ Procedure</a>
 
-    {% elif secondary_sections_data.sec_packing_procedure.proc_stage == 'sigs_submitted' or secondary_sections_data.sec_packing_procedure.proc_stage == 'recon_submitted' %}<a href="#oint-sec-procedure" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">â³ Procedure</a>
+    {% elif secondary_sections_data.sec_packing_procedure.proc_stage == 'sigs_submitted' or secondary_sections_data.sec_packing_procedure.proc_stage == 'recon_submitted' %}<a href="#oint-sec-procedure" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] Procedure</a>
 
-    {% elif secondary_sections_data.sec_packing_procedure.proc_stage != 'not_started' and secondary_sections_data.sec_packing_procedure.proc_stage %}<a href="#oint-sec-procedure" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">â³ Procedure</a>
+    {% elif secondary_sections_data.sec_packing_procedure.proc_stage != 'not_started' and secondary_sections_data.sec_packing_procedure.proc_stage %}<a href="#oint-sec-procedure" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">[IN PROGRESS] Procedure</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-procedure" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘£ Procedure</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-procedure" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[4] Procedure</a>
 
-    {% else %}<a href="#oint-sec-procedure" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ Procedure</a>{% endif %}
+    {% else %}<a href="#oint-sec-procedure" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Procedure</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 5: Shipper Weight Verification (Page 24) #}
 
     {% if secondary_section_statuses.sec_shipper_weight == 'qa_signed' %}<a href="#oint-sec-shipper-wt" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ Shipper Wt</a>
 
-    {% elif secondary_section_statuses.sec_shipper_weight == 'operator_filled' %}<a href="#oint-sec-shipper-wt" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">â³ Shipper Wt</a>
+    {% elif secondary_section_statuses.sec_shipper_weight == 'operator_filled' %}<a href="#oint-sec-shipper-wt" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] Shipper Wt</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-shipper-wt" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘¤ Shipper Wt</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-shipper-wt" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[5] Shipper Wt</a>
 
-    {% else %}<a href="#oint-sec-shipper-wt" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ Shipper Wt</a>{% endif %}
+    {% else %}<a href="#oint-sec-shipper-wt" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Shipper Wt</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 6: IPC Section 1 — Coding (Page 25) #}
 
     {% if secondary_section_statuses.sec_ipc_p54 == 'completed' %}<a href="#oint-sec-ipc-25" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ IPC-25</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-25" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘¥ IPC-25</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-25" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[6] IPC-25</a>
 
-    {% else %}<a href="#oint-sec-ipc-25" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ IPC-25</a>{% endif %}
+    {% else %}<a href="#oint-sec-ipc-25" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] IPC-25</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 7: IPC Section 2 — Unit Packing (Page 26) #}
 
     {% if secondary_section_statuses.sec_ipc_p55 == 'completed' %}<a href="#oint-sec-ipc-26" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ IPC-26</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-26" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘¦ IPC-26</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-26" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[7] IPC-26</a>
 
-    {% else %}<a href="#oint-sec-ipc-26" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ IPC-26</a>{% endif %}
+    {% else %}<a href="#oint-sec-ipc-26" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] IPC-26</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 8: IPC Section 3 — Shipper Carton (Page 27) #}
 
     {% if secondary_section_statuses.sec_ipc_p56 == 'completed' %}<a href="#oint-sec-ipc-27" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ IPC-27</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-27" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘§ IPC-27</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-27" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[8] IPC-27</a>
 
-    {% else %}<a href="#oint-sec-ipc-27" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ IPC-27</a>{% endif %}
+    {% else %}<a href="#oint-sec-ipc-27" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] IPC-27</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 9: Finished Product Reconciliation (Page 28) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-recon" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘¨ Recon</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-recon" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[9] Recon</a>
 
-    {% else %}<a href="#oint-sec-recon" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ Recon</a>{% endif %}
+    {% else %}<a href="#oint-sec-recon" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Recon</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 10: Batch Release Sheet (Page 29) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-release" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘© Release</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-release" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[10] Release</a>
 
-    {% else %}<a href="#oint-sec-release" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ Release</a>{% endif %}
+    {% else %}<a href="#oint-sec-release" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Release</a>{% endif %}
 
-    <span style="color:#aaa;">â€º</span>
+    <span style="color:#aaa;">&gt;</span>
 
     {# Step 11: Ending LC (Page 20 bottom) #}
 
     {% if sselc == 'qa_approved' %}<a href="#oint-sec-end-lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ End LC</a>
 
-    {% elif sselc == 'operator_filled' %}<a href="#oint-sec-end-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">â³ End LC</a>
+    {% elif sselc == 'operator_filled' %}<a href="#oint-sec-end-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] End LC</a>
 
-    {% elif all_secondary_sections_complete %}<a href="#oint-sec-end-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">â‘ª End LC</a>
+    {% elif all_secondary_sections_complete %}<a href="#oint-sec-end-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[11] End LC</a>
 
-    {% else %}<a href="#oint-sec-end-lc" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">ðŸ”’ End LC</a>{% endif %}
+    {% else %}<a href="#oint-sec-end-lc" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] End LC</a>{% endif %}
 
-    {% if all_secondary_sections_complete and sselc == 'qa_approved' %}&nbsp;<span class="badge bg-success ms-2">ðŸŽ‰ Secondary packing complete!</span>{% endif %}
+    {% if all_secondary_sections_complete and sselc == 'qa_approved' %}&nbsp;<span class="badge bg-success ms-2">Secondary packing complete!</span>{% endif %}
 
   </div>
 
