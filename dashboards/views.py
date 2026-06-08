@@ -215,7 +215,7 @@ def dashboard_home(request):
         # Redirect unauthenticated users directly to login
         return redirect('accounts:login')
     
-    user_role = request.user.role
+    user_role = getattr(request.user, 'role', None)
     
     role_dashboard_map = {
         'qa': 'dashboards:qa_dashboard',
@@ -2065,7 +2065,7 @@ def qa_dashboard(request):
 @login_required
 def regulatory_dashboard(request):
     """Regulatory Dashboard"""
-    if request.user.role != 'regulatory':
+    if getattr(request.user, 'role', None) != 'regulatory':
         messages.error(request, 'Access denied. Regulatory role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -2685,7 +2685,7 @@ def production_manager_dashboard(request):
 @login_required
 def store_dashboard(request):
     """Store Manager Dashboard - Raw Material Release Phase"""
-    if request.user.role != 'store_manager':
+    if getattr(request.user, 'role', None) != 'store_manager':
         messages.error(request, 'Access denied. Store Manager role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -2745,7 +2745,7 @@ def store_dashboard(request):
     my_phases = []
     for bmr in all_bmrs:
         # Get both normal and rework phases for this user's role
-        user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
+        user_phases = WorkflowService.get_phases_for_user_role(bmr, getattr(request.user, 'role', None))
         # Filter out material_dispensing that the store already submitted (store_complete flag)
         filtered_phases = []
         for phase in user_phases:
@@ -3000,7 +3000,7 @@ def operator_dashboard(request):
         'sorting_operator': ['sorting', 'post_coating_sorting'],
     }
     
-    allowed_phases = role_phase_mapping.get(request.user.role, [])
+    allowed_phases = role_phase_mapping.get(getattr(request.user, 'role', None), [])
     
     # Single optimized query instead of N+1 queries
     my_phases = list(BatchPhaseExecution.objects.filter(
@@ -3065,7 +3065,7 @@ def operator_dashboard(request):
         if role == 'packaging_store':
             return req_status == 'manager_approved'
         return True
-    my_phases = [p for p in my_phases if _pkg_req_visible(p, request.user.role)]
+    my_phases = [p for p in my_phases if _pkg_req_visible(p, getattr(request.user, 'role', None))]
 
     # Add has_saved_data, phase_has_lc, lc_submitted flags for DRAFT/CONTINUE/FILLED badge and Start button logic
     from workflow.line_clearance_items import has_line_clearance
@@ -3150,7 +3150,7 @@ def operator_dashboard(request):
         'dispensing_operator': 'dispensing',  # Material dispensing operator
     }
 
-    phase_name = role_phase_mapping.get(request.user.role, 'production')
+    phase_name = role_phase_mapping.get(getattr(request.user, 'role', None), 'production')
     daily_progress = min(100, (stats['completed_today'] / max(1, stats['pending_phases'] + stats['completed_today'])) * 100)
 
     # Operator History: all phases completed by this user for their role
@@ -3204,7 +3204,7 @@ def operator_dashboard(request):
         'filling_operator': 'filling',  # For capsule filling
     }
     
-    user_machine_type = machine_type_mapping.get(request.user.role)
+    user_machine_type = machine_type_mapping.get(getattr(request.user, 'role', None))
     available_machines = []
     if user_machine_type:
         available_machines = Machine.objects.filter(
@@ -3219,7 +3219,7 @@ def operator_dashboard(request):
         'coating_operator', 'drying_operator', 'filling_operator', 'tube_filling_operator',
         'sorting_operator', 'packing_operator'
     ]
-    show_breakdown_tracking = request.user.role in breakdown_tracking_roles
+    show_breakdown_tracking = getattr(request.user, 'role', None) in breakdown_tracking_roles
 
 
 
@@ -3320,7 +3320,7 @@ def sorting_dashboard(request):
 @login_required
 def qc_dashboard(request):
     """Quality Control Dashboard"""
-    if request.user.role != 'qc':
+    if getattr(request.user, 'role', None) != 'qc':
         messages.error(request, 'Access denied. QC role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -3388,7 +3388,7 @@ def qc_dashboard(request):
     # Get QC phases this user can work on
     my_phases = []
     for bmr in all_bmrs:
-        user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
+        user_phases = WorkflowService.get_phases_for_user_role(bmr, getattr(request.user, 'role', None))
         my_phases.extend(user_phases)
 
     # Separate into actionable buckets
@@ -3446,7 +3446,7 @@ def qc_dashboard(request):
 @login_required
 def packaging_dashboard(request):
     """Packaging Store Dashboard"""
-    if request.user.role != 'packaging_store':
+    if getattr(request.user, 'role', None) != 'packaging_store':
         messages.error(request, 'Access denied. Packaging Store role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -3505,7 +3505,7 @@ def packaging_dashboard(request):
     # Get packaging phases this user can work on
     my_phases = []
     for bmr in all_bmrs:
-        user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
+        user_phases = WorkflowService.get_phases_for_user_role(bmr, getattr(request.user, 'role', None))
         my_phases.extend(user_phases)
 
     # Annotate each packaging_material_release phase with requisition data
@@ -3625,7 +3625,7 @@ def packaging_dashboard(request):
 @login_required
 def packing_dashboard(request):
     """Packing Operator Dashboard"""
-    if request.user.role != 'packing_operator':
+    if getattr(request.user, 'role', None) != 'packing_operator':
         messages.error(request, 'Access denied. Packing Operator role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -3724,7 +3724,7 @@ def packing_dashboard(request):
     # Get packing phases this user can work on
     my_phases = []
     for bmr in all_bmrs:
-        user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
+        user_phases = WorkflowService.get_phases_for_user_role(bmr, getattr(request.user, 'role', None))
         my_phases.extend(user_phases)
     
     # Add countdown timer logic for active packing phases
@@ -3798,7 +3798,7 @@ def packing_dashboard(request):
         'filling_operator': 'filling',  # For capsule filling
     }
     
-    user_machine_type = machine_type_mapping.get(request.user.role)
+    user_machine_type = machine_type_mapping.get(getattr(request.user, 'role', None))
     available_machines = []
     if user_machine_type:
         available_machines = Machine.objects.filter(
@@ -3813,7 +3813,7 @@ def packing_dashboard(request):
         'coating_operator', 'tube_filling_operator', 'filling_operator'
     ]
     # For packing operator, only show breakdown tracking for blister packing phases (machine-based)
-    show_breakdown_tracking = request.user.role in breakdown_tracking_roles    # Build operator history for this user (recent phases where user was started_by or completed_by)
+    show_breakdown_tracking = getattr(request.user, 'role', None) in breakdown_tracking_roles    # Build operator history for this user (recent phases where user was started_by or completed_by)
     recent_phases = BatchPhaseExecution.objects.filter(
         Q(started_by=request.user) | Q(completed_by=request.user)
     ).order_by('-started_date', '-completed_date')[:10]
@@ -3852,7 +3852,7 @@ def format_phase_name(name):
 @login_required
 def finished_goods_dashboard(request):
     """Finished Goods Store Dashboard with Inventory Management"""
-    if request.user.role != 'finished_goods_store':
+    if getattr(request.user, 'role', None) != 'finished_goods_store':
         messages.error(request, 'Access denied. Finished Goods Store role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -3867,7 +3867,7 @@ def finished_goods_dashboard(request):
     # Get phases this user can work on
     my_phases = []
     for bmr in all_bmrs:
-        user_phases = WorkflowService.get_phases_for_user_role(bmr, request.user.role)
+        user_phases = WorkflowService.get_phases_for_user_role(bmr, getattr(request.user, 'role', None))
         my_phases.extend(user_phases)
     # Only show finished_goods_store phases
     my_phases = [p for p in my_phases if getattr(p.phase, 'phase_name', None) == 'finished_goods_store']
@@ -4000,7 +4000,7 @@ def finished_goods_dashboard(request):
         'sorting_operator': 'sorting',
     }
 
-    phase_name = role_phase_mapping.get(request.user.role, 'production')
+    phase_name = role_phase_mapping.get(getattr(request.user, 'role', None), 'production')
     daily_progress = min(100, (stats['completed_today'] / max(1, stats['pending_phases'] + stats['completed_today'])) * 100)
     
     # Get recently completed goods
@@ -4565,7 +4565,7 @@ def admin_redirect(request):
 @login_required
 def admin_fgs_monitor(request):
     """Admin FGS Monitor View"""
-    if request.user.role != 'admin':
+    if getattr(request.user, 'role', None) != 'admin':
         messages.error(request, 'Access denied. Admin role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4658,7 +4658,7 @@ def admin_fgs_monitor(request):
 @login_required
 def export_timeline_data(request):
     """Export Timeline Data"""
-    if request.user.role != 'admin':
+    if getattr(request.user, 'role', None) != 'admin':
         messages.error(request, 'Access denied. Admin role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4669,7 +4669,7 @@ def export_timeline_data(request):
 @login_required
 def live_tracking_view(request):
     """Live Tracking View"""
-    if request.user.role != 'admin':
+    if getattr(request.user, 'role', None) != 'admin':
         messages.error(request, 'Access denied. Admin role required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4681,7 +4681,7 @@ def live_tracking_view(request):
 @login_required
 def admin_machine_management(request):
     """Admin Machine Management"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4753,7 +4753,7 @@ def admin_machine_management(request):
 @login_required
 def admin_quality_control(request):
     """Admin Quality Control"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4824,7 +4824,7 @@ def admin_quality_control(request):
 @login_required
 def admin_inventory(request):
     """Admin Inventory"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4861,7 +4861,7 @@ def admin_inventory(request):
 @login_required
 def admin_user_management(request):
     """Admin User Management"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4905,7 +4905,7 @@ def admin_user_management(request):
 @login_required
 def admin_system_health(request):
     """Admin System Health"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
@@ -4994,7 +4994,7 @@ def admin_system_health(request):
 @login_required
 def phase_notifications_view(request):
     """Phase Timing Alerts Dashboard"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
@@ -5087,7 +5087,7 @@ def phase_notifications_view(request):
 @require_http_methods(["POST"])
 def acknowledge_phase_timing_alert(request, alert_id):
     """Acknowledge a single Phase Timing Alert"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
     
     from workflow.models import PhaseTimeOverrunNotification
@@ -5114,7 +5114,7 @@ def acknowledge_phase_timing_alert(request, alert_id):
 @require_http_methods(["POST"])
 def acknowledge_all_phase_timing_alerts(request):
     """Acknowledge all unacknowledged Phase Timing Alerts"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
     
     from workflow.models import PhaseTimeOverrunNotification
@@ -5542,7 +5542,7 @@ def mark_notification_read_api(request, notification_id):
         
         # Check if user has permission to acknowledge notifications
         if not (request.user.is_superuser or 
-                request.user.role in ['admin', 'production_manager', 'qa', 'qc']):
+                getattr(request.user, 'role', None) in ['admin', 'production_manager', 'qa', 'qc']):
             return JsonResponse({
                 'success': False,
                 'error': 'You do not have permission to acknowledge this notification'
@@ -5690,7 +5690,7 @@ def export_monthly_production_excel(request):
     logger = logging.getLogger(__name__)
     logger.info(f"Export request received: {request.GET}")
     
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
@@ -5735,7 +5735,7 @@ def export_monthly_production_excel(request):
 @login_required
 def export_wip(request):
     """Export Work in Progress BMRs to Excel"""
-    if not (request.user.is_staff or request.user.role == 'admin'):
+    if not (request.user.is_staff or getattr(request.user, 'role', None) == 'admin'):
         messages.error(request, 'Access denied. Admin privileges required.')
         return redirect('dashboards:dashboard_home')
     
