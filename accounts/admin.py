@@ -139,7 +139,6 @@ class SecuritySettingsAdmin(admin.ModelAdmin):
         'axes_failure_limit',
         'get_cooloff_display',
         'password_min_length',
-        'session_timeout_hours',
         'last_updated',
     )
     
@@ -155,10 +154,6 @@ class SecuritySettingsAdmin(admin.ModelAdmin):
         ('🔑 Password Security', {
             'fields': ('password_min_length',),
             'description': 'Set password complexity requirements.'
-        }),
-        ('⏱️ Session Management', {
-            'fields': ('session_timeout_hours',),
-            'description': 'Configure automatic logout timeouts.'
         }),
         ('📝 Audit Trail', {
             'fields': ('last_updated', 'updated_by'),

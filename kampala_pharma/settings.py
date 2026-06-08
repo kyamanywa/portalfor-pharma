@@ -233,9 +233,6 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 BATCH_NUMBER_PREFIX_LENGTH = 3
 BATCH_NUMBER_YEAR_LENGTH = 4
 
-# Session timeout setting (12 hours = 43200 seconds)
-SESSION_TIMEOUT = 43200
-
 # Logging configuration
 LOGGING = {
     'version': 1,

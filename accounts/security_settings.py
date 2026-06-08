@@ -35,13 +35,6 @@ class SecuritySettings(models.Model):
         help_text="Minimum characters required for passwords"
     )
     
-    # Session Settings
-    session_timeout_hours = models.IntegerField(
-        default=12,
-        verbose_name="Session Timeout (Hours)",
-        help_text="Auto-logout users after this many hours of inactivity"
-    )
-    
     # Metadata
     last_updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(

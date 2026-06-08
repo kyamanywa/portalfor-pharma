@@ -1,8 +1,8 @@
 import time
-from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth import logout
 from django.utils.deprecation import MiddlewareMixin
+from workflow.models_admin_settings import get_session_setting
 
 class SessionTimeoutMiddleware(MiddlewareMixin):
     def process_request(self, request):
@@ -17,9 +17,16 @@ class SessionTimeoutMiddleware(MiddlewareMixin):
         # Get current time and last activity time
         current_time = time.time()
         last_activity = request.session.get('last_activity')
-        
-        # Set default session timeout (12 hours = 43200 seconds)
-        session_timeout = getattr(settings, 'SESSION_TIMEOUT', 43200)
+
+        # Use the centralized session management setting when available
+        session_timeout_hours = get_session_setting('session_timeout_hours', 12)
+        try:
+            session_timeout = int(float(session_timeout_hours) * 3600)
+        except (TypeError, ValueError):
+            session_timeout = 43200
+
+        # Keep the browser session expiry aligned with the enforced timeout
+        request.session.set_expiry(session_timeout)
         
         # Update last activity time
         request.session['last_activity'] = current_time
