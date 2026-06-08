@@ -739,10 +739,14 @@ def admin_dashboard(request):
         return render(request, 'dashboards/admin_dashboard.html', context)
 
 
+@login_required(login_url='accounts:login')
 @csrf_protect
 def qa_dashboard(request):
     """Quality Assurance Dashboard"""
-    if request.user.role != 'qa':
+    if not request.user.is_authenticated:
+        return redirect('accounts:login')
+
+    if getattr(request.user, 'role', None) != 'qa':
         messages.error(request, 'Access denied. QA role required.')
         return redirect('dashboards:dashboard_home')
     
