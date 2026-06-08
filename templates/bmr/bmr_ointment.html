@@ -5570,15 +5570,15 @@
 
                 <th style="border:1px solid #000;padding:5px;width:20%;">Individual Weights</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 1: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t1" value="{{ ipc.p1_t1|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t1|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 1: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t1" value="{{ ipc.p1_t1|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t1|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 2: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t2" value="{{ ipc.p1_t2|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t2|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 2: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t2" value="{{ ipc.p1_t2|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t2|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 3: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t3" value="{{ ipc.p1_t3|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t3|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 3: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t3" value="{{ ipc.p1_t3|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t3|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 4: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t4" value="{{ ipc.p1_t4|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t4|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 4: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t4" value="{{ ipc.p1_t4|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t4|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 5: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t5" value="{{ ipc.p1_t5|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t5|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 5: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t5" value="{{ ipc.p1_t5|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t5|default:"" }}{% endif %}</th>
 
             </tr>
 
@@ -5784,7 +5784,7 @@
 
                 {% with tkey="p2_t"|concat:tn %}
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="text" name="p2_t{{ tn }}" value="{{ ipc|dk:tkey }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="time" step="60" name="p2_t{{ tn }}" value="{{ ipc|dk:tkey }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
 
                 {% endwith %}
 
@@ -5792,7 +5792,7 @@
 
                 {% with tkey="p2_t10" %}
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 10: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="text" name="p2_t10" value="{{ ipc|dk:tkey }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 10: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="time" step="60" name="p2_t10" value="{{ ipc|dk:tkey }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
 
                 {% endwith %}
 
@@ -6018,7 +6018,7 @@
 
                 {% with tkey="p3_t"|concat:tn %}
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p3 != 'completed' %}<input type="text" name="p3_t{{ tn }}" value="{{ ipc|dk:tkey }}" placeholder="HH:MM" style="width:60%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p3 != 'completed' %}<input type="time" step="60" name="p3_t{{ tn }}" value="{{ ipc|dk:tkey }}" style="width:60%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
 
                 {% endwith %}
 
