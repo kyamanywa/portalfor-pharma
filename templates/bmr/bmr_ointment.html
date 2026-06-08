@@ -5082,9 +5082,9 @@
 
     </div>
 
-    {% elif tube_filling_section_statuses.tf_machine_setup == 'completed' %}
+    {% elif tube_filling_section_statuses.tf_machine_setup == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
 
-    <div style="margin-top:6px;padding:8px 12px;background:#d4edda;border:1px solid #c3e6cb;border-radius:4px;font-size:12px;color:#155724;">
+    <div class="no-print" style="margin-top:6px;padding:8px 12px;background:#d4edda;border:1px solid #c3e6cb;border-radius:4px;font-size:12px;color:#155724;">
 
         <i class="fas fa-lock"></i> <strong>Machine Setup & Weight Range completed</strong> &mdash; section locked.
 
@@ -5386,9 +5386,9 @@
 
     </table>
 
-    {% if tube_filling_section_statuses.tf_weight_yield == 'qa_approved' %}
+    {% if tube_filling_section_statuses.tf_weight_yield == 'qa_approved' and edit_mode != 'view' and edit_mode != 'print' %}
 
-    <div style="margin-top:10px;padding:10px;background:#d4edda;border:1px solid #28a745;border-radius:4px;color:#155724;">
+    <div class="no-print" style="margin-top:10px;padding:10px;background:#d4edda;border:1px solid #28a745;border-radius:4px;color:#155724;">
 
         <strong><i class="fas fa-check-circle"></i> Yield Reconciliation — QA Approved</strong>
 
@@ -5404,7 +5404,7 @@
 
     {% elif tube_filling_section_statuses.tf_weight_yield == 'operator_filled' and edit_mode == 'tube_filling' and user_role != 'qa' %}
 
-    <div style="margin-top:10px;padding:10px;background:#cce5ff;border:1px solid #007bff;border-radius:4px;color:#004085;">
+    <div class="no-print" style="margin-top:10px;padding:10px;background:#cce5ff;border:1px solid #007bff;border-radius:4px;color:#004085;">
 
         <strong><i class="fas fa-clock"></i> Submitted — Awaiting QA Approval</strong>
 
@@ -5644,9 +5644,9 @@
 
     {% endif %}
 
-    {% if tf_ipc_page_statuses.p1 == 'completed' %}
+    {% if tf_ipc_page_statuses.p1 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
 
-    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 14 Complete</strong> &mdash; IPC Sheet 1 (Times 1-5) submitted.
 
@@ -5878,9 +5878,9 @@
 
     {% endif %}
 
-    {% if tf_ipc_page_statuses.p2 == 'completed' %}
+    {% if tf_ipc_page_statuses.p2 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
 
-    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 15 Complete</strong> &mdash; IPC Sheet 2 (Times 6-10) submitted.
 
@@ -6100,9 +6100,9 @@
 
     {% endif %}
 
-    {% if tf_ipc_page_statuses.p3 == 'completed' %}
+    {% if tf_ipc_page_statuses.p3 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
 
-    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 16 Complete</strong> &mdash; IPC Sheet 3 (Times 11-15) submitted. All Production IPC pages done.
 
@@ -6328,9 +6328,9 @@
 
     {% endif %}
 
-    {% if tf_qa_ipc_page_statuses.qa1 == 'completed' %}
+    {% if tf_qa_ipc_page_statuses.qa1 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
 
-    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 17 Complete</strong> &mdash; QA IPC Sheet 1 (Intervals 1-2) submitted.
 
@@ -6338,7 +6338,7 @@
 
     {% elif edit_mode == 'tube_filling' and user_role != 'qa' %}
 
-    <div style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
+    <div class="no-print" style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
 
         <strong>&#9203; Waiting for QA</strong> &mdash; Production IPC complete. QA IPC Page 17 is awaiting QA officer input.
 
@@ -6348,7 +6348,7 @@
 
     {% else %}
 
-    <div style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
+    <div class="no-print" style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
 
         <strong>&#128274; QA IPC Locked</strong> &mdash; All Production IPC pages (14-16) must be completed before the QA IPC forms can be filled.
 
@@ -6564,9 +6564,9 @@
 
     {% endif %}
 
-    {% if tf_qa_ipc_page_statuses.qa2 == 'completed' %}
+    {% if tf_qa_ipc_page_statuses.qa2 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
 
-    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 18 Complete</strong> &mdash; QA IPC Sheet 2 (Intervals 3-4) submitted.
 
@@ -6574,7 +6574,7 @@
 
     {% elif edit_mode == 'tube_filling' and user_role != 'qa' %}
 
-    <div style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
+    <div class="no-print" style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
 
         <strong>&#9203; Waiting for QA</strong> &mdash; QA IPC Page 18 is awaiting QA officer input.
 
@@ -6584,7 +6584,7 @@
 
     {% else %}
 
-    <div style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
+    <div class="no-print" style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
 
         <strong>&#128274; QA IPC Locked</strong> &mdash; All Production IPC pages (14-16) and QA IPC Page 17 must be completed first.
 
