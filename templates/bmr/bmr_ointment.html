@@ -7728,7 +7728,7 @@
 
     </form>
 
-    {% elif pp_status == 'completed' %}
+    {% elif pp_status == 'completed' and edit_mode == 'secondary_packaging' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Section Completed</span></div>
 
@@ -8174,11 +8174,11 @@
 
     </form>
 
-    {% elif cod_stage == 'recon_submitted' and user_role != 'qa' %}
+    {% elif cod_stage == 'recon_submitted' and user_role != 'qa' and edit_mode == 'secondary_packaging' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#fff3cd;color:#856404;padding:6px 16px;border-radius:4px;font-weight:bold;">&#9203; Awaiting QA Reconciliation Approval</span></div>
 
-    {% elif cod_stage == 'completed' %}
+    {% elif cod_stage == 'completed' and edit_mode == 'secondary_packaging' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Packing Coding Control — Fully Completed</span></div>
 
@@ -8494,15 +8494,15 @@
 
     </form>
 
-    {% elif proc_stage == 'persons_submitted' %}
+    {% elif proc_stage == 'persons_submitted' and edit_mode == 'secondary_packaging' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Secondary Packing Procedure — Fully Completed</span></div>
 
-    {% elif proc_stage == 'not_started' or proc_stage == 'sigs_submitted' %}
+    {% elif edit_mode == 'secondary_packaging' and proc_stage == 'not_started' or edit_mode == 'secondary_packaging' and proc_stage == 'sigs_submitted' %}
 
     <div style="margin-top:4px;text-align:center;font-size:11px;color:#888;">Reconciliation &amp; persons grid will unlock after signatures are QA-verified</div>
 
-    {% elif proc_stage == 'sigs_qa_signed' or proc_stage == 'recon_submitted' %}
+    {% elif edit_mode == 'secondary_packaging' and proc_stage == 'sigs_qa_signed' or edit_mode == 'secondary_packaging' and proc_stage == 'recon_submitted' %}
 
     <div style="margin-top:4px;text-align:center;font-size:11px;color:#888;">Persons grid will unlock after reconciliation is QA-verified</div>
 
@@ -8882,11 +8882,11 @@
 
     </form>
 
-    {% elif shpr_status == 'operator_filled' and user_role != 'qa' %}
+    {% elif shpr_status == 'operator_filled' and user_role != 'qa' and edit_mode == 'secondary_packaging' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#fff3cd;color:#856404;padding:6px 16px;border-radius:4px;font-weight:bold;">&#9203; Awaiting QA Approval</span></div>
 
-    {% elif shpr_status == 'qa_signed' %}
+    {% elif shpr_status == 'qa_signed' and edit_mode == 'secondary_packaging' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Shipper Weight Verification — Completed</span></div>
 
