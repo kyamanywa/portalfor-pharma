@@ -1,4 +1,6 @@
 from django import template
+from django.utils.html import conditional_escape
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -106,3 +108,14 @@ def pairs(value):
     """
     lst = list(value) if value else []
     return [(lst[i], lst[i + 1] if i + 1 < len(lst) else None) for i in range(0, len(lst), 2)]
+
+
+@register.filter
+def bmr_value(value):
+    """Render saved BMR values with a consistent highlight in view/PDF output."""
+    if value is None:
+        return ''
+    text = str(value)
+    if not text.strip() or text.strip() in {'-', '________________'}:
+        return text
+    return mark_safe(f'<span class="bmr-value-highlight">{conditional_escape(text)}</span>')
