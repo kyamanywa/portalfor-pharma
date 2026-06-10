@@ -975,34 +975,40 @@ def qa_dashboard(request):
     pending_blending_signing = []
     for pe in _blending_signing_phases:
         _bl_data = (pe.phase_data or {}).get('blending', {})
+        _is_capsule_blending = is_capsule(pe.bmr.product.product_type)
+        _has_capsule_blending_status = any(
+            _bl_data.get(k) is not None
+            for k in ('_data_status', '_mixing_status', '_qa_report_status', '_yield_status')
+        )
         sec_statuses = get_blending_section_statuses(pe.phase_data or {})
-        for sec_key, cfg in BLENDING_SECTIONS.items():
-            status = sec_statuses.get(sec_key, 'not_started')
-            if cfg.get('qa_signs') and status == 'operator_filled':
-                # Operator-submitted section awaiting QA signature
-                pending_blending_signing.append({
-                    'phase_execution': pe,
-                    'bmr': pe.bmr,
-                    'section_key': sec_key,
-                    'section_label': cfg['label'],
-                    'submitted_by': sec_statuses.get(f'{sec_key}_submitted_by', ''),
-                    'submitted_date': sec_statuses.get(f'{sec_key}_submitted_date', ''),
-                })
-            elif cfg.get('qa_only') and status == 'not_started':
-                # QA sampling only becomes actionable once mixing is qa_signed
-                if sec_key == 'qa_sampling' and sec_statuses.get('mixing') == 'qa_signed':
+        if not (_is_capsule_blending and _has_capsule_blending_status):
+            for sec_key, cfg in BLENDING_SECTIONS.items():
+                status = sec_statuses.get(sec_key, 'not_started')
+                if cfg.get('qa_signs') and status == 'operator_filled':
+                    # Operator-submitted section awaiting QA signature
                     pending_blending_signing.append({
                         'phase_execution': pe,
                         'bmr': pe.bmr,
                         'section_key': sec_key,
-                        'section_label': cfg['label'] + ' (QA to fill)',
-                        'submitted_by': (
-                            sec_statuses.get('mixing_signed_by')
-                            or sec_statuses.get('mixing_submitted_by')
-                            or ''
-                        ),
-                        'submitted_date': sec_statuses.get('mixing_signed_date', ''),
+                        'section_label': cfg['label'],
+                        'submitted_by': sec_statuses.get(f'{sec_key}_submitted_by', ''),
+                        'submitted_date': sec_statuses.get(f'{sec_key}_submitted_date', ''),
                     })
+                elif cfg.get('qa_only') and status == 'not_started':
+                    # QA sampling only becomes actionable once mixing is qa_signed
+                    if sec_key == 'qa_sampling' and sec_statuses.get('mixing') == 'qa_signed':
+                        pending_blending_signing.append({
+                            'phase_execution': pe,
+                            'bmr': pe.bmr,
+                            'section_key': sec_key,
+                            'section_label': cfg['label'] + ' (QA to fill)',
+                            'submitted_by': (
+                                sec_statuses.get('mixing_signed_by')
+                                or sec_statuses.get('mixing_submitted_by')
+                                or ''
+                            ),
+                            'submitted_date': sec_statuses.get('mixing_signed_date', ''),
+                        })
 
         # ── Capsule page-9 blending data (sections 1–4) pending QA approval ──
         if _bl_data.get('_data_status') == 'operator_filled':
