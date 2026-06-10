@@ -996,7 +996,7 @@
                 {% if pending_packing_signing %}
                 {% for item in pending_packing_signing %}
                 <a class="qa-section-item pending"
-                   href="{% url 'dashboards:phase_form' item.phase_execution.id %}">
+                         href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% endif %}">
                     <span class="lc-dot" style="background:#3b82f6;"></span>
                     <span>{{ item.section_label }} &mdash; {{ item.bmr.batch_number }}</span>
                     <span class="sec-badge" style="background:{% if item.action_type == 'ipc_row' %}#06b6d4{% else %}#3b82f6{% endif %};">{% if item.action_type == 'qa_fill' %}Fill{% elif item.action_type == 'ipc_row' %}Add Row{% else %}Sign{% endif %}</span>
@@ -1058,7 +1058,7 @@
                 {% if pending_secondary_signing %}
                 {% for item in pending_secondary_signing %}
                 <a class="qa-section-item pending"
-                   href="{% url 'dashboards:phase_form' item.phase_execution.id %}#{{ item.section_key }}">
+                         href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_key %}#{{ item.section_key }}{% endif %}">
                     <span class="lc-dot" style="background:#8b5cf6;"></span>
                     <span>{{ item.section_label }} &mdash; {{ item.bmr.batch_number }}</span>
                     <span class="sec-badge" style="background:#8b5cf6;">Sign</span>
@@ -2170,7 +2170,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}" class="btn btn-success btn-qa btn-sm">
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% endif %}" class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-pen me-1"></i>{% if item.action_type == 'qa_fill' %}Fill IPC{% elif item.action_type == 'ipc_row' %}Add Row{% else %}Sign Off{% endif %}
                         </a>
                     </td>
@@ -2252,7 +2252,7 @@
                     <td>{{ item.submitted_date|default:"—" }}</td>
                     <td><span class="pill pill-amber">Awaiting QA Sign</span></td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#{{ item.section_key }}" class="btn btn-success btn-qa btn-sm">
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_key %}#{{ item.section_key }}{% endif %}" class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-pen me-1"></i>{% if item.action_type == 'ipc_row' %}Add Row{% else %}Sign Off{% endif %}
                         </a>
                     </td>
