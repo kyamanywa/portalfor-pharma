@@ -232,7 +232,6 @@ def dashboard_home(request):
         'compression_operator': 'dashboards:compression_dashboard',
         'sorting_operator': 'dashboards:sorting_dashboard',
         'coating_operator': 'dashboards:coating_dashboard',
-        'drying_operator': 'dashboards:drying_dashboard',
         'filling_operator': 'dashboards:filling_dashboard',
         'dispensing_operator': 'dashboards:operator_dashboard',  # Material dispensing uses operator dashboard
         'equipment_operator': 'dashboards:operator_dashboard',
@@ -1832,26 +1831,6 @@ def qa_dashboard(request):
     tube_filling_total_pending = (int(tube_filling_lc_beginning_pending) + int(tube_filling_lc_ending_pending)
         + len(pending_tube_filling_dynamic) + len(tf_weight_yield_pending_executions) + len(tf_ipc_pending_executions) + len(tf_qa_ipc_pending_executions))
 
-    # ── Drying phase LC + process pending (capsule) ──────────────────────────────
-    drying_lc_beginning_pending = any(
-        lc.phase.phase_name == 'drying' and lc.beginning_lc_status == 'operator_filled'
-        for lc in pending_lc_approvals
-    )
-    drying_lc_ending_pending = any(
-        lc.phase.phase_name == 'drying' and lc.ending_lc_status == 'operator_filled'
-        for lc in pending_lc_approvals
-    )
-    drying_lc_beginning_executions = [
-        lc for lc in pending_lc_approvals
-        if lc.phase.phase_name == 'drying' and lc.beginning_lc_status == 'operator_filled'
-    ]
-    drying_lc_ending_executions = [
-        lc for lc in pending_lc_approvals
-        if lc.phase.phase_name == 'drying' and lc.ending_lc_status == 'operator_filled'
-    ]
-    pending_drying_dynamic = [item for item in pending_dynamic_signing if item['phase_name'] == 'drying']
-    drying_total_pending = int(drying_lc_beginning_pending) + int(drying_lc_ending_pending) + len(pending_drying_dynamic)
-
     # ── Capsule Filling phase LC + process pending (capsule) ────────────────────
     filling_lc_beginning_pending = any(
         lc.phase.phase_name == 'filling' and lc.beginning_lc_status == 'operator_filled'
@@ -1888,7 +1867,6 @@ def qa_dashboard(request):
         + dispensing_lc_total_pending       # Dispensing LCs + sheets
         + mixing_total_pending              # Mixing LCs + sections
         + tube_filling_total_pending        # Tube filling LCs + sections
-        + drying_total_pending              # Drying LCs + sections
         + filling_total_pending             # Filling LCs + sections
     )
 
@@ -2041,12 +2019,6 @@ def qa_dashboard(request):
         'tf_ipc_pending_executions': tf_ipc_pending_executions,
         'tf_qa_ipc_pending_executions': tf_qa_ipc_pending_executions,
         'tube_filling_total_pending': tube_filling_total_pending,
-        'drying_lc_beginning_pending': drying_lc_beginning_pending,
-        'drying_lc_ending_pending': drying_lc_ending_pending,
-        'drying_lc_beginning_executions': drying_lc_beginning_executions,
-        'drying_lc_ending_executions': drying_lc_ending_executions,
-        'pending_drying_dynamic': pending_drying_dynamic,
-        'drying_total_pending': drying_total_pending,
         'filling_lc_beginning_pending': filling_lc_beginning_pending,
         'filling_lc_ending_pending': filling_lc_ending_pending,
         'filling_lc_beginning_executions': filling_lc_beginning_executions,
@@ -2403,7 +2375,7 @@ def production_manager_dashboard(request):
     production_phases = BatchPhaseExecution.objects.filter(
         phase__phase_name__in=[
             'mixing', 'granulation', 'blending', 'compression', 'coating',
-            'drying', 'filling', 'tube_filling', 'sorting', 'blister_packing',
+            'filling', 'tube_filling', 'sorting', 'blister_packing',
             'bulk_packing', 'secondary_packaging'
         ]
     ).select_related('bmr', 'phase', 'started_by').order_by('-started_date')[:10]
@@ -2935,7 +2907,6 @@ def operator_dashboard(request):
                                 'blending': 'blending_operator',
                                 'compression': 'compression_operator',
                                 'coating': 'coating_operator',
-                                'drying': 'drying_operator',
                                 'filling': 'filling_operator',
                                 'tube_filling': 'tube_filling_operator',
                                 'blister_packing': 'packing_operator',
@@ -2993,7 +2964,6 @@ def operator_dashboard(request):
         'blending_operator': ['blending'],
         'compression_operator': ['compression'],
         'coating_operator': ['coating'],
-        'drying_operator': ['drying'],
         'filling_operator': ['filling'],
         'tube_filling_operator': ['tube_filling'],
         'packing_operator': ['blister_packing', 'bulk_packing', 'secondary_packaging'],
@@ -3142,7 +3112,6 @@ def operator_dashboard(request):
         'blending_operator': 'blending',
         'compression_operator': 'compression',
         'coating_operator': 'coating',
-        'drying_operator': 'drying',
         'filling_operator': 'filling',
         'tube_filling_operator': 'tube_filling',
         'packing_operator': 'packing',
@@ -3216,7 +3185,7 @@ def operator_dashboard(request):
     # Exclude material dispensing and administrative phases
     breakdown_tracking_roles = [
         'mixing_operator', 'granulation_operator', 'blending_operator', 'compression_operator',
-        'coating_operator', 'drying_operator', 'filling_operator', 'tube_filling_operator',
+        'coating_operator', 'filling_operator', 'tube_filling_operator',
         'sorting_operator', 'packing_operator'
     ]
     show_breakdown_tracking = getattr(request.user, 'role', None) in breakdown_tracking_roles
@@ -3295,11 +3264,6 @@ def compression_dashboard(request):
 @login_required
 def coating_dashboard(request):
     """Coating Operator Dashboard"""
-    return operator_dashboard(request)
-
-@login_required
-def drying_dashboard(request):
-    """Drying Operator Dashboard"""
     return operator_dashboard(request)
 
 @login_required
@@ -3993,7 +3957,6 @@ def finished_goods_dashboard(request):
         'blending_operator': 'blending',
         'compression_operator': 'compression',
         'coating_operator': 'coating',
-        'drying_operator': 'drying',
         'filling_operator': 'filling',
         'tube_filling_operator': 'tube_filling',
         'packing_operator': 'packing',
@@ -5142,7 +5105,7 @@ def acknowledge_all_phase_timing_alerts(request):
 def phase_specific_dashboard(request, phase_name):
     """
     Generic phase-specific dashboard with countdown timer functionality
-    Handles: granulation, blending, compression, coating, drying, filling, etc.
+    Handles: granulation, blending, compression, coating, filling, etc.
     """
     if not request.user.is_authenticated:
         return redirect('accounts:login')

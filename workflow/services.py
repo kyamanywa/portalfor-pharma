@@ -676,7 +676,6 @@ class WorkflowService:
             'blending_operator': ['blending'],
             'compression_operator': ['compression'],
             'coating_operator': ['coating'],
-            'drying_operator': ['drying'],
             'filling_operator': ['filling'],
             'tube_filling_operator': ['tube_filling'],
             'packing_operator': ['blister_packing', 'bulk_packing', 'secondary_packaging'],

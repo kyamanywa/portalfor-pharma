@@ -149,7 +149,7 @@ def enhanced_timeline_view(request, bmr_id):
     # Production Phase (Main production)
     production_phases = phase_executions.filter(
         phase__phase_name__in=[
-            'compression', 'coating', 'drying', 'filling', 'tube_filling'
+            'compression', 'coating', 'filling', 'tube_filling'
         ]
     )
     

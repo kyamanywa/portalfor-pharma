@@ -1316,62 +1316,6 @@
         <!-- ═══ CAPSULE PHASES ═══ -->
         <div class="qa-nav-section-label" style="margin-top:8px;">Capsule Phases</div>
 
-        <!-- DRYING PHASE GROUP (Capsule) -->
-        <div class="qa-phase-group" id="phase-group-drying">
-            <div class="qa-phase-toggle" id="toggle-drying" onclick="togglePhaseGroup('drying')">
-                <span class="toggle-icon"><i class="fas fa-wind"></i></span>
-                <span class="toggle-label">Drying</span>
-                {% if drying_total_pending > 0 %}
-                <span class="toggle-count">{{ drying_total_pending }}</span>
-                {% else %}
-                <span class="toggle-count zero">0</span>
-                {% endif %}
-                <i class="fas fa-chevron-down toggle-chevron" id="chevron-drying"></i>
-            </div>
-            <div class="qa-phase-sections" id="sections-drying">
-                {% if drying_lc_beginning_pending %}
-                {% for lc in drying_lc_beginning_executions %}
-                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' lc.id %}">
-                    <span class="lc-dot" style="background:#f59e0b;"></span>
-                    <span>Beginning LC &mdash; {{ lc.bmr.batch_number }}</span>
-                    <span class="sec-badge" style="background:#f59e0b;color:#000;">Sign</span>
-                </a>
-                {% endfor %}
-                {% else %}
-                <div class="qa-section-lc">
-                    <span class="lc-dot" style="background:#2d3a5a;border:1px solid #3d4f6e;"></span>
-                    <span>Beginning LC</span>
-                </div>
-                {% endif %}
-                {% for item in pending_drying_dynamic %}
-                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_pk %}#sec-{{ item.section_pk }}{% endif %}">
-                    <span class="sec-dot"></span>
-                    <span>{{ item.section_title }}</span>
-                    <span class="sec-badge">{% if item.action_type == 'qa_fill' %}Fill{% else %}Sign{% endif %}</span>
-                </a>
-                {% empty %}
-                <div class="qa-section-item" style="color:#6b7a9e;font-size:11px;padding:4px 12px;">
-                    <span>Drying Process Steps</span>
-                </div>
-                {% endfor %}
-                {% if drying_lc_ending_pending %}
-                {% for lc in drying_lc_ending_executions %}
-                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' lc.id %}">
-                    <span class="lc-dot" style="background:#8b5cf6;"></span>
-                    <span>Ending LC &mdash; {{ lc.bmr.batch_number }}</span>
-                    <span class="sec-badge" style="background:#8b5cf6;">Sign</span>
-                </a>
-                {% endfor %}
-                {% else %}
-                <div class="qa-section-lc">
-                    <span class="lc-dot" style="background:#2d3a5a;border:1px solid #3d4f6e;"></span>
-                    <span>Ending LC</span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        <!-- END DRYING PHASE GROUP -->
-
         <!-- CAPSULE FILLING PHASE GROUP -->
         <div class="qa-phase-group" id="phase-group-filling">
             <div class="qa-phase-toggle" id="toggle-filling" onclick="togglePhaseGroup('filling')">

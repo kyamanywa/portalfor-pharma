@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 product_type="capsule",
                 description=(
                     "Dynamic BMR template for Kam Amoxy (Amoxicillin Trihydrate BP 500mg Capsules). "
-                    "Covers material dispensing, drying, blending, post-blending QC, "
+                    "Covers material dispensing, blending, post-blending QC, "
                     "capsule filling, sorting, blister packing, and secondary packaging."
                 ),
                 is_active=False,
@@ -84,24 +84,6 @@ _GENERIC_ENDING_ITEMS = [
     "Logbooks and BMR entries completed and signed.",
     "Equipment status labels updated.",
     "Supervisor / QA reviewed and released the area.",
-]
-
-_DRYING_BEGINNING = [
-    "Tray dryer / fluid bed dryer (FBD) cleaned and labeled 'CLEANED'.",
-    "Trays, liners and scoops are clean and accounted for.",
-    "Thermometer / thermocouple calibrated and in-date.",
-    "BMR and weighing records available and verified.",
-    "Temperature set-point recorded before loading.",
-    "Environmental conditions within specification (Temp NMT 25°C, RH NMT 45%).",
-]
-
-_DRYING_ENDING = [
-    "Dried material sampled for moisture content before transfer.",
-    "Moisture content within specification (NMT 13.0% w/w) — result recorded.",
-    "Dried material transferred to blending room in sealed, labeled containers.",
-    "Dryer and trays cleaned as per SOP after use.",
-    "Logbooks and BMR entries completed and signed.",
-    "QA reviewed results and released for blending.",
 ]
 
 _BLENDING_BEGINNING = [
@@ -163,49 +145,10 @@ _BLISTER_ENDING = [
 # Process steps
 # ---------------------------------------------------------------------------
 
-_DRYING_STEPS = [
-    {
-        "num": "1",
-        "desc": "Verify all dispensed Amoxicillin Trihydrate is present and correctly identified (AR No., weight per BMR).",
-    },
-    {
-        "num": "2",
-        "desc": "Spread Amoxicillin Trihydrate evenly on lined SS trays (NMT 2 cm depth per tray). "
-                "Record number of trays used.",
-    },
-    {
-        "num": "3",
-        "desc": "Load trays into tray dryer. Set temperature to NMT 40°C. "
-                "Run exhaust fan and record set temperature.",
-    },
-    {
-        "num": "4",
-        "desc": "Dry for minimum 2 hours. Check temperature every 30 minutes and record.",
-    },
-    {
-        "num": "5",
-        "desc": "After drying, sample from top / middle / bottom trays for Loss on Drying (LOD). "
-                "Record moisture result. Specification: NMT 13.0% w/w (Amoxicillin Trihydrate BP).",
-    },
-    {
-        "num": "6",
-        "desc": "If moisture fails, continue drying and re-sample. "
-                "Do NOT proceed to blending without passing LOD.",
-    },
-    {
-        "num": "7",
-        "desc": "Sieve dried material through 40-mesh sieve. Collect and label in sealed containers.",
-    },
-    {
-        "num": "8",
-        "desc": "Weigh sieved dry material and record. Transfer to blending room with proper labeling.",
-    },
-]
-
 _BLENDING_STEPS = [
     {
         "num": "1",
-        "desc": "Verify dried Amoxicillin Trihydrate is available and correctly identified.",
+        "desc": "Verify dispensed Amoxicillin Trihydrate is available and correctly identified.",
     },
     {
         "num": "2",
@@ -375,65 +318,7 @@ def _build_sections(template):
     ))
 
     # ------------------------------------------------------------------ #
-    # PHASE 2 — Drying
-    # ------------------------------------------------------------------ #
-    s.append(sec(
-        "drying", "line_clearance",
-        "Drying Area Line Clearance",
-        config={
-            "beginning_items": _DRYING_BEGINNING,
-            "ending_items": _DRYING_ENDING,
-        },
-        page=2,
-    ))
-    s.append(sec(
-        "drying", "process_steps",
-        "Drying Process Steps",
-        config={
-            "steps": _DRYING_STEPS,
-            "has_timing": True,
-            "timing_columns": ["Step No.", "Description", "Time On", "Time Off", "Temp (°C)", "Operator", "QA"],
-            "equipment_list": [
-                {"name": "Tray Dryer", "id": ""},
-                {"name": "SS Trays (lined)", "id": ""},
-                {"name": "40-Mesh Sieve", "id": ""},
-                {"name": "Balance", "id": ""},
-            ],
-        },
-        page=2,
-    ))
-    s.append(sec(
-        "drying", "qa_report",
-        "Post-Drying Quality Check (Loss on Drying)",
-        config={
-            "tests": [
-                {"test": "Loss on Drying (LOD)", "spec": "NMT 13.0% w/w (Amoxicillin Trihydrate BP)"},
-                {"test": "Appearance after drying", "spec": "White to pale yellow free-flowing powder"},
-                {"test": "Sieve passage (40 mesh)", "spec": "Passes through 40-mesh — no lumps or agglomerates"},
-            ],
-            "has_comply": True,
-            "next_stage": "Blending",
-            "reject_note": "If LOD exceeds 13.0%, return to dryer and re-test before proceeding.",
-        },
-        page=2,
-    ))
-    s.append(sec(
-        "drying", "yield_reconciliation",
-        "Drying Yield Reconciliation",
-        config={
-            "rows": [
-                {"key": "A", "label": "Weight of Amoxicillin Trihydrate before drying (kg)", "formula": ""},
-                {"key": "B", "label": "Weight after drying (kg)", "formula": ""},
-                {"key": "C", "label": "Loss on drying (kg)  [A − B]", "formula": "A-B"},
-                {"key": "D", "label": "% Loss  [C ÷ A × 100]", "formula": "C/A*100"},
-            ],
-            "permissible": "See LOD specification above",
-        },
-        page=3,
-    ))
-
-    # ------------------------------------------------------------------ #
-    # PHASE 3 — Blending
+    # PHASE 2 — Blending
     # ------------------------------------------------------------------ #
     s.append(sec(
         "blending", "line_clearance",

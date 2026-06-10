@@ -24,7 +24,7 @@ class Command(BaseCommand):
             {
                 'product_type_key': 'capsule',
                 'product_type_display': 'Capsule',
-                'description': 'Capsule products with drying, blending, filling workflow',
+                'description': 'Capsule products with blending and filling workflow',
                 'default_packing_phase': 'filling',
                 'is_active': True,
             },

@@ -22,7 +22,6 @@ class CustomUser(AbstractUser):
         ('blending_operator', 'Blending Operator'),
         ('compression_operator', 'Compression Operator'),
         ('coating_operator', 'Coating Operator'),
-        ('drying_operator', 'Drying Operator'),
         ('filling_operator', 'Filling Operator'),
         ('sorting_operator', 'Sorting Operator'),
         # Single packing operator for all packing operations (blister, bulk, secondary)

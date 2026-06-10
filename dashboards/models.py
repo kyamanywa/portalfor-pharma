@@ -108,7 +108,6 @@ class NotificationSettings(models.Model):
         ('blending_operator', 'Blending Operator'),
         ('compression_operator', 'Compression Operator'),
         ('coating_operator', 'Coating Operator'),
-        ('drying_operator', 'Drying Operator'),
         ('filling_operator', 'Filling Operator'),
         ('tube_filling_operator', 'Tube Filling Operator'),
         ('packing_operator', 'Packing Operator'),

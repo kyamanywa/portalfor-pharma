@@ -439,7 +439,6 @@ PHASES_WITHOUT_LC = [
     'final_qa',
     'finished_goods_store',
     'packaging_material_release',
-    'drying',        # Capsule drying
 ]
 
 

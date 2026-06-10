@@ -21,7 +21,7 @@ class Command(BaseCommand):
                 'allowed_roles': ['production_manager', 'qc', 'admin'] + [
                     'mixing_operator', 'tube_filling_operator', 'granulation_operator',
                     'blending_operator', 'compression_operator', 'coating_operator',
-                    'drying_operator', 'filling_operator', 'sorting_operator',
+                    'filling_operator', 'sorting_operator',
                     'packing_operator', 'dispensing_operator', 'equipment_operator',
                     'cleaning_operator'
                 ]

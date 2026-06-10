@@ -17,7 +17,7 @@ This is a pharmaceutical operations management system for Kampala Pharmaceutical
 - **Ointments**: Mixing → Tube Filling workflow
 - **Tablets (Normal)**: Granulation → Blending → Compression → [Coating] → Blister Packing
 - **Tablets (Type 2)**: Same as normal but uses Bulk Packing instead of Blister
-- **Capsules**: Drying → Blending → Filling → Blister Packing
+- **Capsules**: Blending → Filling → Blister Packing
 
 ### User Roles
 - Production Manager: Requests BMRs from QA, manages production planning

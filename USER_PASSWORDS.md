@@ -54,10 +54,6 @@ Username: coating_operator
 Password: coating123
 Role: Coating Operator
 
-Username: drying_operator
-Password: drying123
-Role: Drying Operator
-
 Username: filling_operator
 Password: filling123
 Role: Filling Operator

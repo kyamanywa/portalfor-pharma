@@ -85,16 +85,15 @@ class Command(BaseCommand):
                     (2, 'regulatory_approval', 'Regulatory Approval', True, True, 24.0),
                     (3, 'raw_material_release', 'Raw Material Release', True, False, 2.0),
                     (4, 'material_dispensing', 'Material Dispensing', True, False, 3.0),
-                    (5, 'drying', 'Drying', True, False, 12.0),
-                    (6, 'blending', 'Blending', True, False, 6.0),
-                    (7, 'post_blending_qc', 'Post-Blending QC', True, True, 2.0, 6),  # Rollback to blending
-                    (8, 'filling', 'Filling', True, False, 8.0),
-                    (9, 'sorting', 'Sorting', True, False, 4.0),
-                    (10, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
-                    (11, 'blister_packing', 'Blister Packing', True, False, 6.0),
-                    (12, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
-                    (13, 'final_qa', 'Final QA', True, True, 3.0, None, 12),  # QC rollback: None, QA rollback: secondary_packaging (12)
-                    (14, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
+                    (5, 'blending', 'Blending', True, False, 6.0),
+                    (6, 'post_blending_qc', 'Post-Blending QC', True, True, 2.0, 5),  # Rollback to blending
+                    (7, 'filling', 'Filling', True, False, 8.0),
+                    (8, 'sorting', 'Sorting', True, False, 4.0),
+                    (9, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
+                    (10, 'blister_packing', 'Blister Packing', True, False, 6.0),
+                    (11, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
+                    (12, 'final_qa', 'Final QA', True, True, 3.0, None, 11),  # QC rollback: None, QA rollback: secondary_packaging (11)
+                    (13, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
                 ]
             },
             'capsule_ug': {
@@ -105,16 +104,15 @@ class Command(BaseCommand):
                     (2, 'regulatory_approval', 'Regulatory Approval', True, True, 24.0),
                     (3, 'raw_material_release', 'Raw Material Release', True, False, 2.0),
                     (4, 'material_dispensing', 'Material Dispensing', True, False, 3.0),
-                    (5, 'drying', 'Drying', True, False, 12.0),
-                    (6, 'blending', 'Blending', True, False, 6.0),
-                    (7, 'post_blending_qc', 'Post-Blending QC', True, True, 2.0, 6),  # Rollback to blending
-                    (8, 'filling', 'Filling', True, False, 8.0),
-                    (9, 'sorting', 'Sorting', True, False, 4.0),
-                    (10, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
-                    (11, 'bulk_packing', 'Bulk Packing', True, False, 6.0),  # UG: bulk instead of blister
-                    (12, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
-                    (13, 'final_qa', 'Final QA', True, True, 3.0, None, 12),
-                    (14, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
+                    (5, 'blending', 'Blending', True, False, 6.0),
+                    (6, 'post_blending_qc', 'Post-Blending QC', True, True, 2.0, 5),  # Rollback to blending
+                    (7, 'filling', 'Filling', True, False, 8.0),
+                    (8, 'sorting', 'Sorting', True, False, 4.0),
+                    (9, 'packaging_material_release', 'Packaging Material Release', True, False, 1.0),
+                    (10, 'bulk_packing', 'Bulk Packing', True, False, 6.0),  # UG: bulk instead of blister
+                    (11, 'secondary_packaging', 'Secondary Packaging', True, False, 4.0),
+                    (12, 'final_qa', 'Final QA', True, True, 3.0, None, 11),
+                    (13, 'finished_goods_store', 'Finished Goods Store', True, False, 1.0),
                 ]
             }
         }

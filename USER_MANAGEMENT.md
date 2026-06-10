@@ -37,7 +37,6 @@
 - **blending_operator**: Blending Operator
 - **compression_operator**: Compression Operator
 - **coating_operator**: Coating Operator
-- **drying_operator**: Drying Operator
 - **tube_filling_operator**: Tube Filling Operator
 - **filling_operator**: Filling Operator
 - **packaging_store**: Packaging Store Staff

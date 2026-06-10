@@ -48,7 +48,6 @@ urlpatterns = [
     path('blending/', views.blending_dashboard, name='blending_dashboard'),
     path('compression/', views.compression_dashboard, name='compression_dashboard'),
     path('coating/', views.coating_dashboard, name='coating_dashboard'),
-    path('drying/', views.drying_dashboard, name='drying_dashboard'),
     path('filling/', views.filling_dashboard, name='filling_dashboard'),
     path('tube-filling/', views.tube_filling_dashboard, name='tube_filling_dashboard'),
     path('sorting/', views.sorting_dashboard, name='sorting_dashboard'),

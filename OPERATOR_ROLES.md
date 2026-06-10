@@ -26,9 +26,8 @@
 5. **Sorting Operator** (`sorting_operator`) - Product sorting and inspection
 
 #### **Capsule Production Workflow**
-1. **Drying Operator** (`drying_operator`) - Material drying operations
-2. **Blending Operator** (`blending_operator`) - Shared with tablet workflow
-3. **Filling Operator** (`filling_operator`) - Capsule filling operations
+1. **Blending Operator** (`blending_operator`) - Shared with tablet workflow
+2. **Filling Operator** (`filling_operator`) - Capsule filling operations
 
 ### 📦 **Single Packing Operation**
 - **Packing Operator** (`packing_operator`) - Handles ALL packing types:
@@ -77,7 +76,6 @@ Sorting: username=sorting_operator, password=sort123
 
 ### **Capsule Production**
 ```
-Drying: username=drying_operator, password=dry123
 Filling: username=filling_operator, password=fill123
 ```
 
@@ -106,7 +104,7 @@ Cleaning: username=cleaning_operator, password=clean123
 - Granulation → Blending → Compression → [Coating] → Sorting → Packing (Bulk)
 
 #### **Capsules**
-- Drying → Blending → Filling → Packing (Blister)
+- Blending → Filling → Packing (Blister)
 
 ### **Role-Based Dashboard Access**
 - **QA** → BMR creation and management

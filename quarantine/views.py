@@ -49,7 +49,7 @@ def quarantine_dashboard(request):
     quarantine_phases = [
         'mixing', 'post_mixing_qc', 'tube_filling',  # Ointment phases
         'granulation', 'blending', 'post_blending_qc', 'compression', 'post_compression_qc', 'sorting', 'coating',  # Tablet phases  
-        'drying', 'filling',  # Capsule phases
+        'filling',  # Capsule phases
     ]
     
     # Get unique phases using Python to avoid SQL distinct issues

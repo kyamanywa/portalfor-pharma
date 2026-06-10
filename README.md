@@ -34,7 +34,7 @@ Secondary Packaging → Final QA → Finished Goods
 #### 3. Capsules Production
 ```
 BMR Creation → Regulatory Approval → Material Release → Dispensing →
-Drying → Blending → QC Testing → Filling → Sorting →
+Blending → QC Testing → Filling → Sorting →
 Packaging Release → Blister Packing → Secondary Packaging →
 Final QA → Finished Goods
 ```

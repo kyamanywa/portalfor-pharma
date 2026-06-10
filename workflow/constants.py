@@ -81,7 +81,6 @@ PHASE_NAMES = {
     'BULK_PACKING': 'bulk_packing',
     
     # Capsule specific phases
-    'DRYING': 'drying',
     'FILLING': 'filling',
 }
 
@@ -114,7 +113,6 @@ PHASE_CHOICES = [
     (PHASE_NAMES['BULK_PACKING'], 'Bulk Packing'),
     
     # Capsule specific phases
-    (PHASE_NAMES['DRYING'], 'Drying'),
     (PHASE_NAMES['FILLING'], 'Filling'),
 ]
 

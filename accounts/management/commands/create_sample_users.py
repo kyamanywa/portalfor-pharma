@@ -157,16 +157,6 @@ class Command(BaseCommand):
             },
             # Production Operators - Capsule Workflow
             {
-                'username': 'drying_operator',
-                'email': 'drying@kampala-pharma.com',
-                'password': 'dry123',
-                'first_name': 'Drying',
-                'last_name': 'Operator',
-                'role': 'drying_operator',
-                'employee_id': 'DRY001',
-                'department': 'Production'
-            },
-            {
                 'username': 'filling_operator',
                 'email': 'filling@kampala-pharma.com',
                 'password': 'fill123',
@@ -261,7 +251,6 @@ class Command(BaseCommand):
         self.stdout.write('Sorting: username=sorting_operator, password=sort123')
         
         self.stdout.write('\n--- Capsule Production ---')
-        self.stdout.write('Drying: username=drying_operator, password=dry123')
         self.stdout.write('Filling: username=filling_operator, password=fill123')
         
         self.stdout.write('\n--- Packing (All Types: Blister, Bulk, Secondary) ---')
