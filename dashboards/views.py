@@ -1716,6 +1716,50 @@ def qa_dashboard(request):
         _collapsed_dynamic.append(_item)
     pending_dynamic_signing = _collapsed_dynamic
 
+    # Fallback: ensure capsule filling IPQC appears for QA whenever any
+    # IPQC round is operator-submitted, even if dynamic template sections
+    # are missing/misaligned for the filling phase.
+    _capsule_filling_qs = BatchPhaseExecution.objects.filter(
+        status='in_progress',
+        phase__phase_name='filling',
+        bmr__product__product_type='capsule',
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:40]
+
+    _existing_cf_rows = {
+        _it['phase_execution'].id
+        for _it in pending_dynamic_signing
+        if _it.get('phase_name') == 'filling'
+        and 'Capsule Filling In-Process Control' in str(_it.get('section_title', ''))
+    }
+
+    for _pe in _capsule_filling_qs:
+        if _pe.id in _existing_cf_rows:
+            continue
+        _real_st = _get_cf_st(_pe.phase_data or {})
+        _pending_ipqc_keys = [
+            _k for _k in _CF_IPQC_KEYS
+            if _real_st.get(_k, 'not_started') == 'operator_filled'
+        ]
+        if not _pending_ipqc_keys:
+            continue
+
+        _first_key = _pending_ipqc_keys[0]
+        _ss = (_pe.phase_data or {}).get('filling_sections', {}).get('section_statuses', {})
+        _pending_num = _first_key.split('_')[-1]
+
+        pending_dynamic_signing.append({
+            'phase_execution': _pe,
+            'bmr': _pe.bmr,
+            'section_pk': None,
+            'section_title': f'Capsule Filling In-Process Control - QA to sign (IPQC {_pending_num})',
+            'phase_name': 'filling',
+            'product_type': 'capsule',
+            'action_type': 'qa_sign',
+            'submitted_by': _ss.get(f'{_first_key}_submitted_by', ''),
+            'submitted_date': _ss.get(f'{_first_key}_submitted_at', ''),
+            'anchor': f'cap-fill-ipqc-{_pending_num}',
+        })
+
     dynamic_signing_total = len(pending_dynamic_signing)
     # ── END DYNAMIC PENDING ──────────────────────────────────────────────────────
 
