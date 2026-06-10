@@ -3651,7 +3651,7 @@ function cfBtCalcTotals() {
                 <div class="no-print d-flex justify-content-end mt-2">
                     {% if pers_status == 'not_started' or pers_status == 'recalled' %}
                     <button type="submit" name="action" value="submit_section_sorting_personnel" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane me-1"></i> Submit Personnel List</button>
-                    {% elif pers_status == 'operator_submitted' %}
+                    {% elif pers_status == 'completed' %}
                     <button type="submit" name="action" value="recall_section_sorting_personnel" class="btn btn-secondary btn-sm"><i class="fas fa-undo me-1"></i> Recall for Correction</button>
                     {% endif %}
                 </div>

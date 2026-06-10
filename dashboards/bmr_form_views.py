@@ -2741,8 +2741,18 @@ def phase_form_view(request, phase_execution_id):
             'post_coating_sorting',
             'packaging_material_release',
         )
-        if hasattr(request.user, 'role') and request.user.role == 'qa' and phase_name not in qa_phase_mode_phases:
-            edit_mode = 'qa'
+        if hasattr(request.user, 'role') and request.user.role == 'qa':
+            if phase_name == 'sorting':
+                sorting_statuses = get_sorting_section_statuses(existing_data)
+                if sorting_statuses.get('inspection_recon') == 'qa_signed':
+                    # After QA signs Section A, render QA mode so Section C (IPQC) becomes editable.
+                    edit_mode = 'qa'
+                else:
+                    edit_mode = 'sorting'
+            elif phase_name not in qa_phase_mode_phases:
+                edit_mode = 'qa'
+            else:
+                edit_mode = phase_name
         elif phase_name == 'granulation' and request.user.role == 'granulation_operator':
             edit_mode = 'granulation'
         elif phase_name == 'blending' and request.user.role == 'blending_operator':
