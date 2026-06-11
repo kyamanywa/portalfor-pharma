@@ -2961,7 +2961,7 @@
     {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
     </form>
     {% endif %}
-    {% else %}{# process_signing_status != qa_signed - LC locked #}
+    {% if phase_execution.process_signing_status != 'qa_signed' and not dispensing_data.qa_sign %}{# LC locked panel #}
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
         {% if edit_mode == 'dispensing' or edit_mode == 'qa' and phase_name == 'material_dispensing' %}
         <div class="alert alert-secondary no-print" style="margin:40px 20px;text-align:center;">
@@ -2971,7 +2971,7 @@
         </div>
         {% endif %}
     </div>
-    {% endif %}{# end process_signing_status gate #}
+    {% endif %}{# end LC locked panel #}
 
     <!-- PAGE 9: GRANULATION / MIXING -->
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
