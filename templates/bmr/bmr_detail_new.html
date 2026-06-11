@@ -2957,6 +2957,10 @@
         </div>
         {% endif %}
 
+        {% if phase_execution.process_signing_status != 'qa_signed' and not dispensing_data.qa_sign %}
+        </fieldset>
+        {% endif %}
+
     </div>
     {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
     </form>
@@ -3272,15 +3276,22 @@
                 {% endwith %}
                 <tr>
                     <td colspan="5" style="border: 1px solid #000; padding: 6px;">
-
-            {% if phase_execution.process_signing_status != 'qa_signed' and not dispensing_data.qa_sign %}
-            </fieldset>
-            {% endif %}
                         <strong>Remarks:</strong>
                         {% if edit_mode == 'granulation' and user_role != 'qa' and phase_execution.beginning_lc_status == 'not_started' %}
                         <textarea name="granulation_beginning_remarks" style="width:100%; min-height:35px; border:1px solid #999; padding:4px; font-size:11px; background:#ffffdd;" placeholder="Enter any remarks...">{{ lc_data.granulation_beginning_remarks|default:'' }}</textarea>
                         {% else %}
                         {{ lc_data.granulation_beginning_remarks|default:"" }}
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- LC Submit / QA Approve buttons (inline, no-print) -->
+        {% if edit_mode == 'granulation' and has_line_clearance %}
+        <div class="no-print" style="margin-top: 10px; margin-bottom: 15px;">
+            {% if user_role != 'qa' and phase_execution.beginning_lc_status == 'not_started' %}
+            <div class="d-flex gap-2 justify-content-end">
                 <button type="submit" name="lc_action" value="save_beginning_lc" class="btn btn-warning btn-sm">
                     {% if lc_data.beginning_last_saved or lc_data.last_updated %}<i class="fas fa-edit me-1"></i> Continue LC{% else %}<i class="fas fa-save me-1"></i> Save LC Draft{% endif %}
                 </button>
