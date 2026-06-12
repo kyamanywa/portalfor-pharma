@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django import forms
+import json
+import re
 from .models import Product, ProductIngredient, ProductSpecification, PackagingMaterial, ProductRevisionHistory
 from workflow.constants import (
     get_product_type_choices, get_coating_type_choices, get_tablet_type_choices,
@@ -8,6 +10,48 @@ from workflow.constants import (
 from bmr.models import EquipmentEntry, YieldReconciliationRow, WeightRangeLimit, BMRProcedureStep
 
 class ProductAdminForm(forms.ModelForm):
+    LINE_LIST_JSON_FIELDS = [
+        'general_instructions',
+        'dry_mixing_instructions',
+        'wet_mixing_instructions',
+        'drying_instructions',
+        'final_drying_instructions',
+        'compression_instructions',
+        'coating_precautions',
+        'coating_solution_instructions',
+        'coating_procedure_steps',
+        'dispensing_clearance_start_items',
+        'dispensing_clearance_end_items',
+        'granulation_clearance_start_items',
+        'granulation_clearance_end_items',
+        'blending_clearance_start_items',
+        'blending_clearance_end_items',
+        'compression_clearance_start_items',
+        'compression_clearance_end_items',
+        'sorting_clearance_start_items',
+        'sorting_clearance_end_items',
+        'coating_clearance_start_items',
+        'coating_clearance_end_items',
+        'mixing_clearance_start_items',
+        'mixing_clearance_end_items',
+        'tube_filling_clearance_start_items',
+        'tube_filling_clearance_end_items',
+        'packing_clearance_start_items',
+        'packing_clearance_end_items',
+        'secondary_packaging_clearance_start_items',
+        'secondary_packaging_clearance_end_items',
+        'packing_instructions',
+        'packing_reference_docs',
+        'secondary_packing_steps',
+    ]
+
+    DICT_LIST_JSON_FIELDS = {
+        'coating_equipment_params': ('name', 'set_value'),
+        'mixing_steps': ('step', 'instruction'),
+        'mixing_equipment': ('name', 'id'),
+        'tube_filling_equipment': ('name', 'id'),
+    }
+
     class Meta:
         model = Product
         fields = '__all__'
@@ -33,6 +77,145 @@ class ProductAdminForm(forms.ModelForm):
         self.fields['coating_type'].help_text = "Select coating type for tablets only"
         self.fields['tablet_type'].help_text = "Select tablet type for tablets only"
         self.fields['capsule_type'].help_text = "Select capsule type — Normal goes to Blister Packing, UG goes to Bulk Packing"
+
+        self._replace_json_inputs_with_plain_text()
+
+    @staticmethod
+    def _serialize_line_list(value):
+        if not isinstance(value, list):
+            return ''
+        return '\n'.join(str(item).strip() for item in value if str(item).strip())
+
+    @staticmethod
+    def _serialize_dict_list(value, keys):
+        if not isinstance(value, list):
+            return ''
+        left_key, right_key = keys
+        rows = []
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            left = str(item.get(left_key, '')).strip()
+            right = str(item.get(right_key, '')).strip()
+            if left or right:
+                rows.append(f"{left} | {right}")
+        return '\n'.join(rows)
+
+    @staticmethod
+    def _parse_line_list(raw):
+        if raw is None:
+            return []
+        text = str(raw).strip()
+        if not text:
+            return []
+
+        if text.startswith('['):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            except Exception:
+                pass
+
+        items = []
+        for line in text.splitlines():
+            normalized = line.strip().lstrip('-').lstrip('*').strip()
+            if normalized:
+                items.append(normalized)
+        return items
+
+    @staticmethod
+    def _parse_dict_list(raw, keys):
+        if raw is None:
+            return []
+        text = str(raw).strip()
+        if not text:
+            return []
+
+        if text.startswith('['):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    left_key, right_key = keys
+                    normalized = []
+                    for item in parsed:
+                        if not isinstance(item, dict):
+                            continue
+                        left = str(item.get(left_key, '')).strip()
+                        right = str(item.get(right_key, '')).strip()
+                        if left or right:
+                            normalized.append({left_key: left, right_key: right})
+                    return normalized
+            except Exception:
+                pass
+
+        left_key, right_key = keys
+        rows = []
+        for index, line in enumerate(text.splitlines(), start=1):
+            value = line.strip()
+            if not value:
+                continue
+
+            if '|' in value:
+                left, right = [part.strip() for part in value.split('|', 1)]
+            else:
+                # Allow "3. Some instruction" style for step lines.
+                step_match = re.match(r'^(\d+[a-zA-Z]?)\s*[\.:\)-]?\s*(.*)$', value)
+                if left_key == 'step' and step_match:
+                    left = step_match.group(1).strip()
+                    right = step_match.group(2).strip()
+                elif left_key == 'step':
+                    left = str(index)
+                    right = value
+                else:
+                    left = value
+                    right = ''
+
+            if left or right:
+                rows.append({left_key: left, right_key: right})
+        return rows
+
+    def _replace_json_inputs_with_plain_text(self):
+        for field_name in self.LINE_LIST_JSON_FIELDS:
+            if field_name not in self.fields:
+                continue
+            original = self.fields[field_name]
+            self.fields[field_name] = forms.CharField(
+                required=original.required,
+                label=original.label,
+                widget=forms.Textarea(attrs={'rows': 4}),
+                help_text=f"{original.help_text} Enter one item per line.",
+            )
+            self.initial[field_name] = self._serialize_line_list(self.initial.get(field_name))
+
+        for field_name, keys in self.DICT_LIST_JSON_FIELDS.items():
+            if field_name not in self.fields:
+                continue
+            original = self.fields[field_name]
+            left_key, right_key = keys
+            self.fields[field_name] = forms.CharField(
+                required=original.required,
+                label=original.label,
+                widget=forms.Textarea(attrs={'rows': 4}),
+                help_text=(
+                    f"{original.help_text} Enter one row per line as "
+                    f"'{left_key} | {right_key}'."
+                ),
+            )
+            self.initial[field_name] = self._serialize_dict_list(self.initial.get(field_name), keys)
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        for field_name in self.LINE_LIST_JSON_FIELDS:
+            if field_name in cleaned_data:
+                cleaned_data[field_name] = self._parse_line_list(cleaned_data.get(field_name))
+
+        for field_name, keys in self.DICT_LIST_JSON_FIELDS.items():
+            if field_name in cleaned_data:
+                cleaned_data[field_name] = self._parse_dict_list(cleaned_data.get(field_name), keys)
+
+        return cleaned_data
 
 
 class ProductIngredientInline(admin.TabularInline):
@@ -95,6 +278,41 @@ class BMRProcedureStepInline(admin.TabularInline):
     ordering = ['phase', 'order']
     verbose_name = "Procedure Step"
     verbose_name_plural = "BMR Procedure Steps (per phase)"
+
+    PHASES_BY_PRODUCT_TYPE = {
+        'tablet': {'blending', 'inspection', 'packaging'},
+        'capsule': {'blending', 'capsule_filling', 'inspection', 'packaging'},
+        'ointment': {'mixing', 'tube_filling', 'secondary_packaging'},
+    }
+
+    def get_formset(self, request, obj=None, **kwargs):
+        base_formset = super().get_formset(request, obj, **kwargs)
+        product_type = getattr(obj, 'product_type', None)
+        allowed = self.PHASES_BY_PRODUCT_TYPE.get(product_type)
+
+        if not allowed:
+            return base_formset
+
+        allowed_choices = [
+            choice for choice in BMRProcedureStep.PHASE_CHOICES
+            if choice[0] in allowed
+        ]
+
+        class FilteredPhaseFormSet(base_formset):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                for form in self.forms:
+                    field = form.fields.get('phase')
+                    if not field:
+                        continue
+                    existing_value = form.initial.get('phase') or form.data.get(form.add_prefix('phase'))
+                    choices = list(allowed_choices)
+                    if existing_value and existing_value not in {c[0] for c in choices}:
+                        label = dict(BMRProcedureStep.PHASE_CHOICES).get(existing_value, existing_value)
+                        choices.append((existing_value, label))
+                    field.choices = [('', '---------')] + choices
+
+        return FilteredPhaseFormSet
 
 
 @admin.register(Product)
@@ -220,8 +438,8 @@ class ProductAdmin(admin.ModelAdmin):
                 'compression_instructions',
             ),
             'classes': ('collapse',),
-            'description': 'JSON lists of instruction strings printed inside each BMR page. '
-                           'Enter as a JSON array, e.g. ["Step 1 text", "Step 2 text"].'
+            'description': 'Instruction strings printed inside each BMR page. '
+                           'Enter one instruction per line (JSON is no longer required).'
         }),
         ('Film Coating Parameters', {
             'fields': (
@@ -235,8 +453,8 @@ class ProductAdmin(admin.ModelAdmin):
             ),
             'classes': ('collapse',),
             'description': 'Film coating configuration. '
-                           'Equipment Params: JSON list of dicts e.g. [{"name":"Spray gun pressure","set_value":"2.0–2.25 kg/cm³"}]. '
-                           'Precautions & Procedure Steps: JSON lists of strings e.g. ["Step 1","Step 2"]. '
+                           'Equipment Params: enter one row per line as "name | set_value". '
+                           'Precautions & Procedure Steps: enter one item per line. '
                            'Individual pressure/speed/temp fields are legacy defaults used when equipment_params is empty.'
         }),
         ('BMR Content — Line Clearance Checklists', {
@@ -263,9 +481,9 @@ class ProductAdmin(admin.ModelAdmin):
                 'secondary_packaging_clearance_end_items',
             ),
             'classes': ('collapse',),
-            'description': 'JSON arrays of checklist item strings for each phase\'s line clearance form. '
-                           'Leave empty to use the default items built into the template. '
-                           'Enter as: ["Item 1 description", "Item 2 description"].'
+            'description': 'Checklist items for each phase\'s line clearance form. '
+                           'Leave empty to use defaults from the template. '
+                           'Enter one item per line.'
         }),
         ('Capsule Specifications', {
             'fields': (
@@ -284,6 +502,27 @@ class ProductAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
             'description': 'Capsule filling machine setup, shell colours/printing, and weight specifications shown on BMR page 14.'
         }),
+        ('Ointment Parameters', {
+            'fields': (
+                'mixing_steps',
+                'mixing_equipment',
+                'mixing_jacket_temperature',
+                'mixing_cool_temperature',
+                'mixing_appearance',
+                'tube_filling_weight',
+                'tube_filling_equipment',
+                'tube_filling_yield_min',
+                'tube_filling_yield_max',
+                'tube_filling_hopper_temperature',
+                'tube_filling_ipc_page_count',
+                'tube_filling_qa_ipc_page_count',
+                'packing_instructions',
+                'packing_reference_docs',
+                'secondary_packing_steps',
+            ),
+            'classes': ('collapse',),
+            'description': 'Master data for ointment mixing, tube filling, and secondary packing.'
+        }),
         ('Special Instructions', {
             'fields': (
                 'special_instructions',
@@ -298,9 +537,11 @@ class ProductAdmin(admin.ModelAdmin):
 
     def get_inline_instances(self, request, obj=None):
         inlines = super().get_inline_instances(request, obj)
-        # Some inlines are only relevant for tablets/capsules, not ointments
+        # Some inlines are only relevant for tablets/capsules, not ointments.
+        # Keep BMRProcedureStepInline for ointments because ointment templates
+        # read mixing/tube_filling/secondary_packaging steps from it.
         if obj and obj.product_type == 'ointment':
-            exclude = (WeightRangeLimitInline, YieldReconciliationRowInline, BMRProcedureStepInline)
+            exclude = (WeightRangeLimitInline, YieldReconciliationRowInline)
             inlines = [i for i in inlines if not isinstance(i, exclude)]
         return inlines
 

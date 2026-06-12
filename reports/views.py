@@ -647,5 +647,16 @@ def bmr_comments_detail(request, bmr_id):
 def bmr_print_view(request, bmr_id):
     """Legacy BMR print view - redirects to the canonical detail/print route."""
     bmr = get_object_or_404(BMR, pk=bmr_id)
-    return redirect(f"/bmr/{bmr_id}/?print=1&document=1")
+    anchor_execution = (
+        BatchPhaseExecution.objects
+        .filter(bmr=bmr)
+        .select_related('phase')
+        .order_by('phase__phase_order', 'id')
+        .first()
+    )
+    if not anchor_execution:
+        return redirect('bmr:list')
+
+    url = reverse('dashboards:phase_form', args=[anchor_execution.id])
+    return redirect(f"{url}?print=1&document=1")
 

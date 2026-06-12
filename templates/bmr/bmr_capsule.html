@@ -9,6 +9,8 @@
     .phase-form-table { width: max-content; min-width: 100%; border-collapse: collapse !important; border: 2px solid #000 !important; }
     .phase-form-table th, .phase-form-table td { border: 2px solid #000 !important; padding: 8px !important; text-align: center; vertical-align: middle; min-width: 120px; }
     .table-scroll-container { overflow-x: auto; border: 2px solid #000; margin-bottom: 20px; }
+    .bmr-table-continue { width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; margin-top: 0; }
+    .bmr-section-title-table td { padding: 8px; text-align: center; font-weight: bold; background: #f8f9fa; }
     /* Keep every section title glued to the content below it � prevents orphaned headings */
     h5 { page-break-after: avoid; break-after: avoid; }
     /* Keep the KPI page-header table together with the h5 title that follows */
@@ -95,51 +97,10 @@
             <td colspan="2" style="border:2px solid #000;padding:8px;">MFR No.: {{ bmr.product.mfr_number|default:"-" }}</td>
         </tr>
     </table>
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
-        <tr>
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
-            <td style="border:2px solid #000;padding:8px;width:35%;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
-            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">BMR Revision No: {{ bmr.product.bmr_revision_no|default:"03" }}</td>
-            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Approvals</td>
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;width:10%;">Start date</td>
-        </tr>
-        <tr>
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:top;">Product Pack No:<br>(v/ mark as appropriate)</td>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_1_code|default:"-" }}</td>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_2_code|default:"-" }}</td>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_3_code|default:"-" }}</td>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_4_code|default:"-" }}</td>
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">QA Head</td>
-            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">{% if bmr.approved_by %}{{ bmr.approved_by.get_full_name }}<br><small>{{ bmr.approved_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
-        </tr>
-        <tr>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_1_description|default:"-" }}</td>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_2_description|default:"-" }}</td>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_3_description|default:"-" }}</td>
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_4_description|default:"-" }}</td>
-        </tr>
-        <tr>
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:middle;">Pack Size: (v/ mark as appropriate)</td>
-            <td colspan="4" style="border:2px solid #000;padding:8px;text-align:center;">
-                {{ bmr.product.pack_size_1_description|default:"10x10 Blisters" }} &nbsp;&nbsp; {{ bmr.product.pack_size_2_description|default:"1000's" }}
-            </td>
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">Company/Prod. Pharmacist</td>
-            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">-</td>
-        </tr>
-        <tr>
-            <td colspan="4" style="border:2px solid #000;padding:8px;">Reference SOP Number: {{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
-        </tr>
-        <tr>
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Production Manager</td>
-            <td colspan="4" style="border:2px solid #000;padding:8px;">{% if bmr.created_by %}{{ bmr.created_by.get_full_name }}<br><small>{{ bmr.created_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
-            <td colspan="2" style="border:2px solid #000;padding:8px;"></td>
-        </tr>
-    </table>
+    {% include 'bmr/includes/_product_header_capsule.html' %}
 
     <!-- RAW MATERIAL REQUISITION/DISPENSING SHEETS -->
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
-        <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
-    </table>
+    {% include 'bmr/includes/_section_title_table.html' %}
 
     {% if edit_mode == 'store' %}
     <div class="alert alert-warning no-print"><strong>STORE MANAGER:</strong> Enter AR Numbers in <span style="background:#fff3cd;padding:2px 4px;">YELLOW</span> column.</div>
@@ -288,16 +249,8 @@
             <td colspan="2" style="border:2px solid #000;padding:8px;">MFR No.: {{ bmr.product.mfr_number|default:"-" }}</td>
         </tr>
     </table>
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
-        <tr>
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
-            <td colspan="5" style="border:2px solid #000;padding:8px;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
-            <td style="border:2px solid #000;padding:8px;">Reference SOP: {{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
-        </tr>
-    </table>
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
-        <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
-    </table>
+    {% include 'bmr/includes/_product_header_capsule.html' with variant='compact' %}
+    {% include 'bmr/includes/_section_title_table.html' %}
 
     <!-- Page 2: Empty hard gelatin capsule shells + remaining ingredients -->
     <div class="table-scroll-container">
@@ -695,7 +648,7 @@
             <td colspan="3" style="border:1px solid #000;padding:8px;">{{ bmr.product.assay_min_percentage|default:"-" }}% to {{ bmr.product.assay_max_percentage|default:"-" }}% of Label claim</td>
         </tr>
     </table>
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
+    <table class="bmr-table-continue">
         <tr><td style="border:1px solid #000;padding:8px;font-weight:bold;width:30%;">PREPARED BY:<br>Sign &amp; Date:<br><br>Name:<br>Designation:</td>
             <td style="border:1px solid #000;padding:8px;width:30%;">REVIEWED BY:<br>Sign &amp; Date:<br><br>Name:<br>Designation:</td>
             <td style="border:1px solid #000;padding:8px;">APPROVED BY:<br>Sign &amp; Date:<br><br>Name:<br>Designation:</td></tr>
@@ -1109,7 +1062,7 @@
 </div>
 
 <!-- ==================== PAGE 8 ==================== -->
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <tr>
             <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
@@ -1321,8 +1274,8 @@
 </div>
 
 <!-- ==================== PAGE 9 ==================== -->
-<div style="page-break-before:always;">
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
+    <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:12px;">
         <tr>
             <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
             <td style="border:2px solid #000;padding:15px;text-align:center;font-weight:bold;font-size:16px;">Batch Manufacturing Record and Procedure</td>
@@ -1334,7 +1287,7 @@
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH No.</td><td style="border:2px solid #000;padding:8px;"><strong>{{ bmr.batch_number }}</strong></td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Exp. Date :</td><td style="border:2px solid #000;padding:8px;">{{ bmr.expiry_date|date:"d/m/Y"|default:"-" }}</td></tr>
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">MFR No.</td><td style="border:2px solid #000;padding:8px;">{{ bmr.product.mfr_number|default:"-" }}</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Date:</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Shift :</td></tr>
     </table>
-    <h5 style="margin:14px 0 8px 0;font-weight:bold;text-align:center;">BLENDING/LUBRICATION</h5>
+    <h5 style="margin:0 0 8px 0;padding-top:6px;font-weight:bold;text-align:center;">BLENDING/LUBRICATION</h5>
     {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}<form method="POST" action="" id="blendingDataForm">{% csrf_token %}{% endif %}
     {# ---- Status alerts ---- #}
     {% if edit_mode == 'blending' or edit_mode == 'qa' and phase_name == 'blending' %}
@@ -1574,7 +1527,7 @@
 
     {# ==================== SECTION 5 � unlocks after sections 1-4 QA approved ==================== #}
     {% if blending_data_status == 'qa_verified' or edit_mode != 'blending' %}
-    <div id="capsule-blending-sect5" style="border:2px solid #000;padding:10px;margin-top:8px;">
+    <div id="capsule-blending-sect5" style="border:2px solid #000;padding:10px;margin-top:8px;page-break-inside:avoid;break-inside:avoid-page;">
     {# -------- SECTION 5: Blending Time -------- #}
     <p style="font-weight:bold;margin:4px 0 4px 0;">5. After all ingredients have been added to the double cone blender, Blend for {{ bmr.product.blending_time|default:"15 minutes" }} and fill in the table below.</p>
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
@@ -1635,7 +1588,7 @@
 </div>
 
 <!-- ==================== PAGE 10 ==================== -->
-<div id="capsule-blending-page10" style="page-break-before:always;">
+<div id="capsule-blending-page10" style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <tr>
             <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
@@ -1757,7 +1710,7 @@
 </div>
 
 <!-- ==================== PAGE 11 ==================== -->
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <tr>
             <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
@@ -2402,7 +2355,7 @@
 
 <!-- ==================== PAGE 14 ==================== -->
 <div id="cap-fill-machine-setup" style="scroll-margin-top:70px;"></div>
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <tr>
             <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
@@ -2620,7 +2573,7 @@
 
 <!-- ==================== PAGE 15 ==================== -->
 <div id="cap-fill-drum-yield" style="scroll-margin-top:70px;"></div>
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <tr>
             <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
@@ -2632,8 +2585,8 @@
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH SIZE</td><td style="border:2px solid #000;padding:8px;">{{ bmr.batch_size|floatformat:0|intcomma }} {{ bmr.product.batch_size_unit|title }}</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Mfg. Date :</td><td style="border:2px solid #000;padding:8px;">{{ bmr.manufacturing_date|date:"d/m/Y"|default:"-" }}</td></tr>
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH No.</td><td style="border:2px solid #000;padding:8px;"><strong>{{ bmr.batch_number }}</strong></td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Exp. Date :</td><td style="border:2px solid #000;padding:8px;">{{ bmr.expiry_date|date:"d/m/Y"|default:"-" }}</td></tr>
         <tr><td style="border:2px solid #000;padding:8px;font-weight:bold;">MFR No.</td><td style="border:2px solid #000;padding:8px;">{{ bmr.product.mfr_number|default:"-" }}</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Date:</td><td style="border:2px solid #000;padding:8px;font-weight:bold;">Shift :</td></tr>
+        <tr><td colspan="4" style="border:2px solid #000;padding:8px;text-align:center;font-weight:bold;font-size:14px;">CAPSULE FILLING</td></tr>
     </table>
-    <h5 style="margin:14px 0 8px 0;font-weight:bold;text-align:center;">CAPSULE FILLING</h5>
     {% with dy=capsule_filling_sections_data.cf_drum_yield dy_status=capsule_filling_section_statuses.cf_drum_yield lc_fill_ok=phase_executions.filling.beginning_lc_status %}
     {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' %}<form method="POST" action="" id="cfDrumYieldForm">{% csrf_token %}{% endif %}
     {% if edit_mode == 'filling' %}
@@ -2645,17 +2598,63 @@
         {% endif %}
     </div>
     {% endif %}
-    <p style="font-size:11px;"><strong>Step 4:</strong> &nbsp; Capsule Filling Started: Date
-        {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}<input type="date" name="cf_dy_filling_start_date" style="border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.filling_start_date|default:'' }}"> Time <input type="time" name="cf_dy_filling_start_time" style="border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.filling_start_time|default:'' }}">
-        &nbsp;&nbsp; Completed: Date <input type="date" name="cf_dy_end_date" style="border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.end_date|default:'' }}"> Time <input type="time" name="cf_dy_end_time" style="border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.end_time|default:'' }}">
-        {% else %}{{ dy.filling_start_date|default:"____________" }} Time {{ dy.filling_start_time|default:"____________" }} &nbsp;&nbsp; Completed: Date {{ dy.end_date|default:"____________" }} Time {{ dy.end_time|default:"____________" }}
-        {% endif %}
-    </p>
-    <p style="font-size:11px;">Weight of individual capsules:
-        {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}<input type="number" step="0.01" name="cf_dy_capsule_weight_mg" style="border:1px solid #999;padding:2px;width:80px;background:#ffffdd;" value="{{ dy.capsule_weight_mg|default:'' }}"> mg &nbsp;&nbsp; Average weight of empty shells: <input type="number" step="0.01" name="cf_dy_avg_empty_shell_mg" style="border:1px solid #999;padding:2px;width:80px;background:#ffffdd;" value="{{ dy.avg_empty_shell_mg|default:'' }}"> mg
-        {% else %}{{ dy.capsule_weight_mg|default:"____________" }} mg &nbsp;&nbsp; Average weight of empty shells: {{ dy.avg_empty_shell_mg|default:"____________" }} mg
-        {% endif %}
-    </p>
+    <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:4px;">
+        <tr>
+            <td colspan="6" style="border:1px solid #000;padding:4px;font-weight:bold;">4.&nbsp;&nbsp;CAPSULE FILLING</td>
+        </tr>
+        <tr>
+            <td style="border:1px solid #000;padding:4px;">Started</td>
+            <td style="border:1px solid #000;padding:4px;">Date:
+                {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}
+                <input type="date" name="cf_dy_filling_start_date" style="width:100%;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.filling_start_date|default:'' }}">
+                {% else %}
+                {{ dy.filling_start_date|default:"____________" }}
+                {% endif %}
+            </td>
+            <td style="border:1px solid #000;padding:4px;">Time:
+                {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}
+                <input type="time" name="cf_dy_filling_start_time" style="width:100%;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.filling_start_time|default:'' }}">
+                {% else %}
+                {{ dy.filling_start_time|default:"____________" }}
+                {% endif %}
+            </td>
+            <td style="border:1px solid #000;padding:4px;">Completed</td>
+            <td style="border:1px solid #000;padding:4px;">Date:
+                {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}
+                <input type="date" name="cf_dy_end_date" style="width:100%;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.end_date|default:'' }}">
+                {% else %}
+                {{ dy.end_date|default:"____________" }}
+                {% endif %}
+            </td>
+            <td style="border:1px solid #000;padding:4px;">Time:
+                {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}
+                <input type="time" name="cf_dy_end_time" style="width:100%;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.end_time|default:'' }}">
+                {% else %}
+                {{ dy.end_time|default:"____________" }}
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border:1px solid #000;padding:4px;font-weight:bold;">Weight of individual filled capsules</td>
+            <td colspan="4" style="border:1px solid #000;padding:4px;">
+                {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}
+                <input type="number" step="0.01" name="cf_dy_capsule_weight_mg" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.capsule_weight_mg|default:'' }}"> mg
+                {% else %}
+                {{ dy.capsule_weight_mg|default:"____________" }} mg
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border:1px solid #000;padding:4px;font-weight:bold;">Average weight of empty capsule shells</td>
+            <td colspan="4" style="border:1px solid #000;padding:4px;">
+                {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}
+                <input type="number" step="0.01" name="cf_dy_avg_empty_shell_mg" style="width:120px;border:1px solid #999;padding:2px;background:#ffffdd;" value="{{ dy.avg_empty_shell_mg|default:'' }}"> mg
+                {% else %}
+                {{ dy.avg_empty_shell_mg|default:"____________" }} mg
+                {% endif %}
+            </td>
+        </tr>
+    </table>
     <p style="font-weight:bold;margin:10px 0 4px 0;">Step 5: Yield Determination � weigh filled capsules per drum</p>
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;">
         <thead><tr style="background:#f0f0f0;"><th style="border:2px solid #000;padding:6px;width:10%;">Date</th><th style="border:2px solid #000;padding:6px;width:8%;">Shift</th><th style="border:2px solid #000;padding:6px;width:15%;">Operator (Sign)</th><th style="border:2px solid #000;padding:6px;width:10%;">Gross Wt (kg)</th><th style="border:2px solid #000;padding:6px;width:10%;">Tare Wt (kg)</th><th style="border:2px solid #000;padding:6px;width:10%;">Net Wt (kg)</th><th style="border:2px solid #000;padding:6px;width:12%;">Drum No.</th></tr></thead>
@@ -2717,8 +2716,30 @@
     </table>
     <p style="font-size:11px;margin-top:6px;">% Yield = H &times; 100 / I =
         {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}<input type="number" step="0.01" name="cf_yield_pct" style="border:1px solid #999;padding:2px;width:80px;background:#e8f5e9;" value="{{ dy.yield_pct|default:'' }}" placeholder="auto">
-        {% else %}{{ dy.yield_pct|default:"__________" }}{% endif %}% &nbsp;&nbsp; Permissible Yield Limit: 98% � 102%
+        {% else %}{{ dy.yield_pct|default:"__________" }}{% endif %}%
     </p>
+    <p style="font-size:11px;margin:4px 0 2px 0;"><strong>Permissible Yield Limit:</strong> (98% to 102%)</p>
+    <p style="font-size:11px;margin:2px 0;">(If percentage yield is within 98% to 102% no justification is required, otherwise explain variation in space below):</p>
+    <p style="font-size:11px;margin:2px 0;">
+        <strong>CAUSE OF VARIATION:</strong> YES/NO
+        {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'operator_filled' and user_role == 'qa' %}
+        <select name="cf_dy_cause_of_variation" style="margin-left:8px;border:1px solid #999;padding:2px;background:#d4e6f1;">
+            <option value="" {% if not dy.cause_of_variation %}selected{% endif %}>--</option>
+            <option value="YES" {% if dy.cause_of_variation == 'YES' %}selected{% endif %}>YES</option>
+            <option value="NO" {% if dy.cause_of_variation == 'NO' %}selected{% endif %}>NO</option>
+        </select>
+        {% else %}
+        <span style="display:inline-block;min-width:80px;border-bottom:1px dotted #000;margin-left:8px;">{{ dy.cause_of_variation|default:'' }}</span>
+        {% endif %}
+    </p>
+    <p style="font-size:11px;margin:2px 0 4px 0;"><strong>REMARKS/BREAKDOWNS</strong></p>
+    {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'operator_filled' and user_role == 'qa' %}
+    <textarea name="cf_dy_remarks_breakdowns" rows="3" style="width:100%;border:1px solid #999;padding:4px;background:#d4e6f1;font-size:11px;">{{ dy.remarks_breakdowns|default:'' }}</textarea>
+    {% else %}
+    <div style="font-size:11px;line-height:1.6;min-height:56px;white-space:pre-wrap;">{% if dy.remarks_breakdowns %}{{ dy.remarks_breakdowns }}{% else %}........................................................................................................................
+........................................................................................................................
+........................................................................................................................{% endif %}</div>
+    {% endif %}
     {% if edit_mode == 'filling' and lc_fill_ok == 'qa_approved' and dy_status == 'not_started' %}
     <script>
     function calcDrumNet(n) {
@@ -4084,7 +4105,7 @@ function cfBtCalcTotals() {
             {% elif phase_execution.ending_lc_status == 'operator_filled' %}
             <div class="alert alert-info no-print" style="margin-bottom:8px;"><i class="fas fa-clock me-2"></i><strong>ENDING LC SUBMITTED:</strong> Awaiting QA approval to close this phase.</div>
             {% elif phase_execution.ending_lc_status == 'qa_approved' %}
-            <div class="alert alert-success no-print" style="margin-bottom:8px;"><i class="fas fa-check-circle me-2"></i><strong>ENDING LC APPROVED:</strong> QA sign-off completed.</div>
+            <div class="alert alert-success no-print" style="margin-bottom:8px;"><i class="fas fa-check-circle me-2"></i><strong>ENDING LC COMPLETED:</strong> Sign-off completed.</div>
             {% elif phase_execution.ending_lc_status == 'qa_rejected' %}
             <div class="alert alert-danger no-print" style="margin-bottom:8px;"><i class="fas fa-times-circle me-2"></i><strong>ENDING LC REJECTED:</strong> Update and re-submit ending LC to QA.</div>
             {% endif %}
@@ -5554,7 +5575,7 @@ function cfBtCalcTotals() {
             {% elif phase_execution.ending_lc_status == 'operator_filled' %}
             <div class="alert alert-info no-print" style="margin-bottom:8px;"><i class="fas fa-clock me-2"></i><strong>ENDING LC SUBMITTED:</strong> Awaiting QA approval to close this phase.</div>
             {% elif phase_execution.ending_lc_status == 'qa_approved' %}
-            <div class="alert alert-success no-print" style="margin-bottom:8px;"><i class="fas fa-check-circle me-2"></i><strong>ENDING LC APPROVED:</strong> QA sign-off complete. Phase closed.</div>
+            <div class="alert alert-success no-print" style="margin-bottom:8px;"><i class="fas fa-check-circle me-2"></i><strong>ENDING LC COMPLETED:</strong> Sign-off complete. Phase closed.</div>
             {% elif phase_execution.ending_lc_status == 'qa_rejected' %}
             <div class="alert alert-danger no-print" style="margin-bottom:8px;"><i class="fas fa-times-circle me-2"></i><strong>ENDING LC REJECTED:</strong> Update and re-submit ending LC to QA.</div>
             {% endif %}

@@ -84,9 +84,91 @@ document.addEventListener('DOMContentLoaded', function() {
     const tabletTypeField = document.querySelector('#id_tablet_type');
     const capsuleTypeField = document.querySelector('#id_capsule_type');
 
+    const sectionAnchors = {
+        tabletCapsulePhysical: 'field-average_weight_uncoated',
+        compressionSpecs: 'field-punch_size',
+        granulationParams: 'field-granulation_lot_count',
+        blendingParams: 'field-blending_time_minutes',
+        yieldReconciliation: 'field-yield_drum_count',
+        processInstructions: 'field-general_instructions',
+        filmCoating: 'field-coating_lot_count',
+        capsuleSpecs: 'field-capsule_size',
+        ointmentParams: 'field-mixing_steps',
+    };
+
+    const sectionExclusionsByType = {
+        tablet: ['capsuleSpecs', 'ointmentParams'],
+        capsule: ['compressionSpecs', 'granulationParams', 'filmCoating', 'processInstructions', 'ointmentParams'],
+        ointment: [
+            'tabletCapsulePhysical',
+            'compressionSpecs',
+            'granulationParams',
+            'blendingParams',
+            'yieldReconciliation',
+            'filmCoating',
+            'capsuleSpecs',
+            'processInstructions',
+        ],
+    };
+
+    function getFieldsetByAnchor(anchorClass) {
+        const field = document.querySelector('.' + anchorClass);
+        return field ? field.closest('fieldset.module') : null;
+    }
+
+    function setSectionVisibility(productType) {
+        const exclusions = sectionExclusionsByType[productType] || [];
+
+        Object.entries(sectionAnchors).forEach(([key, anchorClass]) => {
+            const fieldset = getFieldsetByAnchor(anchorClass);
+            if (!fieldset) return;
+            fieldset.style.display = exclusions.includes(key) ? 'none' : '';
+        });
+    }
+
+    const stepPhaseMap = {
+        tablet: ['blending', 'inspection', 'packaging'],
+        capsule: ['blending', 'capsule_filling', 'inspection', 'packaging'],
+        ointment: ['mixing', 'tube_filling', 'secondary_packaging']
+    };
+
+    const phaseSelectCache = new WeakMap();
+
+    function filterProcedurePhaseOptions(productType) {
+        const group = document.querySelector('#bmrprocedurestep_set-group');
+        if (!group) return;
+
+        const allowed = stepPhaseMap[productType] || [];
+        const selects = group.querySelectorAll('select[name$="-phase"]');
+
+        selects.forEach(function(select) {
+            if (!phaseSelectCache.has(select)) {
+                phaseSelectCache.set(select, Array.from(select.options).map(function(opt) {
+                    return { value: opt.value, text: opt.text };
+                }));
+            }
+
+            const original = phaseSelectCache.get(select);
+            const currentValue = select.value;
+
+            select.innerHTML = '';
+            original.forEach(function(opt) {
+                const isEmpty = opt.value === '';
+                const shouldKeep = isEmpty || allowed.includes(opt.value) || opt.value === currentValue;
+                if (!shouldKeep) return;
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.value;
+                optionEl.text = opt.text;
+                if (opt.value === currentValue) optionEl.selected = true;
+                select.appendChild(optionEl);
+            });
+        });
+    }
+
     function toggleProductFields() {
         const isTablet = productTypeField.value === 'tablet';
         const isCapsule = productTypeField.value === 'capsule';
+        const productType = productTypeField.value;
 
         // --- Tablet fields ---
         if (coatingTypeRow) coatingTypeRow.style.display = isTablet ? 'block' : 'none';
@@ -122,6 +204,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const capsuleHeader = document.getElementById('capsule-options-header');
         if (tabletHeader)  tabletHeader.style.display  = isTablet  ? '' : 'none';
         if (capsuleHeader) capsuleHeader.style.display = isCapsule ? '' : 'none';
+
+        setSectionVisibility(productType);
+        filterProcedurePhaseOptions(productType);
     }
 
     if (productTypeField) {
@@ -168,6 +253,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (capsuleTypeRow.parentNode) {
             capsuleTypeRow.parentNode.insertBefore(capsuleHeader, capsuleTypeRow);
         }
+    }
+
+    // Keep procedure-step phase dropdown filtered when new inline rows are added.
+    const procedureGroupBody = document.querySelector('#bmrprocedurestep_set-group tbody');
+    if (procedureGroupBody && productTypeField) {
+        const procedureObserver = new MutationObserver(function() {
+            filterProcedurePhaseOptions(productTypeField.value);
+        });
+        procedureObserver.observe(procedureGroupBody, { childList: true, subtree: true });
     }
 });
 

@@ -877,6 +877,12 @@ def _save_capsule_filling_section_data(skey, request, sec):
         for step in ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'):
             sec[f'yield_{step}'] = request.POST.get(f'cf_yield_{step}', '')
         sec['yield_pct'] = request.POST.get('cf_yield_pct', '')
+        cause_of_variation = request.POST.get('cf_dy_cause_of_variation')
+        if cause_of_variation is not None:
+            sec['cause_of_variation'] = cause_of_variation
+        remarks_breakdowns = request.POST.get('cf_dy_remarks_breakdowns')
+        if remarks_breakdowns is not None:
+            sec['remarks_breakdowns'] = remarks_breakdowns
 
     elif skey == 'cf_bulk_transfer':
         for i in range(1, 11):
@@ -976,6 +982,12 @@ def _save_mixing_section_data(section_key, request, sec):
     when actually present in POST (i.e. the QA input was rendered).
     """
     if section_key == 'mix_process':
+        # Equipment marks shown on the page-9 mixing equipment table.
+        # Capture only posted values to avoid wiping saved marks on partial submits.
+        for key in request.POST:
+            if key.startswith('equip_mark_'):
+                sec[key] = request.POST.get(key, '')
+
         # All fields use "only save if present in POST" pattern so that
         # operator fields are not wiped when QA submits (and vice-versa).
         for field in [
@@ -1700,14 +1712,15 @@ def phase_form_view(request, phase_execution_id):
     }
 
     # ===== PER-PAGE SHIFT & DATE SAVING =====
-    # Every page has its own shift (shift_page_3 .. shift_page_30) and date
-    # (date_page_3 .. date_page_30).  The template <select>/<input> sits outside
+    # Every page has its own shift/date fields (shift_page_* / date_page_*).
+    # The template <select>/<input> sits outside
     # <form> tags; JS injects them as hidden inputs on submit.
     # Save them here — once, at the top — so every handler's fresh load already
     # includes the new values.
     if request.method == 'POST':
         _page_shifts = {}
         _page_dates = {}
+        _dropped_page_header_keys = []
         for _k in request.POST:
             if _k.startswith('shift_page_') and request.POST[_k]:
                 try:
@@ -1716,6 +1729,8 @@ def phase_form_view(request, phase_execution_id):
                     _page_no = None
                 if _page_no and _can_edit_page_header_field(phase_execution, request.user, _page_no):
                     _page_shifts[_k.replace('shift_page_', 'page_')] = request.POST[_k]
+                else:
+                    _dropped_page_header_keys.append(_k)
             if _k.startswith('date_page_') and request.POST[_k]:
                 try:
                     _page_no = int(_k.replace('date_page_', ''))
@@ -1723,6 +1738,20 @@ def phase_form_view(request, phase_execution_id):
                     _page_no = None
                 if _page_no and _can_edit_page_header_field(phase_execution, request.user, _page_no):
                     _page_dates[_k.replace('date_page_', 'page_')] = request.POST[_k]
+                else:
+                    _dropped_page_header_keys.append(_k)
+        if _dropped_page_header_keys:
+            logger.info(
+                'Dropped page header fields during submit: phase_execution_id=%s role=%s phase=%s keys=%s',
+                phase_execution.id,
+                getattr(request.user, 'role', ''),
+                phase_execution.phase.phase_name,
+                sorted(set(_dropped_page_header_keys)),
+            )
+            messages.info(
+                request,
+                f'Note: {len(set(_dropped_page_header_keys))} page header field(s) were ignored because they are outside this phase.'
+            )
         if _page_shifts or _page_dates:
             # Keep page header date/shift consistent across the whole BMR.
             # Otherwise values can appear to revert when users move to another
@@ -6818,6 +6847,7 @@ def phase_form_view(request, phase_execution_id):
         'lc_data': lc_data,
         'packing_lc_phase': packing_lc_phase,
         'has_line_clearance': has_line_clearance(phase_name),
+        'has_dispensing_line_clearance': has_line_clearance('dispensing'),
         # Packaging Materials Requisition context (Page 41)
         'packaging_req_data': existing_data.get('packaging_req', {}),
         'packaging_materials': _get_pkg_materials(product),
@@ -6861,12 +6891,13 @@ def phase_form_view(request, phase_execution_id):
     # ── Template routing by product type ────────────────────────────────────
     product_type = getattr(product, 'product_type', None)
     coating_type = getattr(product, 'coating_type', '')
+    template_name = None
     if product_type == 'ointment':
-        return render(request, 'bmr/bmr_ointment.html', context)
+        template_name = 'bmr/bmr_ointment.html'
     elif product_type == 'capsule':
-        return render(request, 'bmr/bmr_capsule.html', context)
+        template_name = 'bmr/bmr_capsule.html'
     elif product_type == 'tablet':
-        return render(request, 'bmr/bmr_detail_new.html', context)
+        template_name = 'bmr/bmr_detail_new.html'
     else:
         return render(request, 'bmr/bmr_not_available.html', {
             'bmr': bmr,
@@ -6874,6 +6905,17 @@ def phase_form_view(request, phase_execution_id):
             'product_type_display': product.get_product_type_display(),
             'coating_type': coating_type,
         })
+
+    if download_pdf:
+        # Reuse centralized PDF rendering logic from bmr.views
+        from bmr.views import _try_render_pdf
+        filename = f"BMR_{bmr.batch_number}.pdf"
+        pdf_response = _try_render_pdf(template_name, context, request, filename)
+        if pdf_response is not None:
+            return pdf_response
+        messages.error(request, 'PDF generation failed. Showing document view instead.')
+
+    return render(request, template_name, context)
 
 
 @login_required

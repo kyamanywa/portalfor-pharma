@@ -20,6 +20,10 @@
 
     .table-scroll-container { overflow-x: auto; border: 2px solid #000; margin-bottom: 20px; }
 
+    .bmr-table-continue { width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; margin-top: 0; }
+
+    .bmr-section-title-table td { padding: 8px; text-align: center; font-weight: bold; background: #f8f9fa; }
+
     @media print {
 
         @page { size: A4 portrait; margin: 10mm 8mm 10mm 8mm; -webkit-print-color-adjust: exact; color-adjust: exact; }
@@ -167,102 +171,13 @@
     </table>
 
     <!-- Product header row 2 -->
-
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
-
-        <tr>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
-
-            <td style="border:2px solid #000;padding:8px;width:35%;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
-
-            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">BMR Revision No: {{ bmr.product.bmr_revision_no|default:"03" }}</td>
-
-            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Approvals</td>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;width:10%;">Start date</td>
-
-        </tr>
-
-        <tr>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:top;">Product Pack No:<br>(âˆš/ mark as appropriate)</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_1_code|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_2_code|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_3_code|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_4_code|default:"-" }}</td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">QA Head</td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">{% if bmr.approved_by %}{{ bmr.approved_by.get_full_name }}<br><small>{{ bmr.approved_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
-
-        </tr>
-
-        <tr>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_2_description|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_3_description|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_4_description|default:"-" }}</td>
-
-        </tr>
-
-        <tr>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:middle;">Pack Size: (âˆš/ mark as appropriate)</td>
-
-            <td colspan="4" style="border:2px solid #000;padding:8px;">
-
-                <div style="display:flex;justify-content:space-around;">
-
-                    <span>â˜ {{ bmr.product.pack_size_1_description|default:"15gm" }}</span>
-
-                </div>
-
-            </td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">Company/Prod. Pharmacist</td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">-</td>
-
-        </tr>
-
-        <tr>
-
-            <td colspan="4" style="border:2px solid #000;padding:8px;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"15gm" }}</td>
-
-        </tr>
-
-        <tr>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Reference SOP Number:</td>
-
-            <td colspan="4" style="border:2px solid #000;padding:8px;">{{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Production Manager</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{% if bmr.created_by %}{{ bmr.created_by.get_full_name }}<br><small>{{ bmr.created_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
-
-        </tr>
-
-    </table>
+    {% include 'bmr/includes/_product_header_ointment.html' %}
 
 
 
     <!-- RAW MATERIAL REQUISITION/DISPENSING SHEETS title -->
 
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
-
-        <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
-
-    </table>
+    {% include 'bmr/includes/_section_title_table.html' %}
 
 
 
@@ -470,7 +385,7 @@
 
 <!-- ==================== PAGE 2 ==================== -->
 
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
 
     <!-- KPI Header Page 2 -->
 
@@ -541,102 +456,13 @@
     </table>
 
     <!-- Product header row 2 (full — matches Page 1) -->
-
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
-
-        <tr>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
-
-            <td style="border:2px solid #000;padding:8px;width:35%;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
-
-            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">BMR Revision No: {{ bmr.product.bmr_revision_no|default:"03" }}</td>
-
-            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Approvals</td>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;width:10%;">Start date</td>
-
-        </tr>
-
-        <tr>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:top;">Product Pack No:<br>(âˆš/ mark as appropriate)</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_1_code|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_2_code|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_3_code|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_4_code|default:"-" }}</td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">QA Head</td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">{% if bmr.approved_by %}{{ bmr.approved_by.get_full_name }}<br><small>{{ bmr.approved_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
-
-        </tr>
-
-        <tr>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_2_description|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_3_description|default:"-" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_4_description|default:"-" }}</td>
-
-        </tr>
-
-        <tr>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:middle;">Pack Size: (âˆš/ mark as appropriate)</td>
-
-            <td colspan="4" style="border:2px solid #000;padding:8px;">
-
-                <div style="display:flex;justify-content:space-around;">
-
-                    <span>â˜ {{ bmr.product.pack_size_1_description|default:"15gm" }}</span>
-
-                </div>
-
-            </td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">Company/Prod. Pharmacist</td>
-
-            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">-</td>
-
-        </tr>
-
-        <tr>
-
-            <td colspan="4" style="border:2px solid #000;padding:8px;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"15gm" }}</td>
-
-        </tr>
-
-        <tr>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Reference SOP Number:</td>
-
-            <td colspan="4" style="border:2px solid #000;padding:8px;">{{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
-
-            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Production Manager</td>
-
-            <td style="border:2px solid #000;padding:8px;text-align:center;">{% if bmr.created_by %}{{ bmr.created_by.get_full_name }}<br><small>{{ bmr.created_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
-
-        </tr>
-
-    </table>
+    {% include 'bmr/includes/_product_header_ointment.html' %}
 
 
 
     <!-- Continued Raw Material Requisition  heading -->
 
-    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
-
-        <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
-
-    </table>
+    {% include 'bmr/includes/_section_title_table.html' %}
 
 
 
@@ -1292,7 +1118,7 @@
 
 <!-- ==================== PAGE 3 ==================== -->
 
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
 
     <!-- KPI Header Page 3 -->
 
@@ -2174,7 +2000,7 @@
 
     {% with disp_pe=phase_executions.material_dispensing %}
 
-    {% if has_line_clearance and disp_pe.process_signing_status == 'qa_signed' %}
+    {% if has_dispensing_line_clearance and disp_pe.process_signing_status == 'qa_signed' or has_dispensing_line_clearance and edit_mode == 'view' or has_dispensing_line_clearance and edit_mode == 'print' %}
 
     {% if edit_mode == 'dispensing' or edit_mode == 'qa' %}
 
@@ -2572,7 +2398,7 @@
 
                 <i class="fas fa-check-double me-2"></i>
 
-                <strong>ENDING LC APPROVED:</strong> Both Beginning and Ending LCs are approved. Click <strong>Complete Dispensing</strong> below to finish this phase.
+                <strong>ENDING LC COMPLETED:</strong> Both Beginning and Ending LCs are complete. Click <strong>Complete Dispensing</strong> below to finish this phase.
 
             </div>
 
@@ -3204,7 +3030,7 @@
 
 <!-- ==================== PAGE 9 ==================== -->
 
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
 
     <!-- KPI Header Page 9 -->
 
@@ -3614,7 +3440,7 @@
 
 <!-- ==================== PAGE 10 ==================== -->
 
-<div style="page-break-before:always;">
+<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
 
     <!-- KPI Header Page 10 -->
 
@@ -3888,7 +3714,7 @@
 
     <div class="no-print" style="background:#d4edda;border:2px solid #28a745;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
 
-        &#10004; Ending LC APPROVED by QA
+        &#10004; Ending LC completed
 
     </div>
 
@@ -7350,7 +7176,7 @@
 
                 <i class="fas fa-check-double me-2"></i>
 
-                <strong>ENDING LC APPROVED:</strong> Both Beginning and Ending LCs are approved.
+                <strong>ENDING LC COMPLETED:</strong> Both Beginning and Ending LCs are complete.
 
             </div>
 
@@ -12198,9 +12024,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     }
 
-    /* â”€â”€ Per-page shift: each page has its own shift_page_X dropdown
+     /* â”€â”€ Per-page shift/date fields sit outside <form> tags.
 
-       sitting outside <form> tags. On submit, inject ALL shift values. â”€â”€ */
+         On submit, inject all values so backend receives complete header metadata. â”€â”€ */
 
     document.addEventListener('submit', function(e) {
 
@@ -12210,11 +12036,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.querySelectorAll('select.bmr-shift-select').forEach(function(sel) {
 
-            if (sel.value && !form.querySelector('input[name="' + sel.name + '"]')) {
+            var existingShift = form.querySelector('input[name="' + sel.name + '"]');
+
+            if (existingShift) {
+
+                existingShift.value = sel.value || '';
+
+            } else {
 
                 var h = document.createElement('input');
 
-                h.type = 'hidden'; h.name = sel.name; h.value = sel.value;
+                h.type = 'hidden'; h.name = sel.name; h.value = sel.value || '';
 
                 form.appendChild(h);
 

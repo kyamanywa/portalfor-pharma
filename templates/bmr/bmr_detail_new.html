@@ -80,6 +80,21 @@
         margin-bottom: 20px;
     }
 
+    .bmr-table-continue {
+        width: 100%;
+        border-collapse: collapse;
+        border: 2px solid #000;
+        border-top: none;
+        margin-top: 0;
+    }
+
+    .bmr-section-title-table td {
+        padding: 8px;
+        text-align: center;
+        font-weight: bold;
+        background: #f8f9fa;
+    }
+
     .theme-toggle,
     .theme-switcher,
     #theme-icon,
@@ -648,8 +663,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- Dynamic template system temporarily disabled - showing full static BMR -->
-<!-- TODO: Implement hybrid rendering that overlays dynamic sections onto static base -->
 {% if document_mode %}
 <div class="document-actions">
     <a href="{% url 'bmr:detail' bmr.id %}?print=1&document=1&download=pdf" class="btn btn-success btn-sm">
@@ -702,28 +715,6 @@
             <strong>PRINT VIEW MODE:</strong> This is the comprehensive BMR print version. All data from completed phases is displayed in read-only format. Use Ctrl+P or the Print button to print/save as PDF.
         </div>
     </div>
-    
-    <!-- Print-specific styles to ensure clean PDF output -->
-    <style>
-        /* Additional print-specific overrides */
-        @media print {
-            .print-mode-indicator { display: none !important; }
-        }
-        
-        /* Screen view improvements for print mode */
-        @media screen {
-            body.print-mode {
-                background: #f8f9fa !important;
-            }
-            .print-mode .bmr-document {
-                background: white;
-                padding: 20px;
-                margin: 20px auto;
-                max-width: 1200px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            }
-        }
-    </style>
     
     <!-- Add print mode class to body -->
     <script>
@@ -796,88 +787,14 @@
         </table>
         
         <!-- Product Details Table -->
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; margin-top: 0;">
-            <tr>
-                <td style="border: 2px solid #000; padding: 8px; font-weight: bold; width: 15%;">Generic Name:</td>
-                <td style="border: 2px solid #000; padding: 8px; width: 35%;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
-                <td colspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center;">BMR Revision No: {{ bmr.product.bmr_revision_no|default:"00" }}</td>
-                <td colspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center;">Approvals</td>
-                <td style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center; width: 10%;">Start date</td>
-            </tr>
-            <tr>
-                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; vertical-align: top;">
-                    Product Pack No:<br>(/ mark as appropriate)
-                </td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
-                    {{ bmr.product.pack_size_1_code|default:"-" }}
-                </td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
-                    {{ bmr.product.pack_size_2_code|default:"-" }}
-                </td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
-                    {{ bmr.product.pack_size_3_code|default:"-" }}
-                </td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
-                    {{ bmr.product.pack_size_4_code|default:"-" }}
-                </td>
-                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center; vertical-align: middle;">
-                    QA Head
-                </td>
-                <td rowspan="2" style="border: 2px solid #000; padding: 8px; text-align: center; vertical-align: middle;">
-                    {% if bmr.approved_by %}{{ bmr.approved_by.get_full_name }}<br><small>{{ bmr.approved_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}
-                </td>
-            </tr>
-            <tr>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
-                    {{ bmr.product.pack_size_1_description|default:"-" }}
-                </td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
-                    {{ bmr.product.pack_size_2_description|default:"-" }}
-                </td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
-                    {{ bmr.product.pack_size_3_description|default:"-" }}
-                </td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
-                    {{ bmr.product.pack_size_4_description|default:"-" }}
-                </td>
-            </tr>
-            <tr>
-                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; vertical-align: middle;">
-                    Pack Size: (/ mark as appropriate)
-                </td>
-                <td colspan="4" style="border: 2px solid #000; padding: 8px;">
-                    <div style="display: flex; justify-content: space-around;">
-                        <span>[ ] {{ bmr.product.pack_size_1_description|default:"10x10 Blisters" }}</span>
-                        <span>[ ] {{ bmr.product.pack_size_2_description|default:"100 Blisters" }}</span>
-                        <span>[ ] {{ bmr.product.pack_size_3_description|default:"500's" }}</span>
-                        <span>[ ] {{ bmr.product.pack_size_4_description|default:"1000's" }}</span>
-                    </div>
-                </td>
-                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center; vertical-align: middle;">
-                    Company/Prod. Pharmacist
-                </td>
-                <td rowspan="2" style="border: 2px solid #000; padding: 8px; text-align: center; vertical-align: middle;">
-                    -
-                </td>
-            </tr>
-            <tr>
-                <td colspan="4" style="border: 2px solid #000; padding: 8px; font-size: 11px;">
-                    <small class="text-muted">Select applicable pack size above before production</small>
-                </td>
-            </tr>
-            <tr>
-                <td style="border: 2px solid #000; padding: 8px; font-weight: bold;">Reference SOP Number:</td>
-                <td colspan="4" style="border: 2px solid #000; padding: 8px;">{{ bmr.product.reference_sop_number|default:"-" }}</td>
-                <td style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center;">Production_Manager</td>
-                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
-                    {% if bmr.created_by %}{{ bmr.created_by.get_full_name }}<br><small>{{ bmr.created_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}
-                </td>
-            </tr>
-        </table>
+        {% include 'bmr/includes/_product_header_tablet.html' %}
     </div>
 
+    <!-- ==================== PAGE 1 BORDER CONTAINER ==================== -->
+    <div style="border: 2px solid #000; padding: 15px; margin-top: 30px; margin-bottom: 30px; page-break-after: always; page-break-inside: avoid;">
+
     <!-- RAW MATERIAL REQUISITION/DISPENSING SHEETS Section -->
-    <div style="margin-top: 30px;">
+    <div style="margin-top: 0;">
 
         {% if edit_mode == 'store' %}<div id="edit-section"></div>{% endif %}
         {% if edit_mode == 'dispensing' and phase_execution.status == 'in_progress' %}<div id="edit-section"></div>{% endif %}
@@ -910,9 +827,7 @@
         {% endif %}
 
         <!-- ==================== DISPENSING PAGE 1: First 4 ingredients ==================== -->
-        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:0;">
-            <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
-        </table>
+        {% include 'bmr/includes/_section_title_table.html' %}
         <div class="table-scroll-container">
             {% include 'dashboards/forms/material_dispensing_table.html' with disp_page=1 %}
         </div>
@@ -944,6 +859,9 @@
             </tr>
         </table>
 
+        </div><!-- End Page 1 content div -->
+    </div><!-- End Page 1 bordered container -->
+
         <!-- ==================== DISPENSING PAGE 2: Remaining ingredients ==================== -->
         <div class="bmr-page" style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
             <!-- Page 2 header -->
@@ -973,16 +891,8 @@
                     <td colspan="2" style="border:2px solid #000;padding:8px;">MFR No.: {{ bmr.product.mfr_number|default:"-" }}</td>
                 </tr>
             </table>
-            <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
-                <tr>
-                    <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
-                    <td colspan="5" style="border:2px solid #000;padding:8px;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
-                    <td style="border:2px solid #000;padding:8px;">Reference SOP: {{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
-                </tr>
-            </table>
-            <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
-                <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
-            </table>
+            {% include 'bmr/includes/_product_header_tablet.html' with variant='compact' %}
+            {% include 'bmr/includes/_section_title_table.html' %}
 
             <div class="table-scroll-container">
                 {% include 'dashboards/forms/material_dispensing_table.html' with disp_page=2 %}
@@ -1115,8 +1025,11 @@
             </table>
             {% endif %}
 
-            <!-- Submit buttons (store / dispensing modes) -->
-            {% if edit_mode == 'store' %}
+        </div><!-- End Page 1 container -->
+    </div><!-- End Page 1 bordered div -->
+
+        <!-- ==================== DISPENSING PAGE 2: Remaining ingredients ==================== -->
+        <div class="bmr-page" style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
             <div class="no-print" style="margin-top:10px;">
                 {% if phase_execution.template_section_completed %}
                 <div class="alert alert-success py-2 mb-2" style="font-size:13px;">
@@ -1138,7 +1051,7 @@
                 </button>
                 {% endif %}
             </div>
-            {% elif edit_mode == 'dispensing' %}
+            {% if edit_mode == 'dispensing' %}
             <div class="no-print" style="margin-top:10px;">
                 {% if phase_execution.process_signing_status == 'operator_filled' %}
                 <div class="alert alert-success py-2 mb-2" style="font-size:13px;">
@@ -1227,8 +1140,12 @@
             {% endif %}
             {% endif %}{# end qa #}
 
-        </div>{# end page 2 div #}
-    </div>
+    </div><!-- End Page 1 bordered container -->
+
+    <!-- ==================== PAGE 2: Remaining ingredients ==================== -->
+    <div class="bmr-page" style="page-break-before:always;margin-bottom:30px;margin-top:0;border:2px solid #000;padding:10px;position:relative;">
+        <!-- Page 2 header -->
+        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:0;margin-top:0;">
 
 {% if bmr.product.coating_type == 'coated' and coating_ingredient_table %}
     <!-- COATING MATERIAL DISPENSING PAGE 1 (Items 7-8) -->
@@ -1625,7 +1542,7 @@
 {% endif %}{# end coating dispensing pages #}
 
     <!-- PRODUCT DETAILS PAGE -->
-    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px;">
+    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px; padding: 10px; position: relative;">
         <!-- Header for Page 3 -->
         <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 0;">
             <tr>
@@ -1759,9 +1676,9 @@
     </div>
 
     <!-- INDEX PAGE -->
-    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px;">
+    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px; padding: 10px; position: relative;">
         <!-- Header for Page 4 -->
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 0;">
+        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 12px;">
             <tr>
                 <td rowspan="2" style="border: 2px solid #000; padding: 8px; width: 15%; vertical-align: middle; text-align: center;">
                     <img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width: 80px;">
@@ -1817,7 +1734,7 @@
         </table>
         
         <!-- Index Title -->
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none;">
+        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000;">
             <tr>
                 <td style="padding: 10px; text-align: center; font-weight: bold; background-color: #f8f9fa;">INDEX</td>
             </tr>
@@ -2388,7 +2305,7 @@
         </div>
 
         <!-- Signature Block -->
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; margin-top: 0;">
+        <table class="bmr-table-continue">
             <tr>
                 <td style="border: 1px solid #000; padding: 20px 10px; width: 50%; vertical-align: bottom;">
                     <strong>List of Equipment Verified By (Production Officer):</strong>
@@ -12532,7 +12449,7 @@
             </div>
             {% elif coating_pe.ending_lc_status == 'qa_approved' %}
             <div class="alert alert-success py-1 px-2 mb-0 no-print" style="font-size:12px;">
-                <i class="fas fa-check-circle me-1"></i> Ending LC approved by QA
+                <i class="fas fa-check-circle me-1"></i> Ending LC completed
                 {% if coating_pe.ending_lc_approved_date %} on {{ coating_pe.ending_lc_approved_date|date:"d/m/Y H:i" }}{% endif %}
             </div>
             {% endif %}
@@ -13798,7 +13715,7 @@
                 {% elif phase_execution.ending_lc_status == 'qa_approved' %}
                 <div class="alert alert-success" style="margin-bottom: 10px;">
                     <i class="fas fa-check-circle me-2"></i>
-                    <strong>APPROVED:</strong> Ending LC approved by QA. Phase can be completed.
+                    <strong>COMPLETED:</strong> Ending LC is complete. Phase can be completed.
                 </div>
                 {% elif phase_execution.ending_lc_status == 'qa_rejected' %}
                 <div class="alert alert-danger" style="margin-bottom: 10px;">
@@ -20368,11 +20285,25 @@
             }
         });
 
-        // Fallback: ensure page header dates are posted on any form submit.
-        // This avoids data loss when a date change event is not fired before submit.
+        // Fallback: ensure page header shift/date values are posted on submit.
+        // This avoids data loss when a change event is not fired before submit.
         document.addEventListener('submit', function(e) {
             var form = e.target;
             if (!form || form.tagName !== 'FORM') return;
+
+            document.querySelectorAll('select.bmr-shift-select').forEach(function(sel) {
+                if (!sel.name) return;
+                var existingShift = form.querySelector('input[name="' + sel.name + '"]');
+                if (existingShift) {
+                    existingShift.value = sel.value || '';
+                } else {
+                    var hs = document.createElement('input');
+                    hs.type = 'hidden';
+                    hs.name = sel.name;
+                    hs.value = sel.value || '';
+                    form.appendChild(hs);
+                }
+            });
 
             document.querySelectorAll('input.bmr-date-input').forEach(function(inp) {
                 if (!inp.name) return;

@@ -1,4 +1,7 @@
 from django import template
+import re
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -168,3 +171,30 @@ def get_sec_field(sec_data, field_key, fallback=''):
     if isinstance(sec_data, dict):
         return sec_data.get(str(field_key), fallback)
     return fallback
+
+
+@register.filter
+def bold_alpha_lines(value):
+    """Render multiline text with a./b./c. list lines in bold.
+
+    Useful for procedure blocks where ingredient lines must stand out in print.
+    """
+    if value is None:
+        return ''
+
+    text = str(value)
+    lines = text.splitlines()
+    rendered = []
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            rendered.append('')
+            continue
+
+        if re.match(r'^[a-zA-Z]\.', line):
+            rendered.append(f'<strong>{escape(line)}</strong>')
+        else:
+            rendered.append(escape(line))
+
+    return mark_safe('<br>'.join(rendered))
