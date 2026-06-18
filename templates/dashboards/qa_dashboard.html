@@ -773,7 +773,7 @@
                 {% if SORTING_SECTIONS %}
                 {% for sec_key, sec_cfg in SORTING_SECTIONS.items %}
                 {% if sec_key in pending_sorting_section_map %}
-                <a class="qa-section-item pending" href="#" onclick="switchTabAndScroll('tab-sorting','section-sorting'); return false;">
+                <a class="qa-section-item pending" href="#" onclick="switchTabAndScroll('tab-sorting','pending-sorting-{{ pending_sorting_section_map|dict_get:sec_key }}'); return false;">
                     <span class="sec-dot"></span>
                     <span>{{ sec_cfg.label }}</span>
                     <span class="sec-badge">Sign</span>
@@ -1912,7 +1912,7 @@
                 </tr></thead>
                 <tbody>
                 {% for item in pending_sorting_signing %}
-                <tr>
+                <tr id="pending-sorting-{{ item.phase_execution.id }}">
                     <td><a href="{% url 'bmr:detail' item.bmr.pk %}" class="batch-link">{{ item.bmr.batch_number }}</a></td>
                     <td>{{ item.bmr.product.product_name }}</td>
                     <td><span class="pill pill-blue">{{ item.section_label }}</span></td>
