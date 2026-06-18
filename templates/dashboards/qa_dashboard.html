@@ -773,8 +773,7 @@
                 {% if SORTING_SECTIONS %}
                 {% for sec_key, sec_cfg in SORTING_SECTIONS.items %}
                 {% if sec_key in pending_sorting_section_map %}
-                <a class="qa-section-item pending"
-                   href="/dashboard/bmr-forms/phase/{{ pending_sorting_section_map|dict_get:sec_key }}/#section-sorting-{{ sec_key }}">
+                <a class="qa-section-item pending" href="#" onclick="switchTabAndScroll('tab-sorting','section-sorting'); return false;">
                     <span class="sec-dot"></span>
                     <span>{{ sec_cfg.label }}</span>
                     <span class="sec-badge">Sign</span>

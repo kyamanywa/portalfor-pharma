@@ -1163,6 +1163,7 @@ def qa_dashboard(request):
     for item in pending_sorting_signing:
         if item['section_key'] not in pending_sorting_section_map:
             pending_sorting_section_map[item['section_key']] = item['phase_execution'].id
+
     # ── END SORTING PENDING ──────────────────────────────────────────────────────
 
     # ── Sorting LC pending flags (for sidebar badges) ───────────────────────────
