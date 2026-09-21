@@ -1,0 +1,110 @@
+<style>
+    .bmr-form-toolbar {
+        position: sticky;
+        top: 62px;
+        z-index: 1020;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin: -4px 0 16px;
+        padding: 10px 12px;
+        background: #ffffff;
+        border: 1px solid #d9e2f2;
+        border-radius: 8px;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.10);
+    }
+
+    .bmr-form-toolbar .toolbar-title {
+        min-width: 0;
+    }
+
+    .bmr-form-toolbar .toolbar-title strong {
+        display: block;
+        color: #0f172a;
+        font-size: 14px;
+        line-height: 1.2;
+    }
+
+    .bmr-form-toolbar .toolbar-title span {
+        display: block;
+        color: #64748b;
+        font-size: 12px;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .bmr-form-toolbar .toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    @media (max-width: 768px) {
+        .bmr-form-toolbar {
+            top: 56px;
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .bmr-form-toolbar .toolbar-actions {
+            justify-content: flex-start;
+        }
+    }
+
+    @media print {
+        .bmr-form-toolbar {
+            display: none !important;
+        }
+    }
+</style>
+
+<div class="no-print bmr-form-toolbar">
+    <div class="toolbar-title">
+        <strong>
+            {% if bmr.product.product_type == 'capsule' %}
+                <i class="fas fa-capsules me-1"></i>Batch Manufacturing Record - Capsules
+            {% elif bmr.product.product_type == 'ointment' %}
+                <i class="fas fa-prescription-bottle me-1"></i>Batch Manufacturing Record - Ointment
+            {% else %}
+                <i class="fas fa-file-medical-alt me-1"></i>Batch Manufacturing Record
+            {% endif %}
+        </strong>
+        <span>
+            Dashboard / BMR List / {{ bmr.bmr_number }}{% if phase_execution %} / {{ phase_execution.phase.get_phase_name_display }}{% endif %}
+        </span>
+    </div>
+
+    <div class="toolbar-actions">
+        <a href="{% url 'home' %}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+        </a>
+        <a href="{% url 'bmr:list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-layer-group me-1"></i>BMR List
+        </a>
+        <a href="{% url 'bmr:detail' bmr.id %}" class="btn btn-outline-dark btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to BMR
+        </a>
+        {% if not is_printing %}
+        <a href="{% url 'reports:enhanced_timeline' bmr.id %}" class="btn btn-outline-info btn-sm">
+            <i class="fas fa-chart-line me-1"></i>Timeline
+        </a>
+        {% endif %}
+        <a href="{% url 'bmr:detail' bmr.id %}?print=1&document=1&download=pdf" class="btn btn-outline-success btn-sm">
+            <i class="fas fa-file-pdf me-1"></i>PDF
+        </a>
+        {% if user_role == 'admin' or user_role == 'qa' or user_role == 'head_qa' or user_role == 'qc' or user_role == 'production_manager' %}
+        <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#reportDeviationModal">
+            <i class="fas fa-exclamation-triangle me-1"></i>Deviation
+        </button>
+        {% endif %}
+        {% if user_role == 'admin' %}
+        <button type="button" onclick="window.print()" class="btn btn-primary btn-sm">
+            <i class="fas fa-print me-1"></i>Print
+        </button>
+        {% endif %}
+    </div>
+</div>

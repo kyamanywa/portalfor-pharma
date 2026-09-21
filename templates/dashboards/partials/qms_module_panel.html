@@ -1,0 +1,142 @@
+<div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;">
+    <form method="post" style="display:grid;grid-template-columns:1.4fr 2fr 120px 150px auto;gap:8px;align-items:end;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="qms_create">
+        <input type="hidden" name="category" value="{{ category }}">
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">New {{ module_name }}</label>
+            <input class="form-control form-control-sm" name="title" placeholder="Title" required>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Description</label>
+            <input class="form-control form-control-sm" name="description" placeholder="{{ create_hint }}" required>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Priority</label>
+            <select class="form-select form-select-sm" name="priority">
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+                <option value="low">Low</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Due Date</label>
+            <input class="form-control form-control-sm" type="date" name="due_date">
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-plus me-1"></i>Create</button>
+    </form>
+</div>
+
+<div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+    <a class="qms-summary-card" href="#qms-work-items-{{ category }}">
+        <span class="qms-summary-icon"><i class="fas fa-list-check"></i></span>
+        <span><strong>Open Work</strong><small>{{ actions|length }} active item{{ actions|length|pluralize }} in this module.</small></span>
+        <i class="fas fa-arrow-down qms-summary-arrow"></i>
+    </a>
+    <a class="qms-summary-card" href="{% url 'dashboards:qms_reports' %}?type={% if category == 'change_control' %}change_control{% else %}{{ category }}{% endif %}">
+        <span class="qms-summary-icon reports"><i class="fas fa-chart-line"></i></span>
+        <span><strong>Reports</strong><small>Track status, priority, due dates, owners, and closure readiness.</small></span>
+        <i class="fas fa-arrow-up-right-from-square qms-summary-arrow"></i>
+    </a>
+    <a class="qms-summary-card" href="#qms-related-results-{{ category }}">
+        <span class="qms-summary-icon related"><i class="fas fa-link"></i></span>
+        <span><strong>Related Results</strong><small>Open linked BMR and quality-lot QC records.</small></span>
+        <i class="fas fa-arrow-down qms-summary-arrow"></i>
+    </a>
+</div>
+
+{% if actions %}
+<style>
+.qms-summary-card { display:flex; align-items:center; gap:12px; min-height:78px; padding:13px 18px; color:#0f172a; text-decoration:none; border-right:1px solid #e5eaf2; transition:.2s ease; }
+.qms-summary-card:hover { background:#f8fbff; color:#1d4ed8; }
+.qms-summary-card > span:nth-child(2) { flex:1; }
+.qms-summary-card strong, .qms-summary-card small { display:block; }
+.qms-summary-card strong { margin-bottom:5px; font-size:15px; }
+.qms-summary-card small { color:#64748b; line-height:1.4; }
+.qms-summary-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:11px; background:#dbeafe; color:#2563eb; }
+.qms-summary-icon.reports { background:#ede9fe; color:#7c3aed; }
+.qms-summary-icon.related { background:#dcfce7; color:#16a34a; }
+.qms-summary-arrow { color:#94a3b8; font-size:12px; }
+.qms-work-list { scroll-margin-top:90px; }
+.qms-work-card { scroll-margin-top:90px; }
+.qms-work-card > div:first-child { cursor:pointer; }
+.qms-work-card > div:first-child:hover .qms-work-title { color:#1d4ed8; }
+.qms-related-links { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.qms-related-links a { padding:5px 9px; border:1px solid #bfdbfe; border-radius:999px; color:#1d4ed8; background:#eff6ff; font-size:11px; text-decoration:none; }
+.qms-related-links a:hover { background:#dbeafe; }
+.qms-work-list { display:grid; gap:16px; padding:20px 18px 24px; background:#f4f7fb; }
+.qms-work-card { display:grid; grid-template-columns:minmax(190px,1.25fr) minmax(150px,.85fr) minmax(240px,1.5fr) minmax(220px,1.35fr); gap:18px; padding:20px; background:#fff; border:1px solid #e3e9f2; border-left:5px solid #2563eb; border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06); }
+.qms-work-card:hover { box-shadow:0 12px 28px rgba(15,23,42,.1); transform:translateY(-1px); transition:.2s ease; }
+.qms-work-label { display:block; margin-bottom:8px; color:#71809a; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.qms-work-number { color:#1d4ed8; font-size:13px; font-weight:800; }
+.qms-work-title { margin-top:7px; color:#0f172a; font-size:16px; font-weight:750; line-height:1.3; }
+.qms-work-copy { margin-top:8px; color:#64748b; font-size:13px; line-height:1.5; }
+.qms-work-update { padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; }
+.qms-work-update form { display:grid; gap:7px; }
+.qms-work-update .form-control, .qms-work-update .form-select { border-radius:9px; border-color:#d6deea; font-size:12px; }
+@media (max-width:900px) { .qms-work-card { grid-template-columns:1fr 1fr; } .qms-work-update { grid-column:span 2; } }
+@media (max-width:600px) { .qms-work-card { grid-template-columns:1fr; padding:16px; } .qms-work-update { grid-column:auto; } }
+</style>
+<div class="qms-work-list" id="qms-work-items-{{ category }}">
+        {% for action in actions %}
+        <article class="qms-work-card" id="qms-action-{{ action.pk }}">
+            <div>
+                <span class="qms-work-label">{{ module_name }} record</span>
+                <a class="qms-work-number" href="{% if action.capa_record %}{% url 'dashboards:qms_capa_detail' action.capa_record.id %}{% else %}{% url 'dashboards:qms_action_detail' action.id %}{% endif %}">{{ action.qms_number }}</a>
+                <div class="qms-work-title">{{ action.title }}</div>
+                <div class="qms-work-copy">{{ action.description|truncatechars:110 }}</div>
+                <div style="margin-top:10px;">
+                    <span class="pill {% if action.priority == 'critical' or action.priority == 'high' %}pill-red{% elif action.priority == 'medium' %}pill-amber{% else %}pill-gray{% endif %}">{{ action.get_priority_display }}</span>
+                    <span class="pill pill-blue">{{ action.get_status_display }}</span>
+                </div>
+            </div>
+            <div>
+                <span class="qms-work-label">Linked records</span>
+                {% if action.bmr %}<a href="{% url 'bmr:detail' action.bmr.pk %}" class="batch-link">{{ action.bmr.batch_number }}</a>{% else %}-{% endif %}
+                <div style="margin-top:7px;font-size:12px;color:#64748b;">
+                    {% if action.quality_lot %}<a href="{% url 'dashboards:quality_lot_detail' action.quality_lot.pk %}" class="batch-link">{{ action.quality_lot.lot_number }}</a>{% else %}No lot linked{% endif %}
+                </div>
+                <div style="margin-top:12px;color:#334155;font-size:12px;"><strong>Due:</strong> {{ action.due_date|date:"M d, Y"|default:"Not set" }}</div>
+                <div class="qms-related-links">
+                    {% if action.bmr %}<a href="{% url 'bmr:detail' action.bmr.pk %}"><i class="fas fa-box me-1"></i>BMR {{ action.bmr.batch_number }}</a>{% endif %}
+                    {% if action.quality_lot %}<a href="{% url 'dashboards:quality_lot_detail' action.quality_lot.pk %}"><i class="fas fa-flask me-1"></i>QC lot {{ action.quality_lot.lot_number }}</a>{% endif %}
+                    {% if not action.bmr and not action.quality_lot %}<span style="color:#94a3b8;font-size:11px;">No linked BMR or QC result</span>{% endif %}
+                </div>
+            </div>
+            <div>
+                <span class="qms-work-label">Action progress</span>
+                <div class="qms-work-copy"><strong>Root cause:</strong> {{ action.root_cause|default:"Not documented"|truncatechars:85 }}</div>
+                <div class="qms-work-copy"><strong>Corrective action:</strong> {{ action.corrective_action|default:"Pending"|truncatechars:85 }}</div>
+                <div class="qms-work-copy"><strong>Effectiveness:</strong> {{ action.effectiveness_check|default:"Pending verification"|truncatechars:85 }}</div>
+            </div>
+            <div class="qms-work-update">
+                <span class="qms-work-label">Update record</span>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="qms_update">
+                    <input type="hidden" name="qms_id" value="{{ action.pk }}">
+                    <select class="form-select form-select-sm" name="status">
+                        <option value="open" {% if action.status == 'open' %}selected{% endif %}>Open</option>
+                        <option value="investigation" {% if action.status == 'investigation' %}selected{% endif %}>Investigation</option>
+                        <option value="action_required" {% if action.status == 'action_required' %}selected{% endif %}>Action Required</option>
+                        <option value="pending_approval" {% if action.status == 'pending_approval' %}selected{% endif %}>Pending Approval</option>
+                        <option value="closed" {% if action.status == 'closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                    <input class="form-control form-control-sm" name="root_cause" value="{{ action.root_cause }}" placeholder="Root cause">
+                    <input class="form-control form-control-sm" name="corrective_action" value="{{ action.corrective_action }}" placeholder="Corrective action">
+                    <input class="form-control form-control-sm" name="preventive_action" value="{{ action.preventive_action }}" placeholder="Preventive action">
+                    <input class="form-control form-control-sm" name="effectiveness_check" value="{{ action.effectiveness_check }}" placeholder="Effectiveness check">
+                    <button class="btn btn-primary btn-sm" type="submit">Save update</button>
+                </form>
+                <div style="margin-top:9px;color:#64748b;font-size:11px;"><strong>Owner:</strong> {% if action.assigned_to %}{{ action.assigned_to.get_full_name|default:action.assigned_to.username }}{% else %}Unassigned{% endif %}</div>
+            </div>
+        </article>
+        {% endfor %}
+</div>
+{% else %}
+<div class="qa-empty qc-empty">
+    <i class="fas fa-clipboard-list"></i>
+    <p>{{ empty_text }}</p>
+</div>
+{% endif %}

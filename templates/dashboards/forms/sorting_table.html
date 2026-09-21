@@ -1,4 +1,4 @@
-﻿<!-- Sorting Process  Section-based workflow (Page 39 / Page 40) -->
+﻿<!-- Sorting Process  Section-based workflow (Page 39 / Page {{ sorting_ipc_page_number|default:'40' }}) -->
 <!-- Sections: inspection_recon  personnel  inprocess_qc (QA-only) -->
 <!-- Receives: sorting_section_statuses, sorting_sections_data, edit_mode, phase_execution -->
 
@@ -43,7 +43,7 @@
        style="text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;
               {% if pers_status != 'completed' %}background:#f5f5f5;color:#aaa;{% elif ipc_status == 'qa_filled' %}background:#d4edda;color:#155724;{% else %}background:#e3f2fd;color:#0d47a1;{% endif %}">
         {% if ipc_status == 'qa_filled' %}&#10003;{% elif pers_status != 'completed' %}&#128274;{% else %}&#9675;{% endif %}
-        In-Process QC (Page 40)
+        In-Process QC (Page {{ sorting_ipc_page_number|default:'40' }})
     </a>
 </div>
 {% endif %}
@@ -434,12 +434,12 @@
 </div>
 
 <!-- 
-     SECTION C  In-Process QC Report / Page 40 (QA fills from QA dashboard)
-      -->
+    SECTION C  In-Process QC Report / Page {{ sorting_ipc_page_number|default:'40' }} (QA fills from QA dashboard)
+     -->
 <span id="section-sorting-inprocess_qc" style="display:block; scroll-margin-top: 80px;"></span>
 <div class="sort-section-card" id="ipc-card-{{ phase_execution.id }}">
     <div class="sort-section-header">
-        <span>In-Process QC Report  Page 40 (QA Only)</span>
+        <span>In-Process QC Report  Page {{ sorting_ipc_page_number|default:'40' }} (QA Only)</span>
         <span>
             {% if ipc_status == 'not_started' %}<span class="sort-badge sort-badge-ns">Not Started</span>
             {% elif ipc_status == 'qa_filled' %}<span class="sort-badge sort-badge-done">&#10003; QA Filled</span>

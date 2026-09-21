@@ -1,0 +1,132 @@
+<div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;">
+    <form method="post" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="qms_deviation_create">
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Deviation</label>
+            <input class="form-control form-control-sm" name="title" placeholder="Deviation title" required>
+        </div>
+        <div style="grid-column:span 2;">
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Description</label>
+            <input class="form-control form-control-sm" name="description" placeholder="What happened, where, and affected batch/process" required>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">SOP</label>
+            <select class="form-select form-select-sm" name="sop_document">
+                <option value="">No SOP linked</option>
+                {% for sop in qms_sop_documents %}
+                <option value="{{ sop.pk }}">{{ sop.document_number }} - {{ sop.title|truncatechars:32 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Severity</label>
+            <select class="form-select form-select-sm" name="severity">
+                <option value="major">Major</option>
+                <option value="critical">Critical</option>
+                <option value="minor">Minor</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Detected</label>
+            <input class="form-control form-control-sm" type="date" name="detection_date">
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Impact</label>
+            <input class="form-control form-control-sm" name="impact_assessment" placeholder="Initial batch, patient, quality, compliance impact">
+        </div>
+        <div style="display:flex;justify-content:flex-end;align-items:end;">
+            <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-plus me-1"></i>Open</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.qms-deviation-summary { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid #e5eaf2; background:#fff; }
+.qms-deviation-summary a, .qms-deviation-summary div { display:block; padding:16px 20px; color:#0f172a; text-decoration:none; border-right:1px solid #e5eaf2; }
+.qms-deviation-summary a:hover { background:#f8fbff; color:#1d4ed8; }
+.qms-deviation-summary strong, .qms-deviation-summary small { display:block; }
+.qms-deviation-summary strong { margin-bottom:5px; font-size:15px; }
+.qms-deviation-summary small { color:#64748b; line-height:1.45; }
+.qms-deviation-list { display:grid; gap:16px; padding:20px 18px 24px; background:#f4f7fb; }
+.qms-deviation-card { display:grid; grid-template-columns:minmax(190px,1.2fr) minmax(170px,1.15fr) minmax(160px,1fr) minmax(160px,1fr) minmax(230px,1.35fr); gap:18px; padding:20px; border:1px solid #e3e9f2; border-left:5px solid #f59e0b; border-radius:16px; background:#fff; box-shadow:0 6px 18px rgba(15,23,42,.06); }
+.qms-deviation-card:hover { box-shadow:0 12px 28px rgba(15,23,42,.1); transform:translateY(-1px); transition:.2s ease; }
+.qms-deviation-cell { min-width:0; color:#334155; font-size:13px; line-height:1.5; }
+.qms-deviation-label { display:block; margin-bottom:8px; color:#71809a; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.qms-deviation-number { color:#b45309; font-size:14px; font-weight:800; }
+.qms-deviation-title { margin-top:7px; color:#0f172a; font-size:16px; font-weight:750; line-height:1.3; }
+.qms-deviation-copy { margin-top:8px; color:#64748b; line-height:1.5; }
+.qms-deviation-update { padding:12px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; }
+.qms-deviation-update form { display:grid; gap:7px; }
+.qms-deviation-update .form-control, .qms-deviation-update .form-select { border-radius:9px; border-color:#d6deea; font-size:12px; }
+.qms-deviation-link { display:inline-block; margin-top:10px; padding:5px 9px; border:1px solid #bfdbfe; border-radius:999px; color:#1d4ed8; background:#eff6ff; font-size:11px; text-decoration:none; }
+.qms-deviation-link:hover { background:#dbeafe; }
+@media (max-width:1100px) { .qms-deviation-card { grid-template-columns:repeat(3,minmax(0,1fr)); } .qms-deviation-update { grid-column:span 3; } }
+@media (max-width:700px) { .qms-deviation-summary { grid-template-columns:1fr 1fr; } .qms-deviation-card { grid-template-columns:1fr; padding:16px; } .qms-deviation-update { grid-column:auto; } }
+</style>
+<div class="qms-deviation-summary">
+    <a href="#qms-deviation-items"><strong>{{ qms_record_stats.deviations }}</strong><small>Open deviation lifecycles</small></a>
+    <a href="{% url 'dashboards:qms_reports' %}?type=deviation"><strong>SOP Tracking</strong><small>View deviation reports and linked SOP records.</small></a>
+    <a href="#qms-deviation-items"><strong>QA Decision</strong><small>No impact, rework, reject, or CAPA-required decisions.</small></a>
+    <a href="{% url 'dashboards:qms_reports' %}?type=deviation"><strong>Closure Report</strong><small>Impact, root cause, CAPA, and closure readiness.</small></a>
+</div>
+
+{% if qms_deviations %}
+<div class="qms-deviation-list" id="qms-deviation-items">
+        {% for dev in qms_deviations %}
+        <article class="qms-deviation-card" id="deviation-{{ dev.pk }}">
+            <div class="qms-deviation-cell">
+                <span class="qms-deviation-label">Deviation record</span>
+                <a class="qms-deviation-number" href="{% url 'dashboards:qms_deviation_detail' dev.id %}">{{ dev.deviation_number }}</a>
+                <div class="qms-deviation-title">{{ dev.title }}</div>
+                <div class="qms-deviation-copy">{{ dev.description|truncatechars:125 }}</div>
+                <span class="pill {% if dev.severity == 'critical' %}pill-red{% elif dev.severity == 'major' %}pill-amber{% else %}pill-gray{% endif %}" style="display:inline-block;margin-top:10px;">{{ dev.get_severity_display }}</span>
+            </div>
+            <div class="qms-deviation-cell">
+                <span class="qms-deviation-label">SOP / impact</span>
+                {% if dev.sop_document %}<a class="qms-deviation-link" href="{% url 'dashboards:qms_document_detail' dev.sop_document.pk %}"><i class="fas fa-file-lines me-1"></i>{{ dev.sop_document.document_number }}</a>{% else %}<div class="qms-deviation-copy">No SOP linked</div>{% endif %}
+                <div class="qms-deviation-copy">{{ dev.impact_assessment|default:"No impact assessment captured."|truncatechars:120 }}</div>
+            </div>
+            <div class="qms-deviation-cell">
+                <span class="qms-deviation-label">QA decision</span>
+                <span class="pill pill-blue">{{ dev.get_status_display }}</span>
+                <div class="qms-deviation-copy">{{ dev.get_qa_decision_display|default:"Pending QA decision" }}</div>
+            </div>
+            <div class="qms-deviation-cell">
+                <span class="qms-deviation-label">CAPA / closure</span>
+                {% if dev.capa_action %}<a class="qms-deviation-link" href="{% url 'dashboards:qms_action_detail' dev.capa_action.pk %}"><i class="fas fa-wrench me-1"></i>{{ dev.capa_action.qms_number }}</a>{% else %}<div class="qms-deviation-copy">No CAPA linked</div>{% endif %}
+                <div class="qms-deviation-copy"><strong>Closed:</strong> {{ dev.closed_at|date:"M d, Y"|default:"Open" }}<br>{{ dev.closure_summary|default:"Closure summary pending."|truncatechars:85 }}</div>
+            </div>
+            <div class="qms-deviation-update">
+                <span class="qms-deviation-label">Update record</span>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="qms_deviation_update">
+                    <input type="hidden" name="deviation_id" value="{{ dev.pk }}">
+                    <select class="form-select form-select-sm" name="status">
+                        <option value="impact_assessment" {% if dev.status == 'impact_assessment' %}selected{% endif %}>Impact Assessment</option>
+                        <option value="root_cause" {% if dev.status == 'root_cause' %}selected{% endif %}>Root Cause</option>
+                        <option value="capa_required" {% if dev.status == 'capa_required' %}selected{% endif %}>CAPA Required</option>
+                        <option value="pending_qa_decision" {% if dev.status == 'pending_qa_decision' %}selected{% endif %}>Pending QA Decision</option>
+                        <option value="closed" {% if dev.status == 'closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                    <select class="form-select form-select-sm" name="qa_decision">
+                        <option value="" {% if not dev.qa_decision %}selected{% endif %}>Pending QA Decision</option>
+                        <option value="no_impact" {% if dev.qa_decision == 'no_impact' %}selected{% endif %}>No Impact</option>
+                        <option value="accept_with_justification" {% if dev.qa_decision == 'accept_with_justification' %}selected{% endif %}>Accept With Justification</option>
+                        <option value="rework" {% if dev.qa_decision == 'rework' %}selected{% endif %}>Rework</option>
+                        <option value="reject" {% if dev.qa_decision == 'reject' %}selected{% endif %}>Reject</option>
+                        <option value="capa_required" {% if dev.qa_decision == 'capa_required' %}selected{% endif %}>CAPA Required</option>
+                    </select>
+                    <input class="form-control form-control-sm" name="impact_assessment" value="{{ dev.impact_assessment }}" placeholder="Impact assessment">
+                    <input class="form-control form-control-sm" name="root_cause" value="{{ dev.root_cause }}" placeholder="Root cause">
+                    <input class="form-control form-control-sm" name="closure_summary" value="{{ dev.closure_summary }}" placeholder="Closure summary">
+                    <button class="btn btn-primary btn-sm" type="submit">Save update</button>
+                </form>
+            </div>
+        </article>
+        {% endfor %}
+</div>
+{% else %}
+<div class="qa-empty"><i class="fas fa-triangle-exclamation"></i><p>No deviation lifecycle records yet.</p></div>
+{% endif %}

@@ -1,0 +1,121 @@
+<div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;">
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="qms_create">
+        <input type="hidden" name="category" value="change_control">
+        <input type="hidden" name="owner_role" value="qa">
+        
+        <!-- Row 1: Main Fields -->
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;">
+            <div>
+                <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Change Title</label>
+                <input class="form-control form-control-sm" name="title" placeholder="Brief title of the change..." required>
+            </div>
+            <div>
+                <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Change Type</label>
+                <select class="form-select form-select-sm" name="change_type">
+                    <option value="process">Process</option>
+                    <option value="equipment">Equipment</option>
+                    <option value="facility">Facility</option>
+                    <option value="material">Material</option>
+                    <option value="document">Document</option>
+                    <option value="system">System</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Priority</label>
+                <select class="form-select form-select-sm" name="priority">
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Product</label>
+                <select class="form-select form-select-sm" name="product_id">
+                    <option value="">All Products</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}">{{ product.product_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Due Date</label>
+                <input class="form-control form-control-sm" type="date" name="due_date">
+            </div>
+            <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-plus me-1"></i>Create</button>
+        </div>
+        
+        <!-- Row 2: Description (Full Width) -->
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Description (Required)</label>
+            <textarea class="form-control form-control-sm" name="description" rows="2" placeholder="Detailed description of the change, rationale, and expected impact..." required></textarea>
+        </div>
+    </form>
+</div>
+
+<div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+    <a href="{% url 'dashboards:qms_reports' %}?type=change_control" style="color:#0f172a;text-decoration:none;"><strong>{{ qms_record_stats.change_total|default:0 }}</strong><br><small>Total change controls</small></a>
+    <a href="#change-control-records" style="color:#0f172a;text-decoration:none;"><strong style="color:#2563eb;">{{ qms_record_stats.change_open|default:0 }}</strong><br><small>Open change controls</small></a>
+    <a href="{% url 'dashboards:qms_reports' %}?type=change_control" style="color:#0f172a;text-decoration:none;"><strong style="color:#dc2626;">{{ qms_record_stats.change_overdue|default:0 }}</strong><br><small>Overdue implementation</small></a>
+    <a href="#change-control-records" style="color:#0f172a;text-decoration:none;"><strong style="color:#d97706;">{{ qms_record_stats.change_impact_pending|default:0 }}</strong><br><small>Impact assessment pending</small></a>
+</div>
+
+{% if qa_qms_by_category.change_control %}
+<table class="qa-table" id="change-control-records">
+    <thead>
+        <tr>
+            <th style="width:18%;">Change Number</th>
+            <th style="width:20%;">Title & Description</th>
+            <th style="width:15%;">Type & Priority</th>
+            <th style="width:15%;">Affected Product</th>
+            <th style="width:12%;">Status</th>
+            <th style="width:12%;">Due Date</th>
+            <th style="width:8%;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cc in qa_qms_by_category.change_control %}
+        <tr>
+            <td>
+                <a href="{% if cc.change_control_record %}{% url 'dashboards:qms_change_control_detail' cc.change_control_record.id %}{% else %}{% url 'dashboards:qms_action_detail' cc.id %}{% endif %}" style="text-decoration:none;">
+                    <strong style="color:#1e40af;font-size:13px;">{{ cc.qms_number }}</strong>
+                </a>
+                <div style="margin-top:4px;"><small style="color:#64748b;">Initiated: {{ cc.created_at|date:"M d, Y" }}</small></div>
+            </td>
+            <td>
+                <div style="font-weight:600;color:#0f172a;margin-bottom:4px;">{{ cc.title }}</div>
+                <div style="font-size:12px;color:#475569;line-height:1.4;">{{ cc.description|truncatewords:12|default:"-" }}</div>
+            </td>
+            <td>
+                <span class="pill pill-info" style="display:inline-block;margin-bottom:4px;">{% if cc.change_control_record %}{{ cc.change_control_record.get_change_type_display }}{% else %}Process{% endif %}</span>
+                <div>
+                    <span class="pill {% if cc.priority == 'critical' %}pill-red{% elif cc.priority == 'high' %}pill-orange{% elif cc.priority == 'medium' %}pill-yellow{% else %}pill-green{% endif %}">
+                        {{ cc.get_priority_display }}
+                    </span>
+                </div>
+            </td>
+            <td style="font-size:12px;color:#334155;">
+                {% if cc.product %}{{ cc.product.product_name }}{% else %}All Products{% endif %}
+            </td>
+            <td>
+                <span class="pill {% if cc.change_control_record.status == 'closed' %}pill-green{% elif cc.change_control_record.status == 'overdue' %}pill-red{% elif cc.change_control_record.status == 'implementation' %}pill-blue{% elif cc.change_control_record.status == 'impact_assessment' %}pill-orange{% else %}pill-gray{% endif %}">
+                    {% if cc.change_control_record %}{{ cc.change_control_record.get_status_display }}{% else %}{{ cc.get_status_display }}{% endif %}
+                </span>
+            </td>
+            <td style="font-size:12px;color:#334155;">
+                {% if cc.change_control_record %}{{ cc.change_control_record.planned_implementation_date|date:"M d, Y"|default:"-" }}{% else %}{{ cc.due_date|date:"M d, Y"|default:"-" }}{% endif %}
+            </td>
+            <td><a class="btn btn-primary btn-sm w-100" href="{% if cc.change_control_record %}{% url 'dashboards:qms_change_control_detail' cc.change_control_record.id %}{% else %}{% url 'dashboards:qms_action_detail' cc.id %}{% endif %}">Open workspace</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div style="padding:40px 20px;text-align:center;color:#9ca3af;">
+    <i class="fas fa-exchange-alt fa-3x mb-3"></i>
+    <p>No change controls initiated yet. Create one to manage process, equipment, or material changes.</p>
+</div>
+{% endif %}
+

@@ -236,12 +236,14 @@
 
         {% if edit_mode == 'edit' %}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-            <!-- Recall button (operator) -->
+            {% if user_role != 'qa' %}
+            <!-- Recall button (operator only) -->
             <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="recall_section_pcs_inspection_recon">
                 <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo me-1"></i>Recall &amp; Re-edit</button>
             </form>
+            {% endif %}
             {% if user_role == 'qa' %}
             <!-- QA Sign form -->
             <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}" style="display:flex;gap:6px;align-items:center;">
@@ -364,7 +366,7 @@
             <tr><td style="border:1px solid #000;padding:4px;">g. {{ pers_data.person_g|default:"" }}</td><td style="border:1px solid #000;padding:4px;">h. {{ pers_data.person_h|default:"" }}</td><td style="border:1px solid #000;padding:4px;">i. {{ pers_data.person_i|default:"" }}</td></tr>
         </table>
         {% if pers_data.sorting_remarks %}<p style="margin:4px 0;"><strong>Remarks:</strong> {{ pers_data.sorting_remarks }}</p>{% endif %}
-        {% if edit_mode == 'edit' %}
+        {% if edit_mode == 'edit' and user_role != 'qa' %}
         <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}" style="margin-top:6px;">
             {% csrf_token %}
             <input type="hidden" name="action" value="recall_section_pcs_personnel">
@@ -404,6 +406,7 @@
         </div>
         {% endif %}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {% if user_role != 'qa' %}
             <!-- Save Draft -->
             <form method="post" action="{% url 'dashboards:phase_form' phase_execution.id %}">
                 {% csrf_token %}
@@ -422,6 +425,9 @@
                     <i class="fas fa-check me-1"></i>Submit Personnel Names
                 </button>
             </form>
+            {% else %}
+            <div class="alert alert-secondary" style="padding:6px;margin:0;font-size:12px;color:#6c757d;">QA users cannot create or submit Personnel Names.</div>
+            {% endif %}
         </div>
         <script>
         function collectPcsPersData_{{ phase_execution.id }}(frm, mode) {

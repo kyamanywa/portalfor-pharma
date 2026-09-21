@@ -1,0 +1,54 @@
+<div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <div><strong>Result Register</strong><br><small>Accepted quality lots feed COA preparation.</small></div>
+        <div><strong>Specification Register</strong><br><small>Each characteristic carries method, limit, unit, and pass/fail result.</small></div>
+        <div><strong>Release Trace</strong><br><small>Batch, lot, decision user, decision date, and recorded result trail.</small></div>
+    </div>
+</div>
+
+{% if qc_coa_lots %}
+<table class="qc-table">
+    <thead>
+        <tr>
+            <th>Batch / Lot</th>
+            <th>Product</th>
+            <th>Specifications & Results</th>
+            <th>Approval</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for lot in qc_coa_lots %}
+        <tr>
+            <td>
+                <a class="batch-link" href="{% url 'bmr:detail' lot.bmr.pk %}">{{ lot.bmr.batch_number }}</a>
+                <div><a class="batch-link" href="{% url 'dashboards:quality_lot_detail' lot.pk %}">{{ lot.lot_number }}</a></div>
+            </td>
+            <td>{{ lot.product.product_name }}</td>
+            <td>
+                {% for characteristic in lot.characteristics.all|slice:":4" %}
+                <div style="font-size:12px;">
+                    <strong>{{ characteristic.name }}:</strong>
+                    {{ characteristic.specification }}
+                    {% with result=characteristic.results.first %}
+                    {% if result %}
+                    - {{ result.value_text|default:result.numeric_value }} {{ characteristic.unit }}
+                    <span class="pill {% if result.passed %}pill-green{% elif result.passed == False %}pill-red{% else %}pill-gray{% endif %}">{{ result.get_result_display }}</span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+                {% empty %}
+                <small>No specifications seeded for this lot.</small>
+                {% endfor %}
+            </td>
+            <td>
+                <small>Decision: {{ lot.get_usage_decision_display|default:"Accepted" }}</small><br>
+                <small>By: {% if lot.decision_by %}{{ lot.decision_by.get_full_name|default:lot.decision_by.username }}{% else %}-{% endif %}</small><br>
+                <small>Date: {{ lot.decision_at|date:"M d, Y"|default:"-" }}</small>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="qc-empty"><i class="fas fa-file-signature"></i><p>No accepted lots are ready for COA generation.</p></div>
+{% endif %}

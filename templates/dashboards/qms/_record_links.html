@@ -1,0 +1,25 @@
+<section class="qms-links-panel" style="margin-top:20px;padding:20px;border:1px solid #dbe5f2;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(15,23,42,.05);">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div><h2 style="margin:0;color:#0f172a;font-size:18px;">Cross-module traceability</h2><p style="margin:5px 0 0;color:#64748b;font-size:13px;">Connect this record to its source, CAPA, audit, risk, change, document, batch, or other governed QMS record.</p></div>
+        <span style="padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:800;">{{ qms_link_rows|length }} linked</span>
+    </div>
+    <div style="margin-top:14px;">
+        {% for row in qms_link_rows %}
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eef2f7;">
+            <div><strong style="color:#334155;">{{ row.direction }}</strong><br>{% if row.url %}<a href="{{ row.url }}" style="color:#2563eb;text-decoration:none;">{{ row.label }}</a>{% else %}<span>{{ row.label }}</span>{% endif %}{% if row.link.rationale %}<small style="display:block;color:#64748b;">{{ row.link.rationale }}</small>{% endif %}</div>
+            <form method="post" action="{% url 'dashboards:qms_record_link_delete' row.link.id %}">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger">Remove</button></form>
+        </div>
+        {% empty %}<div style="padding:18px;text-align:center;color:#64748b;background:#f8fafc;border-radius:10px;">No cross-module links yet.</div>{% endfor %}
+    </div>
+    <form method="post" action="{% url 'dashboards:qms_record_link_create' %}" style="display:grid;grid-template-columns:1fr 1.2fr 1fr 1.5fr auto;gap:8px;margin-top:16px;align-items:end;">
+        {% csrf_token %}<input type="hidden" name="source_model" value="{{ qms_link_source_key }}"><input type="hidden" name="source_id" value="{% if capa %}{{ capa.id }}{% elif change %}{{ change.id }}{% elif audit %}{{ audit.id }}{% elif risk %}{{ risk.id }}{% elif document %}{{ document.id }}{% elif deviation %}{{ deviation.id }}{% elif calibration %}{{ calibration.id }}{% elif investigation %}{{ investigation.id }}{% elif stability %}{{ stability.id }}{% elif coa %}{{ coa.id }}{% elif material_qc %}{{ material_qc.id }}{% elif supplier %}{{ supplier.id }}{% endif %}">
+        <label style="font-size:11px;color:#64748b;font-weight:800;">Record type<select name="target_model" style="display:block;width:100%;padding:9px;border:1px solid #d6deea;border-radius:8px;"><option value="capa">CAPA</option><option value="change_control">Change Control</option><option value="deviation">Deviation / OOS</option><option value="audit">Audit Finding</option><option value="risk">Risk Assessment</option><option value="document">Document</option><option value="action">QMS Action</option><option value="calibration">Calibration</option><option value="oos">OOS Investigation</option><option value="stability">Stability Study</option><option value="coa">COA</option><option value="material_qc">Material QC</option><option value="supplier_quality">Supplier Qualification</option></select></label>
+        <label style="font-size:11px;color:#64748b;font-weight:800;">Select record<select name="target_id" required style="display:block;width:100%;padding:9px;border:1px solid #d6deea;border-radius:8px;"><option value="">Choose a record</option>{% for item in qms_linkable_records %}<option value="{{ item.id }}" data-model="{{ item.key }}">{{ item.label|truncatechars:70 }}</option>{% endfor %}</select></label>
+        <label style="font-size:11px;color:#64748b;font-weight:800;">Relationship<select name="link_type" style="display:block;width:100%;padding:9px;border:1px solid #d6deea;border-radius:8px;">{% for value,label in qms_link_type_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+        <label style="font-size:11px;color:#64748b;font-weight:800;">Rationale<input name="rationale" placeholder="Why are these records linked?" style="display:block;width:100%;padding:9px;border:1px solid #d6deea;border-radius:8px;"></label>
+        <button class="btn btn-primary" type="submit">Link record</button>
+    </form>
+</section>
+<script>
+(function(){const form=document.currentScript.previousElementSibling; if(!form)return; const type=form.querySelector('[name=target_model]'), record=form.querySelector('[name=target_id]'); function filter(){const selected=type.value; Array.from(record.options).forEach(function(o){o.hidden=o.value && o.dataset.model!==selected;}); if(record.selectedOptions[0] && record.selectedOptions[0].hidden)record.value='';} type.addEventListener('change',filter); form.addEventListener('submit',function(event){if(!record.value){event.preventDefault(); record.focus();}}); filter();})();
+</script>

@@ -1,0 +1,278 @@
+{% extends "dashboards/qms/action_detail.html" %}
+{% load static %}
+
+{% block title %}{{ audit.audit_number }} - Audit{% endblock %}
+
+{% block content %}
+<div class="qms-detail-container">
+    <div class="qms-header">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="qms-header-title">{{ audit.audit_number }} - {{ audit.title }}</div>
+                <div class="qms-header-meta">
+                    <span><strong>Type:</strong> {{ audit.get_audit_type_display }}</span>
+                    <span><strong>Finding:</strong> {{ audit.get_finding_type_display }}</span>
+                    <span><strong>Severity:</strong> <span class="priority-badge priority-{{ audit.severity }}">{{ audit.get_severity_display }}</span></span>
+                </div>
+            </div>
+            <div>
+                <span class="status-badge status-{{ audit.status }}">{{ audit.get_status_display }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="qms-tabs">
+        <div class="qms-tab active" onclick="switchTab('overview')">📋 Overview</div>
+        <div class="qms-tab" onclick="switchTab('finding')">🔍 Finding</div>
+        <div class="qms-tab" onclick="switchTab('corrective')">✅ Corrective Action</div>
+        <div class="qms-tab" onclick="switchTab('verification')">🔎 Verification</div>
+        <div class="qms-tab" onclick="switchTab('attachments')">📎 Evidence ({{ attachments.count }})</div>
+        <div class="qms-tab" onclick="switchTab('comments')">💬 Comments ({{ comments.count }})</div>
+        <div class="qms-tab" onclick="switchTab('activity')">📊 Activity</div>
+    </div>
+    
+    <div class="qms-tab-content">
+        <!-- Overview -->
+        <div id="tab-overview" class="qms-tab-pane active">
+            <h5>Audit Details</h5>
+            <div class="qms-info-grid">
+                <div class="qms-info-item">
+                    <label>Audit Number</label>
+                    <div class="value">{{ audit.audit_number }}</div>
+                </div>
+                <div class="qms-info-item">
+                    <label>Status</label>
+                    <div class="value">
+                        <form method="POST" style="display: inline;">
+                            {% csrf_token %}
+                            <select name="status" class="form-control" onchange="this.form.submit()">
+                                {% for value, label in audit.STATUS_CHOICES %}
+                                <option value="{{ value }}" {% if audit.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" name="update_status" value="1">
+                        </form>
+                    </div>
+                </div>
+                <div class="qms-info-item">
+                    <label>Audit Type</label>
+                    <div class="value">{{ audit.get_audit_type_display }}</div>
+                </div>
+                <div class="qms-info-item">
+                    <label>Finding Type</label>
+                    <div class="value">{{ audit.get_finding_type_display }}</div>
+                </div>
+                <div class="qms-info-item">
+                    <label>Severity</label>
+                    <div class="value"><span class="priority-badge priority-{{ audit.severity }}">{{ audit.get_severity_display }}</span></div>
+                </div>
+                {% if audit.auditee %}
+                <div class="qms-info-item">
+                    <label>Auditee</label>
+                    <div class="value">{{ audit.auditee }}</div>
+                </div>
+                {% endif %}
+                {% if audit.department %}
+                <div class="qms-info-item">
+                    <label>Department</label>
+                    <div class="value">{{ audit.department }}</div>
+                </div>
+                {% endif %}
+                {% if audit.standard_reference %}
+                <div class="qms-info-item">
+                    <label>Standard Reference</label>
+                    <div class="value">{{ audit.standard_reference }}</div>
+                </div>
+                {% endif %}
+                {% if audit.planned_date %}
+                <div class="qms-info-item">
+                    <label>Planned Date</label>
+                    <div class="value">{{ audit.planned_date|date:"M d, Y" }}</div>
+                </div>
+                {% endif %}
+                {% if audit.conducted_date %}
+                <div class="qms-info-item">
+                    <label>Conducted Date</label>
+                    <div class="value">{{ audit.conducted_date|date:"M d, Y" }}</div>
+                </div>
+                {% endif %}
+                {% if audit.due_date %}
+                <div class="qms-info-item">
+                    <label>Due Date</label>
+                    <div class="value">{{ audit.due_date|date:"M d, Y" }}</div>
+                </div>
+                {% endif %}
+                {% if audit.responsible_person %}
+                <div class="qms-info-item">
+                    <label>Responsible Person</label>
+                    <div class="value">{{ audit.responsible_person.username }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if audit.scope %}
+            <div style="margin-top: 24px;">
+                <label style="font-weight: 600;">Audit Scope</label>
+                <div style="background: #e3f2fd; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                    {{ audit.scope|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Finding -->
+        <div id="tab-finding" class="qms-tab-pane">
+            <h5>Audit Finding / Observation</h5>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 16px;">
+                {% if audit.observation %}
+                {{ audit.observation|linebreaks }}
+                {% else %}
+                <p style="color: #666; text-align: center;">No observation recorded</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Corrective Action -->
+        <div id="tab-corrective" class="qms-tab-pane">
+            <h5>Corrective Action Plan</h5>
+            <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 16px;">
+                {% if audit.corrective_action %}
+                {{ audit.corrective_action|linebreaks }}
+                {% else %}
+                <p style="color: #666; text-align: center;">Corrective action pending</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Verification -->
+        <div id="tab-verification" class="qms-tab-pane">
+            <h5>Effectiveness Verification</h5>
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-top: 16px;">
+                {% if audit.verification_notes %}
+                {{ audit.verification_notes|linebreaks }}
+                {% else %}
+                <p style="color: #666; text-align: center;">Verification pending</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Attachments -->
+        <div id="tab-attachments" class="qms-tab-pane">
+            <h5>Evidence Files</h5>
+            {% if audit.evidence_file %}
+            <div style="margin-top: 16px; padding: 16px; background: #e3f2fd; border-radius: 8px;">
+                <strong>Primary Evidence:</strong>
+                <a href="{{ audit.evidence_file.url }}" class="btn btn-sm btn-primary" style="margin-left: 12px;">Download Evidence</a>
+            </div>
+            {% endif %}
+            
+            <div class="file-upload-area" id="uploadArea" style="margin-top: 24px;">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    <div style="font-size: 48px;">📁</div>
+                    <p>Upload additional evidence</p>
+                    <input type="file" id="fileInput" name="file" style="display: none;" onchange="uploadFile()">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Select File</button>
+                </form>
+            </div>
+            
+            <ul class="attachment-list" style="margin-top: 24px;">
+                {% for attachment in attachments %}
+                <li class="attachment-item">
+                    <div class="attachment-icon">📄</div>
+                    <div class="attachment-info">
+                        <div class="attachment-name">{{ attachment.filename }}</div>
+                        <div class="attachment-meta">{{ attachment.file_size|filesizeformat }} • {{ attachment.uploaded_at|date:"M d, Y" }}</div>
+                    </div>
+                    <div class="attachment-actions">
+                        <a href="{% url 'dashboards:qms_attachment_download' attachment.id %}" class="btn btn-sm btn-outline-primary">Download</a>
+                    </div>
+                </li>
+                {% empty %}
+                <li style="text-align: center; padding: 32px; color: #999;">No additional attachments</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <!-- Comments -->
+        <div id="tab-comments" class="qms-tab-pane">
+            <h5>Audit Notes & Comments</h5>
+            <div class="comment-form" style="margin-top: 16px;">
+                <form method="POST" id="commentForm">
+                    {% csrf_token %}
+                    <textarea name="comment" placeholder="Add audit note..." required></textarea>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Post Comment</button>
+                </form>
+            </div>
+            <div class="comment-list" style="margin-top: 24px;">
+                {% for comment in comments %}
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-author">{{ comment.user.username }}</span>
+                        <span class="comment-date">{{ comment.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="comment-text">{{ comment.comment_text|linebreaks }}</div>
+                </div>
+                {% empty %}
+                <p style="text-align: center; color: #999; padding: 32px;">No comments</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Activity -->
+        <div id="tab-activity" class="qms-tab-pane">
+            <h5>Activity Log</h5>
+            <ul class="activity-list" style="margin-top: 16px;">
+                {% for activity in activity_log %}
+                <li class="activity-item">
+                    <div class="activity-icon">📝</div>
+                    <div class="activity-content">
+                        <div class="activity-description"><strong>{{ activity.user.username }}</strong> {{ activity.description }}</div>
+                        <div class="activity-meta">{{ activity.timestamp|date:"M d, Y H:i" }}</div>
+                    </div>
+                </li>
+                {% empty %}
+                <li style="text-align: center; padding: 32px; color: #999;">No activity</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    
+    <div style="margin-top: 24px;">
+        <a href="{% url 'dashboards:head_qa_dashboard' %}#hqa-audit" class="btn btn-outline-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+
+<script>
+function switchTab(tabName) {
+    document.querySelectorAll('.qms-tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.qms-tab-pane').forEach(pane => pane.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tabName).classList.add('active');
+}
+
+function uploadFile() {
+    const formData = new FormData(document.getElementById('uploadForm'));
+    fetch('{% url "dashboards:qms_audit_upload" audit.id %}', {
+        method: 'POST',
+        body: formData,
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(response => response.json()).then(data => {
+        if (data.success) location.reload();
+    });
+}
+
+document.getElementById('commentForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('{% url "dashboards:qms_audit_comment" audit.id %}', {
+        method: 'POST',
+        body: formData,
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(response => response.json()).then(data => {
+        if (data.success) location.reload();
+    });
+});
+</script>
+{% include "dashboards/qms/_record_links.html" %}
+{% endblock %}

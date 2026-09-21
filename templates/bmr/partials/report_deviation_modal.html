@@ -1,0 +1,70 @@
+<!-- Report Deviation Modal -->
+<div class="modal fade" id="reportDeviationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'bmr:report_deviation' bmr.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Report Deviation for Batch {{ bmr.batch_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This will create a QMS Action linked to this batch. The QA team will be notified.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Category</label>
+                            <select name="category" class="form-control" required>
+                                <option value="deviation">Deviation / OOS Investigation</option>
+                                <option value="capa">CAPA</option>
+                                <option value="change_control">Change Control</option>
+                                <option value="complaint">Complaint / Recall</option>
+                                <option value="document_control">Document Control Issue</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Priority</label>
+                            <select name="priority" class="form-control">
+                                <option value="medium" selected>Medium</option>
+                                <option value="low">Low</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Title <span class="text-danger">*</span></label>
+                            <input type="text" name="title" class="form-control" required placeholder="Brief description of issue">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Description <span class="text-danger">*</span></label>
+                            <textarea name="description" class="form-control" rows="5" required placeholder="Detailed description of the deviation, non-conformance, or issue...&#10;&#10;Include:&#10;- What happened&#10;- When it occurred&#10;- Which phase/step was affected&#10;- Potential impact on batch quality"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Assign To</label>
+                            <select name="assigned_to" class="form-control">
+                                <option value="">Unassigned (QA will assign)</option>
+                                {% for user in qms_users %}
+                                <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} ({{ user.role|upper }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Due Date</label>
+                            <input type="date" name="due_date" class="form-control" min="{{ today|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Immediate Actions Taken (if any)</label>
+                            <textarea name="immediate_action" class="form-control" rows="2" placeholder="What was done immediately to address or contain the issue"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning"><i class="fas fa-exclamation-triangle me-1"></i>Create QMS Action</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

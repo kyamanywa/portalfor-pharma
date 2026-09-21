@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}QMS Reports{% endblock %}
+{% block content %}
+<div style="padding:18px;background:#eef1f5;min-height:100vh;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div>
+            <h2 style="font-size:24px;margin:0;color:#071735;">QMS Reports</h2>
+            <p style="margin:4px 0 0;color:#6b78a8;">Search, view, and download QA/QC QMS records.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qa_dashboard' %}#section-qms-workspace">QA QMS</a>
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qc_dashboard' %}">QC QMS</a>
+        </div>
+    </div>
+
+    <div style="background:#fff;border-radius:8px;box-shadow:0 1px 6px rgba(15,23,42,.08);overflow:hidden;">
+        <form method="get" style="display:grid;grid-template-columns:1fr 220px auto;gap:10px;padding:14px 18px;border-bottom:1px solid #e6eaf2;">
+            <input class="form-control" name="q" value="{{ query }}" placeholder="Search number, title, status, product, batch, finding, query...">
+            <select class="form-select" name="type">
+                <option value="">All report types</option>
+                {% for key,label in report_types %}
+                <option value="{{ key }}" {% if selected_type == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+
+        <table class="table table-sm mb-0" style="font-size:13px;">
+            <thead style="background:#f5f7fb;">
+                <tr>
+                    <th>Type</th>
+                    <th>Number</th>
+                    <th>Title / Subject</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th style="width:170px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in records %}
+                <tr>
+                    <td><strong>{{ row.label }}</strong></td>
+                    <td>{{ row.number }}</td>
+                    <td>{{ row.title|truncatechars:90 }}</td>
+                    <td>{{ row.status }}</td>
+                    <td>{{ row.date|date:"M d, Y"|default:"-" }}</td>
+                    <td>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ row.detail_url }}">View</a>
+                        {% if row.workspace_url %}<a class="btn btn-outline-success btn-sm" href="{{ row.workspace_url }}">Workspace</a>{% endif %}
+                        <a class="btn btn-primary btn-sm" href="{{ row.pdf_url }}">PDF</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="padding:30px;text-align:center;color:#7c86ad;">No QMS reports found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -15,11 +15,18 @@
     <link href="{% static 'css/kpi-design-system.css' %}" rel="stylesheet">
     <!-- Mobile Responsiveness -->
     <link href="{% static 'css/mobile-responsive.css' %}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
     {% if request.GET.print == '1' or request.GET.document == '1' %}
     <style>
-        body { padding-top: 0 !important; background: #fff !important; }
-        nav.navbar, .navbar, .navbar-nav, .navbar-text,
-        #userDropdown, .toast-container { display: none !important; }
+        /* Document mode is still an interactive browser page. Keep the
+           fixed navigation available while the user fills a long BMR form.
+           The print styles in the document template hide it when printing. */
+        body { padding-top: 56px !important; background: #fff !important; }
+        @media print {
+            body { padding-top: 0 !important; }
+            nav.navbar, .navbar, .navbar-nav, .navbar-text,
+            #userDropdown, .toast-container { display: none !important; }
+        }
     </style>
     {% endif %}
 </head>
@@ -42,7 +49,7 @@
             </div>
             
             {% if user.is_authenticated %}
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%);">
                 <div class="nav-item dropdown" style="position: relative;">
                     <a class="nav-link dropdown-toggle text-white" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-user me-1"></i>
@@ -67,7 +74,7 @@
             </div>
             {% else %}
             {% if request.resolver_match.url_name != 'login' %}
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%);">
                 <a class="nav-link text-white" href="{% url 'accounts:login' %}">
                     <i class="fas fa-sign-in-alt me-1"></i>Login
                 </a>

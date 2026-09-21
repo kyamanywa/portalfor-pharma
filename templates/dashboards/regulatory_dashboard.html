@@ -245,6 +245,13 @@
             {% endif %}
         </a>
 
+        <div class="qa-nav-section-label" style="margin-top:6px;">Regulatory Packages</div>
+        <a class="qa-nav-item" href="{% url 'dashboards:qms_regulatory_packages' %}">
+            <span class="nav-icon"><i class="fas fa-folder-open"></i></span>
+            <span class="nav-label">Regulatory Packages</span>
+            <span class="nav-badge amber">{{ stats.regulatory_packages }}</span>
+        </a>
+
         <div class="qa-nav-section-label" style="margin-top:6px;">History</div>
         <a class="qa-nav-item" href="#section-activities"
            onclick="scrollToSection('section-activities'); return false;">
@@ -571,6 +578,11 @@
                     <label class="form-label fw-semibold">Approval Comments</label>
                     <textarea class="form-control" id="approval_comments" name="comments" rows="3" placeholder="Optional comments"></textarea>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Re-enter your password <span class="text-danger">*</span></label>
+                    <input class="form-control" type="password" name="signature_password" autocomplete="current-password" required>
+                    <small class="text-muted">Required to confirm your electronic approval.</small>
+                </div>
                 <input type="hidden" id="approval_bmr_id" name="bmr_id">
                 <input type="hidden" name="action" value="approve">
             </div>
@@ -597,6 +609,11 @@
                     <label class="form-label fw-semibold">Rejection Reason <span class="text-danger">*</span></label>
                     <textarea class="form-control" id="rejection_reason" name="comments" rows="4" placeholder="Describe the reason for rejection" required></textarea>
                     <small class="text-muted">This will be sent back to QA for revision.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Re-enter your password <span class="text-danger">*</span></label>
+                    <input class="form-control" type="password" name="signature_password" autocomplete="current-password" required>
+                    <small class="text-muted">Required to confirm your electronic rejection.</small>
                 </div>
                 <input type="hidden" id="rejection_bmr_id" name="bmr_id">
                 <input type="hidden" name="action" value="reject">

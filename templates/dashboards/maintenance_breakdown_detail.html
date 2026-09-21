@@ -1,0 +1,51 @@
+{% extends 'dashboards/dashboard_base.html' %}
+
+{% block title %}Breakdown Details - Maintenance{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary mb-0">Breakdown Details</h2>
+        <a href="{% url 'dashboards:maintenance_dashboard' %}" class="btn btn-outline-primary">Back to Maintenance Dashboard</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white"><h5 class="mb-0">Incident Information</h5></div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6"><strong>Product:</strong><br>{{ breakdown.bmr.product.product_name|default:"-" }}</div>
+                <div class="col-md-6"><strong>Batch:</strong><br>{{ breakdown.bmr.batch_number }}</div>
+                <div class="col-md-6"><strong>Manufacturing stage:</strong><br>{{ breakdown.phase.get_phase_name_display }}</div>
+                <div class="col-md-6"><strong>Machine:</strong><br>{{ breakdown.machine_used.name|default:"Not specified" }}</div>
+                <div class="col-md-6"><strong>Breakdown started:</strong><br>{{ breakdown.breakdown_start_time|date:"Y-m-d H:i"|default:"Not recorded" }}</div>
+                <div class="col-md-6"><strong>Breakdown ended:</strong><br>{{ breakdown.breakdown_end_time|date:"Y-m-d H:i"|default:"Still open" }}</div>
+                <div class="col-12"><strong>Duration:</strong><br>{% if breakdown.breakdown_end_time %}{{ breakdown_duration|floatformat:1 }} minutes{% else %}Still open{% endif %}</div>
+                <div class="col-12"><strong>Reason and repair notes:</strong><pre class="bg-light p-3 mb-0">{{ breakdown.breakdown_reason|default:"Not provided" }}</pre></div>
+            </div>
+        </div>
+    </div>
+
+    {% if not breakdown.breakdown_end_time %}
+    <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white"><h5 class="mb-0">Close Open Breakdown</h5></div>
+        <div class="card-body">
+            <p>Enter the time the repair was completed and describe the repair work. This will mark the breakdown as resolved.</p>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="breakdown_end_time" class="form-label">Repair completion time</label>
+                    <input type="datetime-local" id="breakdown_end_time" name="breakdown_end_time" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label for="repair_notes" class="form-label">Repair notes</label>
+                    <textarea id="repair_notes" name="repair_notes" class="form-control" rows="4" required placeholder="Describe the fault found and the repair carried out"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">Close Breakdown</button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-success">This breakdown is already resolved.</div>
+    {% endif %}
+</div>
+{% endblock %}

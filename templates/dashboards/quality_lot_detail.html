@@ -1,0 +1,177 @@
+{% extends 'dashboards/dashboard_base.html' %}
+
+{% block title %}Inspection Lot {{ lot.lot_number }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<style>
+.qm-page { padding: 22px 24px; background:#f0f2f5; min-height:calc(100vh - 60px); }
+.qm-header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:18px; }
+.qm-title h4 { margin:0; font-size:22px; font-weight:800; color:#15213b; }
+.qm-title .sub { color:#6b78a3; font-size:13px; margin-top:4px; }
+.qm-card { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:16px; overflow:hidden; }
+.qm-card-header { padding:14px 18px; border-bottom:1px solid #edf0f5; display:flex; justify-content:space-between; align-items:center; }
+.qm-card-title { font-size:15px; font-weight:800; color:#15213b; }
+.qm-body { padding:18px; }
+.qm-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+.qm-field { background:#f8f9fc; border-radius:8px; padding:12px; }
+.qm-label { color:#6b78a3; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.qm-value { color:#111827; font-size:14px; font-weight:700; margin-top:3px; }
+.qm-pill { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+.qm-pill-open { background:#fff8e7; color:#b7791f; }
+.qm-pill-ok { background:#e6f9f2; color:#0a7a55; }
+.qm-pill-bad { background:#fff0f0; color:#c53030; }
+.qm-pill-blue { background:#eef5ff; color:#1a6fb5; }
+.qm-table { width:100%; border-collapse:collapse; font-size:13px; }
+.qm-table th { background:#f8f9fc; color:#53628f; text-transform:uppercase; letter-spacing:.45px; font-size:11px; padding:10px; border-bottom:1px solid #e8ecf4; }
+.qm-table td { padding:10px; border-bottom:1px solid #f0f2f5; vertical-align:top; }
+.qm-input, .qm-select, .qm-textarea { width:100%; border:1px solid #d7dce8; border-radius:7px; padding:7px 9px; font-size:13px; }
+.qm-textarea { min-height:38px; resize:vertical; }
+.qm-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; padding:14px 18px; border-top:1px solid #edf0f5; background:#fcfcfd; }
+.qm-btn { border:0; border-radius:7px; padding:8px 12px; font-weight:700; font-size:13px; text-decoration:none; cursor:pointer; }
+.qm-btn-secondary { background:#eef2ff; color:#3152b7; }
+.qm-btn-primary { background:#2563eb; color:white; }
+.qm-btn-success { background:#0d9f6e; color:white; }
+.qm-btn-danger { background:#dc2626; color:white; }
+.qm-note { color:#6b7280; font-size:12px; margin-top:4px; }
+@media (max-width: 1000px) { .qm-grid { grid-template-columns:repeat(2, 1fr); } }
+</style>
+
+<div class="qm-page">
+    <div class="qm-header">
+        <div class="qm-title">
+            <h4>Inspection Lot {{ lot.lot_number }}</h4>
+            <div class="sub">{{ lot.product.product_name }} | Batch {{ lot.bmr.batch_number }}</div>
+        </div>
+        <a class="qm-btn qm-btn-secondary" href="{% url 'dashboards:qc_dashboard' %}">Back to QC Dashboard</a>
+    </div>
+
+    <div class="qm-card">
+        <div class="qm-card-header">
+            <div class="qm-card-title">Lot Header</div>
+            {% if lot.status == 'accepted' %}
+            <span class="qm-pill qm-pill-ok">{{ lot.get_status_display }}</span>
+            {% elif lot.status == 'rejected' %}
+            <span class="qm-pill qm-pill-bad">{{ lot.get_status_display }}</span>
+            {% elif lot.status == 'in_inspection' %}
+            <span class="qm-pill qm-pill-blue">{{ lot.get_status_display }}</span>
+            {% else %}
+            <span class="qm-pill qm-pill-open">{{ lot.get_status_display }}</span>
+            {% endif %}
+        </div>
+        <div class="qm-body">
+            <div class="qm-grid">
+                <div class="qm-field">
+                    <div class="qm-label">BMR</div>
+                    <div class="qm-value"><a href="{% url 'bmr:detail' lot.bmr.pk %}">{{ lot.bmr.bmr_number }}</a></div>
+                </div>
+                <div class="qm-field">
+                    <div class="qm-label">Workflow Phase</div>
+                    <div class="qm-value">{% if lot.phase_execution %}{{ lot.phase_execution.phase.get_phase_name_display }}{% else %}Manual{% endif %}</div>
+                </div>
+                <div class="qm-field">
+                    <div class="qm-label">Inspection Type</div>
+                    <div class="qm-value">{{ lot.get_inspection_type_display }}</div>
+                </div>
+                <div class="qm-field">
+                    <div class="qm-label">Usage Decision</div>
+                    <div class="qm-value">{{ lot.get_usage_decision_display|default:'No Decision' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="qm-card">
+            <div class="qm-card-header">
+                <div>
+                    <div class="qm-card-title">Template-Linked Inspection Results</div>
+                    <div class="qm-note">Characteristics are linked to the BMR template section/field when available.</div>
+                </div>
+            </div>
+            <table class="qm-table">
+                <thead>
+                    <tr>
+                        <th style="width:22%;">Characteristic</th>
+                        <th style="width:18%;">Template Source</th>
+                        <th>Specification</th>
+                        <th style="width:12%;">Numeric</th>
+                        <th style="width:16%;">Text Result</th>
+                        <th style="width:10%;">Result</th>
+                        <th style="width:16%;">Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for characteristic in characteristics %}
+                    <tr>
+                        <td>
+                            <strong>{{ characteristic.name }}</strong>
+                            {% with latest=characteristic.results.first %}
+                            {% if latest %}
+                            <div class="qm-note">Latest: {% if latest.passed is True %}Pass{% elif latest.passed is False %}Fail{% else %}Recorded{% endif %} by {{ latest.recorded_by|default:'-' }}</div>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% if characteristic.template_section %}
+                            {{ characteristic.template_section.title }}
+                            {% if characteristic.template_field %}<div class="qm-note">{{ characteristic.template_field.label }}</div>{% endif %}
+                            {% else %}
+                            <span class="qm-note">Default QC characteristic</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ characteristic.specification }}</td>
+                        <td><input class="qm-input" type="number" step="0.0001" name="numeric_value_{{ characteristic.pk }}"></td>
+                        <td><input class="qm-input" type="text" name="value_text_{{ characteristic.pk }}"></td>
+                        <td>
+                            <select class="qm-select" name="passed_{{ characteristic.pk }}">
+                                <option value="">--</option>
+                                <option value="pass">Pass</option>
+                                <option value="fail">Fail</option>
+                            </select>
+                        </td>
+                        <td><textarea class="qm-textarea" name="comments_{{ characteristic.pk }}"></textarea></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align:center;color:#8a94bd;padding:24px;">No inspection characteristics found for this lot.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="qm-body">
+                <label class="qm-label" for="decision_notes">Decision Notes</label>
+                <textarea class="qm-textarea" id="decision_notes" name="decision_notes" placeholder="Record final observations, OOS notes, or release comments.">{{ lot.decision_notes }}</textarea>
+            </div>
+            <div class="qm-actions">
+                {% if lot.phase_execution and lot.phase_execution.status == 'pending' %}
+                <button class="qm-btn qm-btn-primary" type="submit" name="action" value="start">Start Inspection</button>
+                {% endif %}
+                <button class="qm-btn qm-btn-secondary" type="submit" name="action" value="save_results">Save Results</button>
+                <button class="qm-btn qm-btn-success" type="submit" name="action" value="accept">Accept Lot</button>
+                <button class="qm-btn qm-btn-danger" type="submit" name="action" value="reject">Reject Lot</button>
+            </div>
+        </div>
+    </form>
+
+    {% if lot.defects.exists %}
+    <div class="qm-card">
+        <div class="qm-card-header"><div class="qm-card-title">Defects / Notifications</div></div>
+        <table class="qm-table">
+            <thead><tr><th>Type</th><th>Severity</th><th>Status</th><th>Description</th><th>Created</th></tr></thead>
+            <tbody>
+                {% for defect in lot.defects.all %}
+                <tr>
+                    <td>{{ defect.get_defect_type_display }}</td>
+                    <td>{{ defect.get_severity_display }}</td>
+                    <td>{{ defect.get_status_display }}</td>
+                    <td>{{ defect.description }}</td>
+                    <td>{{ defect.created_at|date:"M d, Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

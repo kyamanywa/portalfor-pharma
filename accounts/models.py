@@ -6,6 +6,7 @@ class CustomUser(AbstractUser):
     
     ROLE_CHOICES = [
         ('admin', 'Admin'),
+        ('head_qa', 'Head of Quality Assurance'),
         ('qa', 'Quality Assurance'),
         ('regulatory', 'Regulatory'),
         ('production_manager', 'Production Manager'),  # New role for BMR requests
@@ -29,6 +30,7 @@ class CustomUser(AbstractUser):
         # Additional operators
         ('dispensing_operator', 'Dispensing Operator'),
         ('equipment_operator', 'Equipment Operator'),
+        ('maintenance', 'Maintenance Technician'),
         ('cleaning_operator', 'Cleaning Operator'),
     ]
     

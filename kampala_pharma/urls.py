@@ -16,8 +16,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from dashboards.views import dashboard_home
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+
+# Optional API documentation imports
+try:
+    from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+    HAS_DRF_SPECTACULAR = True
+except ImportError:
+    HAS_DRF_SPECTACULAR = False
 
 # Import comprehensive API configuration
 try:
@@ -35,11 +43,6 @@ urlpatterns = [
     path('reports/', include('reports.urls', namespace='reports')),
     path('fgs/', include('fgs_management.urls', namespace='fgs_management')),
     
-    # API Documentation (OpenAPI/Swagger) - NEW!
-    path('api/schema/', SpectacularAPIView.as_view(), name='api-schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='api-schema'), name='api-docs'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='api-schema'), name='api-redoc'),
-    
     # Comprehensive API for integrations
     path('api/v1/', include(api_urlpatterns)),
     
@@ -47,3 +50,14 @@ urlpatterns = [
     path('api/bmr/', include('bmr.urls', namespace='bmr_api')),
     path('api/', include('products.urls')),
 ]
+
+# Add API documentation if drf_spectacular is installed
+if HAS_DRF_SPECTACULAR:
+    urlpatterns += [
+        path('api/schema/', SpectacularAPIView.as_view(), name='api-schema'),
+        path('api/docs/', SpectacularSwaggerView.as_view(url_name='api-schema'), name='api-docs'),
+        path('api/redoc/', SpectacularRedocView.as_view(url_name='api-schema'), name='api-redoc'),
+    ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

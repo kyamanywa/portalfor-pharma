@@ -495,6 +495,22 @@
     border-left: 3px solid transparent;
 }
 .bmr-result-item:hover { background: rgba(255,255,255,0.07); color: #e0e6f8; }
+.qa-qms-tab {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #7e8bb5;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+}
+.qa-qms-tab.active { color:#3152b7; border-bottom-color:#5b7cff; }
+.qa-qms-content { display:none; }
+.qa-qms-content.active { display:block; }
+.qa-main.qms-mode > *:not(.qa-page-header):not(#section-qms-workspace) {
+    display: none !important;
+}
 
 @media (max-width: 1200px) {
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
@@ -562,6 +578,26 @@
             <span class="nav-label">BMR Issuance Logs</span>
         </a>
 
+        {% if show_qms_workspace %}
+        <a class="qa-nav-item {% if qa_qms_stats.total > 0 %}active{% endif %}" href="#section-qms-workspace" onclick="switchQaQmsTab('qa-qms-deviation'); scrollToSection('section-qms-workspace'); return false;">
+            <span class="nav-icon"><i class="fas fa-diagram-project"></i></span>
+            <span class="nav-label">QMS Modules</span>
+            {% if qa_qms_stats.total > 0 %}
+            <span class="nav-badge">{{ qa_qms_stats.total }}</span>
+            {% else %}
+            <span class="nav-badge gray">0</span>
+            {% endif %}
+        </a>
+
+        <a class="qa-section-item" href="#" onclick="switchQaQmsTab('qa-qms-deviation'); scrollToSection('section-qms-workspace'); return false;"><span class="sec-dot"></span><span>Deviation / OOS</span></a>
+        <a class="qa-section-item" href="#" onclick="switchQaQmsTab('qa-qms-capa'); scrollToSection('section-qms-workspace'); return false;"><span class="sec-dot"></span><span>CAPA</span></a>
+        <a class="qa-section-item" href="#" onclick="switchQaQmsTab('qa-qms-change'); scrollToSection('section-qms-workspace'); return false;"><span class="sec-dot"></span><span>Change Control</span></a>
+        <a class="qa-section-item" href="#" onclick="switchQaQmsTab('qa-qms-complaint'); scrollToSection('section-qms-workspace'); return false;"><span class="sec-dot"></span><span>Complaints / Recall</span></a>
+        <a class="qa-section-item" href="#" onclick="switchQaQmsTab('qa-qms-docs'); scrollToSection('section-qms-workspace'); return false;"><span class="sec-dot"></span><span>SOP / Docs</span></a>
+        <a class="qa-section-item" href="#" onclick="switchQaQmsTab('qa-qms-audit'); scrollToSection('section-qms-workspace'); return false;"><span class="sec-dot"></span><span>Audit / Risk</span></a>
+        <a class="qa-section-item" href="#" onclick="switchQaQmsTab('qa-qms-enterprise'); scrollToSection('section-qms-workspace'); return false;"><span class="sec-dot"></span><span>Enterprise QMS</span></a>
+        {% endif %}
+
         <!-- Line Clearances -->
         <div class="qa-nav-section-label" style="margin-top:6px;">Line Clearances</div>
 
@@ -604,7 +640,7 @@
                 {% for sec_key, sec_cfg in GRANULATION_SECTIONS.items %}
                 {% if sec_key in pending_section_map %}
                 <a class="qa-section-item pending"
-                   href="/dashboard/bmr-forms/phase/{{ pending_section_map|dict_get:sec_key }}/#section-{{ sec_key }}">
+                   href="{% url 'dashboards:phase_form' pending_section_map|dict_get:sec_key %}#section-{{ sec_key }}">
                     <span class="sec-dot"></span>
                     <span>{{ sec_cfg.label }}</span>
                     <span class="sec-badge">Sign</span>
@@ -661,7 +697,7 @@
                 {% for sec_key, sec_cfg in BLENDING_SECTIONS.items %}
                 {% if sec_key in pending_blending_section_map %}
                 <a class="qa-section-item pending"
-                   href="/dashboard/bmr-forms/phase/{{ pending_blending_section_map|dict_get:sec_key }}/#section-blending-{{ sec_key }}">
+                   href="{% url 'dashboards:phase_form' pending_blending_section_map|dict_get:sec_key %}#section-blending-{{ sec_key }}">
                     <span class="sec-dot"></span>
                     <span>{{ sec_cfg.label }}</span>
                     <span class="sec-badge">{% if sec_cfg.qa_only %}Fill{% else %}Sign{% endif %}</span>
@@ -709,7 +745,7 @@
                 {% for sec_key, sec_cfg in COMPRESSION_SECTIONS.items %}
                 {% if sec_key in pending_compression_section_map %}
                 <a class="qa-section-item pending"
-                   href="/dashboard/bmr-forms/phase/{{ pending_compression_section_map|dict_get:sec_key }}/#section-compression-{{ sec_key }}">
+                   href="{% url 'dashboards:phase_form' pending_compression_section_map|dict_get:sec_key %}#section-compression-{{ sec_key }}">
                     <span class="sec-dot"></span>
                     <span>{{ sec_cfg.label }}</span>
                     <span class="sec-badge">Sign</span>
@@ -724,7 +760,7 @@
                 <div style="padding-left:16px;">
                 {% for ipc in pending_ipc_signing %}
                 <a class="qa-section-item pending" style="font-size:11px;padding:4px 8px 4px 8px;"
-                   href="/dashboard/bmr-forms/phase/{{ ipc.phase_execution.id }}/#ipc-page-{{ ipc.page_num }}">
+                   href="{% url 'dashboards:phase_form' ipc.phase_execution.id %}#ipc-page-{{ ipc.page_num }}">
                     <span class="sec-dot" style="background:#f59e0b;"></span>
                     <span>Pg {{ ipc.page_num }} &mdash; {{ ipc.round_label }}</span>
                     <span class="sec-badge" style="background:#f59e0b;color:#000;">Sign</span>
@@ -758,7 +794,7 @@
             <div class="qa-phase-sections" id="sections-sorting">
                 <!-- Beginning LC -->
                 {% if sorting_lc_beginning_pending %}
-                <a class="qa-section-item pending" onclick="activateTab('tab-lc'); return false;" href="#">
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' sorting_lc_beginning_execution.id %}#sorting-beginning-lc">
                     <span class="lc-dot" style="background:#f59e0b;"></span>
                     <span>Beginning LC</span>
                     <span class="sec-badge" style="background:#f59e0b;color:#000;">Sign</span>
@@ -773,7 +809,8 @@
                 {% if SORTING_SECTIONS %}
                 {% for sec_key, sec_cfg in SORTING_SECTIONS.items %}
                 {% if sec_key in pending_sorting_section_map %}
-                <a class="qa-section-item pending" href="#" onclick="switchTabAndScroll('tab-sorting','pending-sorting-{{ pending_sorting_section_map|dict_get:sec_key }}'); return false;">
+                <a class="qa-section-item pending"
+                   href="{% url 'dashboards:phase_form' pending_sorting_section_map|dict_get:sec_key %}#section-sorting-{{ sec_key }}">
                     <span class="sec-dot"></span>
                     <span>{{ sec_cfg.label }}</span>
                     <span class="sec-badge">Sign</span>
@@ -789,7 +826,7 @@
 
                 <!-- Ending LC -->
                 {% if sorting_lc_ending_pending %}
-                <a class="qa-section-item pending" onclick="activateTab('tab-lc'); return false;" href="#">
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' sorting_lc_ending_execution.id %}#sorting-ending-lc">
                     <span class="lc-dot" style="background:#8b5cf6;"></span>
                     <span>Ending LC</span>
                     <span class="sec-badge" style="background:#8b5cf6;">Sign</span>
@@ -914,7 +951,7 @@
                 {% if pending_pkg_req_approvals %}
                 {% for item in pending_pkg_req_approvals %}
                 <a class="qa-section-item pending"
-                   href="{% url 'dashboards:phase_form' item.phase_execution.id %}">
+                   href="{% url 'dashboards:phase_form' item.phase_execution.id %}#packaging-materials-requisition">
                     <span class="sec-dot"></span>
                     <span>{{ item.bmr.batch_number }} — {{ item.bmr.product.product_name }}</span>
                     <span class="sec-badge">Verify</span>
@@ -995,7 +1032,7 @@
                 {% if pending_packing_signing %}
                 {% for item in pending_packing_signing %}
                 <a class="qa-section-item pending"
-                         href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% endif %}">
+                   href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% endif %}">
                     <span class="lc-dot" style="background:#3b82f6;"></span>
                     <span>{{ item.section_label }} &mdash; {{ item.bmr.batch_number }}</span>
                     <span class="sec-badge" style="background:{% if item.action_type == 'ipc_row' %}#06b6d4{% else %}#3b82f6{% endif %};">{% if item.action_type == 'qa_fill' %}Fill{% elif item.action_type == 'ipc_row' %}Add Row{% else %}Sign{% endif %}</span>
@@ -1057,7 +1094,7 @@
                 {% if pending_secondary_signing %}
                 {% for item in pending_secondary_signing %}
                 <a class="qa-section-item pending"
-                         href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_key %}#{{ item.section_key }}{% endif %}">
+                   href="{% url 'dashboards:phase_form' item.phase_execution.id %}#{{ item.section_key }}">
                     <span class="lc-dot" style="background:#8b5cf6;"></span>
                     <span>{{ item.section_label }} &mdash; {{ item.bmr.batch_number }}</span>
                     <span class="sec-badge" style="background:#8b5cf6;">Sign</span>
@@ -1315,6 +1352,62 @@
         <!-- ═══ CAPSULE PHASES ═══ -->
         <div class="qa-nav-section-label" style="margin-top:8px;">Capsule Phases</div>
 
+        <!-- DRYING PHASE GROUP (Capsule) -->
+        <div class="qa-phase-group" id="phase-group-drying">
+            <div class="qa-phase-toggle" id="toggle-drying" onclick="togglePhaseGroup('drying')">
+                <span class="toggle-icon"><i class="fas fa-wind"></i></span>
+                <span class="toggle-label">Drying</span>
+                {% if drying_total_pending > 0 %}
+                <span class="toggle-count">{{ drying_total_pending }}</span>
+                {% else %}
+                <span class="toggle-count zero">0</span>
+                {% endif %}
+                <i class="fas fa-chevron-down toggle-chevron" id="chevron-drying"></i>
+            </div>
+            <div class="qa-phase-sections" id="sections-drying">
+                {% if drying_lc_beginning_pending %}
+                {% for lc in drying_lc_beginning_executions %}
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' lc.id %}">
+                    <span class="lc-dot" style="background:#f59e0b;"></span>
+                    <span>Beginning LC &mdash; {{ lc.bmr.batch_number }}</span>
+                    <span class="sec-badge" style="background:#f59e0b;color:#000;">Sign</span>
+                </a>
+                {% endfor %}
+                {% else %}
+                <div class="qa-section-lc">
+                    <span class="lc-dot" style="background:#2d3a5a;border:1px solid #3d4f6e;"></span>
+                    <span>Beginning LC</span>
+                </div>
+                {% endif %}
+                {% for item in pending_drying_dynamic %}
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_pk %}#sec-{{ item.section_pk }}{% endif %}">
+                    <span class="sec-dot"></span>
+                    <span>{{ item.section_title }}</span>
+                    <span class="sec-badge">{% if item.action_type == 'qa_fill' %}Fill{% else %}Sign{% endif %}</span>
+                </a>
+                {% empty %}
+                <div class="qa-section-item" style="color:#6b7a9e;font-size:11px;padding:4px 12px;">
+                    <span>Drying Process Steps</span>
+                </div>
+                {% endfor %}
+                {% if drying_lc_ending_pending %}
+                {% for lc in drying_lc_ending_executions %}
+                <a class="qa-section-item pending" href="{% url 'dashboards:phase_form' lc.id %}">
+                    <span class="lc-dot" style="background:#8b5cf6;"></span>
+                    <span>Ending LC &mdash; {{ lc.bmr.batch_number }}</span>
+                    <span class="sec-badge" style="background:#8b5cf6;">Sign</span>
+                </a>
+                {% endfor %}
+                {% else %}
+                <div class="qa-section-lc">
+                    <span class="lc-dot" style="background:#2d3a5a;border:1px solid #3d4f6e;"></span>
+                    <span>Ending LC</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- END DRYING PHASE GROUP -->
+
         <!-- CAPSULE FILLING PHASE GROUP -->
         <div class="qa-phase-group" id="phase-group-filling">
             <div class="qa-phase-toggle" id="toggle-filling" onclick="togglePhaseGroup('filling')">
@@ -1470,6 +1563,137 @@
             </div>
         </div>
     </div>
+
+    <div class="qa-section" id="section-quality-lots">
+        <div class="qa-section-header">
+            <div class="title">
+                <span class="section-ico" style="background:#eef2ff;color:#3a5bd4;"><i class="fas fa-clipboard-check"></i></span>
+                Quality Management Overview
+            </div>
+            <span class="count-pill {% if quality_kpis.open_defects > 0 %}bg-danger text-white{% else %}bg-success text-white{% endif %}">
+                {{ quality_kpis.open_defects }} open defect{{ quality_kpis.open_defects|pluralize }}
+            </span>
+        </div>
+        <div class="qa-section-body" style="padding:16px 20px;">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+                <div style="background:#fff8e7;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="font-size:24px;font-weight:800;color:#d4970b;">{{ quality_kpis.open_lots }}</div>
+                    <div style="font-size:11px;color:#8a6d1d;">Open Lots</div>
+                </div>
+                <div style="background:#e6f9f2;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="font-size:24px;font-weight:800;color:#0d9f6e;">{{ quality_kpis.accepted_lots }}</div>
+                    <div style="font-size:11px;color:#0a7a55;">Accepted</div>
+                </div>
+                <div style="background:#fff0f0;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="font-size:24px;font-weight:800;color:#e53e3e;">{{ quality_kpis.rejected_lots }}</div>
+                    <div style="font-size:11px;color:#c53030;">Rejected</div>
+                </div>
+                <div style="background:#eef2ff;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="font-size:24px;font-weight:800;color:#3a5bd4;">{{ quality_lots_final_qa|length }}</div>
+                    <div style="font-size:11px;color:#3a5bd4;">Final QA Lots</div>
+                </div>
+            </div>
+
+            {% if open_quality_defects %}
+            <table class="qa-table">
+                <thead><tr><th>Lot</th><th>Batch</th><th>Product</th><th>Severity</th><th>Status</th><th>Reported</th></tr></thead>
+                <tbody>
+                {% for defect in open_quality_defects %}
+                <tr>
+                    <td>{{ defect.lot.lot_number }}</td>
+                    <td><a href="{% url 'bmr:detail' defect.lot.bmr.pk %}" class="batch-link">{{ defect.lot.bmr.batch_number }}</a></td>
+                    <td>{{ defect.lot.product.product_name }}</td>
+                    <td><span class="pill {% if defect.severity == 'critical' %}pill-red{% elif defect.severity == 'major' %}pill-amber{% else %}pill-gray{% endif %}">{{ defect.get_severity_display }}</span></td>
+                    <td>{{ defect.get_status_display }}</td>
+                    <td>{{ defect.created_at|date:"M d, H:i" }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="qa-empty" style="padding:16px;"><p>No open quality defects.</p></div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if show_qms_workspace %}
+    <div class="qa-section" id="section-qms-workspace" style="scroll-margin-top:90px;">
+        <div class="qa-section-header">
+            <div class="title">
+                <span class="section-ico" style="background:#eef2ff;color:#3a5bd4;"><i class="fas fa-diagram-project"></i></span>
+                QA QMS Workspace
+            </div>
+            <span class="count-pill bg-light text-muted">{{ qa_qms_stats.total }} open</span>
+        </div>
+        <div class="qa-tabs">
+            <div class="qa-qms-tab active" onclick="switchQaQmsTab('qa-qms-deviation', this)"><i class="fas fa-triangle-exclamation me-1"></i>Deviation/OOS <span class="qa-tab-count">{{ qms_record_stats.deviations }}</span></div>
+            <div class="qa-qms-tab" onclick="switchQaQmsTab('qa-qms-capa', this)"><i class="fas fa-wrench me-1"></i>CAPA <span class="qa-tab-count">{{ qa_qms_stats.capa }}</span></div>
+            <div class="qa-qms-tab" onclick="switchQaQmsTab('qa-qms-change', this)"><i class="fas fa-code-branch me-1"></i>Change Control <span class="qa-tab-count">{{ qa_qms_stats.change_control }}</span></div>
+            <div class="qa-qms-tab" onclick="switchQaQmsTab('qa-qms-complaint', this)"><i class="fas fa-bullhorn me-1"></i>Complaints/Recall <span class="qa-tab-count">{{ qa_qms_stats.complaint }}</span></div>
+            <div class="qa-qms-tab" onclick="switchQaQmsTab('qa-qms-docs', this)"><i class="fas fa-file-shield me-1"></i>SOP/Docs <span class="qa-tab-count">{{ qms_record_stats.documents }}</span></div>
+            <div class="qa-qms-tab" onclick="switchQaQmsTab('qa-qms-audit', this)"><i class="fas fa-clipboard-list me-1"></i>Audit/Risk <span class="qa-tab-count">{{ qms_record_stats.risks|add:qms_record_stats.audits }}</span></div>
+            <div class="qa-qms-tab" onclick="switchQaQmsTab('qa-qms-enterprise', this)"><i class="fas fa-layer-group me-1"></i>Enterprise <span class="qa-tab-count">{{ qms_enterprise_stats.approval_routes|add:qms_enterprise_stats.stability_pulls }}</span></div>
+        </div>
+        <div class="qa-qms-content active" id="qa-qms-deviation">
+            <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-bottom:1px solid #f0f2f5;">
+                <div><strong>Investigation</strong><br><small>Batch impact, OOS linkage, and deviation classification.</small></div>
+                <div><strong>Root Cause</strong><br><small>Production, QC, documentation, material, or method cause capture.</small></div>
+                <div><strong>Disposition</strong><br><small>Hold, rework, reject, or release after approved justification.</small></div>
+            </div>
+            {% include "dashboards/partials/qms_deviation_panel.html" %}
+        </div>
+        <div class="qa-qms-content" id="qa-qms-capa">
+            <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-bottom:1px solid #f0f2f5;">
+                <div><strong>Corrective Action</strong><br><small>Immediate containment and batch-specific correction.</small></div>
+                <div><strong>Preventive Action</strong><br><small>Systemic action to stop recurrence.</small></div>
+                <div><strong>Effectiveness</strong><br><small>Verification plan, due date, owner, and closure approval.</small></div>
+            </div>
+            {% with actions=qa_qms_by_category.capa category="capa" module_name="CAPA" create_hint="Describe corrective/preventive action needed." empty_text="No CAPA actions." %}{% include "dashboards/partials/qms_module_panel.html" %}{% endwith %}
+        </div>
+        <div class="qa-qms-content" id="qa-qms-change">
+            <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-bottom:1px solid #f0f2f5;">
+                <div><strong>Change Request</strong><br><small>Product, process, equipment, method, document, or supplier change.</small></div>
+                <div><strong>Impact Assessment</strong><br><small>BMR, validation, regulatory, stability, and training impact.</small></div>
+                <div><strong>Approval</strong><br><small>QA approval before implementation and closure.</small></div>
+            </div>
+            {% with actions=qa_qms_by_category.change_control category="change_control" module_name="Change Control" create_hint="Describe requested change and expected impact." empty_text="No change control actions." %}{% include "dashboards/partials/qms_module_panel.html" %}{% endwith %}
+        </div>
+        <div class="qa-qms-content" id="qa-qms-complaint">
+            <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-bottom:1px solid #f0f2f5;">
+                <div><strong>Complaint Intake</strong><br><small>Market complaint, batch traceability, and sample/reference check.</small></div>
+                <div><strong>Recall Assessment</strong><br><small>Severity, distribution, health risk, and escalation decision.</small></div>
+                <div><strong>Closure</strong><br><small>Customer response, CAPA linkage, and QA approval.</small></div>
+            </div>
+            {% with actions=qa_qms_by_category.complaint category="complaint" module_name="Complaint / Recall" create_hint="Describe complaint, market impact, and batch traceability." empty_text="No complaint or recall actions." %}{% include "dashboards/partials/qms_module_panel.html" %}{% endwith %}
+        </div>
+        <div class="qa-qms-content" id="qa-qms-docs">
+            <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-bottom:1px solid #f0f2f5;">
+                <div><strong>SOP Revision</strong><br><small>Draft, review, approval, effective date, and obsolete control.</small></div>
+                <div><strong>Training</strong><br><small>Training need and completion tracking before effectiveness.</small></div>
+                <div><strong>Controlled Copy</strong><br><small>Issue, retrieve, archive, and audit readiness.</small></div>
+            </div>
+            {% include "dashboards/partials/qms_document_panel.html" %}
+        </div>
+        <div class="qa-qms-content" id="qa-qms-audit">
+            <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-bottom:1px solid #f0f2f5;">
+                <div><strong>Audit Finding</strong><br><small>Observation, severity, clause/reference, and owner.</small></div>
+                <div><strong>Risk Review</strong><br><small>Probability, severity, detectability, and mitigation plan.</small></div>
+                <div><strong>Closure</strong><br><small>Evidence, QA verification, and residual risk acceptance.</small></div>
+            </div>
+            {% include "dashboards/partials/qms_audit_panel.html" %}
+            {% include "dashboards/partials/qms_risk_panel.html" %}
+            {% with actions=qa_qms_by_category.audit_risk category="audit" module_name="Audit Finding" create_hint="Describe audit finding, clause/reference, and mitigation required." empty_text="No audit finding actions." %}{% include "dashboards/partials/qms_module_panel.html" %}{% endwith %}
+        </div>
+        <div class="qa-qms-content" id="qa-qms-enterprise">
+            <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-bottom:1px solid #f0f2f5;">
+                <div><strong>Workflow Control</strong><br><small>Approval routes, electronic signatures, and field audit history.</small></div>
+                <div><strong>QC Master Data</strong><br><small>Sampling plans, lab specifications, stability, calibration, supplier qualification.</small></div>
+                <div><strong>Enterprise Reports</strong><br><small>Exports, training, complaint/recall, regulatory packages, and escalation rules.</small></div>
+            </div>
+            {% include "dashboards/partials/qms_enterprise_panel.html" %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- â”€â”€ Alert Strips (urgent items at top) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     {% if rejected_bmrs_for_review.count > 0 %}
@@ -1674,6 +1898,12 @@
                 <i class="fas fa-people-carry me-1"></i>Secondary Packing
                 <span class="qa-tab-count">{{ secondary_sections_total_pending }}</span>
             </div>
+            {% if tab_fp_recon_pending_qa %}
+            <div class="qa-tab" onclick="switchTab('tab-tab-fp-recon', this)" id="section-tab-fp-recon" style="scroll-margin-top:80px;">
+                <i class="fas fa-clipboard-check me-1"></i>Tablet FP Recon
+                <span class="qa-tab-count">{{ tab_fp_recon_pending_qa|length }}</span>
+            </div>
+            {% endif %}
             <div class="qa-tab" onclick="switchTab('tab-final', this)" id="section-final-qa">
                 <i class="fas fa-check-double me-1"></i>Final QA Review
                 <span class="qa-tab-count">{{ final_qa_pending.count|add:final_qa_in_progress.count }}</span>
@@ -1912,7 +2142,7 @@
                 </tr></thead>
                 <tbody>
                 {% for item in pending_sorting_signing %}
-                <tr id="pending-sorting-{{ item.phase_execution.id }}">
+                <tr>
                     <td><a href="{% url 'bmr:detail' item.bmr.pk %}" class="batch-link">{{ item.bmr.batch_number }}</a></td>
                     <td>{{ item.bmr.product.product_name }}</td>
                     <td><span class="pill pill-blue">{{ item.section_label }}</span></td>
@@ -1933,7 +2163,7 @@
                         </a>
                         {% else %}
                         <!-- QA fills in-process QC from the phase form (Page 40) -->
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}" class="btn btn-success btn-qa btn-sm">
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% endif %}" class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-flask me-1"></i>Fill In-Process QC
                         </a>
                         {% endif %}
@@ -2070,7 +2300,7 @@
                     <td>{{ item.submitted_by|default:"&mdash;" }}</td>
                     <td><span class="pill pill-amber">Awaiting QA Verification</span></td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#packaging-materials-requisition"
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}"
                            class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-stamp me-1"></i>Review &amp; Verify
                         </a>
@@ -2169,7 +2399,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% endif %}" class="btn btn-success btn-qa btn-sm">
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}" class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-pen me-1"></i>{% if item.action_type == 'qa_fill' %}Fill IPC{% elif item.action_type == 'ipc_row' %}Add Row{% else %}Sign Off{% endif %}
                         </a>
                     </td>
@@ -2251,7 +2481,7 @@
                     <td>{{ item.submitted_date|default:"—" }}</td>
                     <td><span class="pill pill-amber">Awaiting QA Sign</span></td>
                     <td>
-                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}{% if item.anchor %}#{{ item.anchor }}{% elif item.section_key %}#{{ item.section_key }}{% endif %}" class="btn btn-success btn-qa btn-sm">
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#{{ item.section_key }}" class="btn btn-success btn-qa btn-sm">
                             <i class="fas fa-pen me-1"></i>{% if item.action_type == 'ipc_row' %}Add Row{% else %}Sign Off{% endif %}
                         </a>
                     </td>
@@ -2314,6 +2544,37 @@
             <div class="qa-empty"><i class="fas fa-flask" style="color:#10b981;opacity:.5;"></i><p>No ointment / capsule / tablet sections pending QA action</p></div>
             {% endif %}
         </div><!-- end tab-dynamic -->
+
+        <!-- TAB: Tablet FP Reconciliation (QA Verification) -->
+        <div class="qa-tab-content" id="tab-tab-fp-recon">
+            {% if tab_fp_recon_pending_qa %}
+            <div style="padding:12px 16px 4px;font-size:11px;font-weight:700;color:#9aa5c9;text-transform:uppercase;letter-spacing:.8px;">
+                Tablet FP Reconciliation &mdash; Awaiting QA Verification
+            </div>
+            <table class="qa-table">
+                <thead><tr>
+                    <th>Batch No.</th><th>Product</th><th>Submitted By</th><th>Submitted Date</th><th>Actions</th>
+                </tr></thead>
+                <tbody>
+                {% for item in tab_fp_recon_pending_qa %}
+                <tr>
+                    <td><a href="{% url 'bmr:detail' item.bmr.pk %}" class="batch-link">{{ item.bmr.batch_number }}</a></td>
+                    <td>{{ item.bmr.product.product_name }}</td>
+                    <td>{{ item.submitted_by|default:"—" }}</td>
+                    <td>{{ item.submitted_date|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'dashboards:phase_form' item.phase_execution.id %}#tab-fp-recon-page" class="btn btn-primary btn-qa btn-sm">
+                            <i class="fas fa-clipboard-check me-1"></i>Verify &amp; Approve
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="qa-empty"><i class="fas fa-check-double" style="color:#0d9f6e;opacity:.5;"></i><p>No tablet FP Reconciliation sheets awaiting QA verification</p></div>
+            {% endif %}
+        </div><!-- end tab-tab-fp-recon -->
 
         <!-- TAB: Final QA Review -->
         <div class="qa-tab-content" id="tab-final">
@@ -2596,9 +2857,10 @@
 <script>
 // â”€â”€ Sidebar scroll helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function scrollToSection(id) {
+    const main = document.getElementById('qaMainContent');
+    if (main && id !== 'section-qms-workspace') main.classList.remove('qms-mode');
     const el = document.getElementById(id);
     if (!el) return;
-    const main = document.getElementById('qaMainContent');
     if (main) {
         const topOffset = el.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop - 12;
         main.scrollTo({ top: topOffset, behavior: 'smooth' });
@@ -2622,12 +2884,16 @@ function scrollToSection(id) {
 
 // â”€â”€ Tab system â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function switchTab(tabId, clickedEl) {
+    const main = document.getElementById('qaMainContent');
+    if (main) main.classList.remove('qms-mode');
     document.querySelectorAll('.qa-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.qa-tab-content').forEach(c => c.classList.remove('active'));
     clickedEl.classList.add('active');
     document.getElementById(tabId)?.classList.add('active');
 }
 function activateTab(tabId) {
+    const main = document.getElementById('qaMainContent');
+    if (main) main.classList.remove('qms-mode');
     document.querySelectorAll('.qa-tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById(tabId)?.classList.add('active');
     document.querySelectorAll('.qa-tab').forEach(t => {
@@ -2642,6 +2908,15 @@ function switchTabAndScroll(tabId, sectionId) {
     activateTab(tabId);
     const el = document.getElementById(sectionId);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function switchQaQmsTab(tabId, clickedEl) {
+    const main = document.getElementById('qaMainContent');
+    if (main) main.classList.add('qms-mode');
+    document.querySelectorAll('.qa-qms-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.qa-qms-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabId)?.classList.add('active');
+    if (clickedEl) clickedEl.classList.add('active');
 }
 
 // Auto-apply pulse to tabs with pending items

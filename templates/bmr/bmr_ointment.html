@@ -20,10 +20,6 @@
 
     .table-scroll-container { overflow-x: auto; border: 2px solid #000; margin-bottom: 20px; }
 
-    .bmr-table-continue { width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; margin-top: 0; }
-
-    .bmr-section-title-table td { padding: 8px; text-align: center; font-weight: bold; background: #f8f9fa; }
-
     @media print {
 
         @page { size: A4 portrait; margin: 10mm 8mm 10mm 8mm; -webkit-print-color-adjust: exact; color-adjust: exact; }
@@ -171,13 +167,102 @@
     </table>
 
     <!-- Product header row 2 -->
-    {% include 'bmr/includes/_product_header_ointment.html' %}
+
+    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
+
+        <tr>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
+
+            <td style="border:2px solid #000;padding:8px;width:35%;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
+
+            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">BMR Revision No: {{ bmr.product.bmr_revision_no|default:"03" }}</td>
+
+            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Approvals</td>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;width:10%;">Start date</td>
+
+        </tr>
+
+        <tr>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:top;">Product Pack No:<br>(âˆš/ mark as appropriate)</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_1_code|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_2_code|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_3_code|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_4_code|default:"-" }}</td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">QA Head</td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">{% if bmr.approved_by %}{{ bmr.approved_by.get_full_name }}<br><small>{{ bmr.approved_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
+
+        </tr>
+
+        <tr>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_2_description|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_3_description|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_4_description|default:"-" }}</td>
+
+        </tr>
+
+        <tr>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:middle;">Pack Size: (âˆš/ mark as appropriate)</td>
+
+            <td colspan="4" style="border:2px solid #000;padding:8px;">
+
+                <div style="display:flex;justify-content:space-around;">
+
+                    <span>â˜ {{ bmr.product.pack_size_1_description|default:"15gm" }}</span>
+
+                </div>
+
+            </td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">Company/Prod. Pharmacist</td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">-</td>
+
+        </tr>
+
+        <tr>
+
+            <td colspan="4" style="border:2px solid #000;padding:8px;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"15gm" }}</td>
+
+        </tr>
+
+        <tr>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Reference SOP Number:</td>
+
+            <td colspan="4" style="border:2px solid #000;padding:8px;">{{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Production Manager</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{% if bmr.created_by %}{{ bmr.created_by.get_full_name }}<br><small>{{ bmr.created_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
+
+        </tr>
+
+    </table>
 
 
 
     <!-- RAW MATERIAL REQUISITION/DISPENSING SHEETS title -->
 
-    {% include 'bmr/includes/_section_title_table.html' %}
+    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
+
+        <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
+
+    </table>
 
 
 
@@ -385,7 +470,7 @@
 
 <!-- ==================== PAGE 2 ==================== -->
 
-<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
+<div style="page-break-before:always;">
 
     <!-- KPI Header Page 2 -->
 
@@ -456,13 +541,102 @@
     </table>
 
     <!-- Product header row 2 (full — matches Page 1) -->
-    {% include 'bmr/includes/_product_header_ointment.html' %}
+
+    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;margin-top:0;">
+
+        <tr>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
+
+            <td style="border:2px solid #000;padding:8px;width:35%;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
+
+            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">BMR Revision No: {{ bmr.product.bmr_revision_no|default:"03" }}</td>
+
+            <td colspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Approvals</td>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;width:10%;">Start date</td>
+
+        </tr>
+
+        <tr>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:top;">Product Pack No:<br>(âˆš/ mark as appropriate)</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_1_code|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_2_code|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_3_code|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{{ bmr.product.pack_size_4_code|default:"-" }}</td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">QA Head</td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">{% if bmr.approved_by %}{{ bmr.approved_by.get_full_name }}<br><small>{{ bmr.approved_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
+
+        </tr>
+
+        <tr>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_2_description|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_3_description|default:"-" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;font-size:11px;">{{ bmr.product.pack_size_4_description|default:"-" }}</td>
+
+        </tr>
+
+        <tr>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;vertical-align:middle;">Pack Size: (âˆš/ mark as appropriate)</td>
+
+            <td colspan="4" style="border:2px solid #000;padding:8px;">
+
+                <div style="display:flex;justify-content:space-around;">
+
+                    <span>â˜ {{ bmr.product.pack_size_1_description|default:"15gm" }}</span>
+
+                </div>
+
+            </td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;vertical-align:middle;">Company/Prod. Pharmacist</td>
+
+            <td rowspan="2" style="border:2px solid #000;padding:8px;text-align:center;vertical-align:middle;">-</td>
+
+        </tr>
+
+        <tr>
+
+            <td colspan="4" style="border:2px solid #000;padding:8px;font-size:11px;">{{ bmr.product.pack_size_1_description|default:"15gm" }}</td>
+
+        </tr>
+
+        <tr>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Reference SOP Number:</td>
+
+            <td colspan="4" style="border:2px solid #000;padding:8px;">{{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
+
+            <td style="border:2px solid #000;padding:8px;font-weight:bold;text-align:center;">Production Manager</td>
+
+            <td style="border:2px solid #000;padding:8px;text-align:center;">{% if bmr.created_by %}{{ bmr.created_by.get_full_name }}<br><small>{{ bmr.created_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}</td>
+
+        </tr>
+
+    </table>
 
 
 
     <!-- Continued Raw Material Requisition  heading -->
 
-    {% include 'bmr/includes/_section_title_table.html' %}
+    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
+
+        <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
+
+    </table>
 
 
 
@@ -1118,7 +1292,7 @@
 
 <!-- ==================== PAGE 3 ==================== -->
 
-<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
+<div style="page-break-before:always;">
 
     <!-- KPI Header Page 3 -->
 
@@ -2000,7 +2174,7 @@
 
     {% with disp_pe=phase_executions.material_dispensing %}
 
-    {% if has_dispensing_line_clearance and disp_pe.process_signing_status == 'qa_signed' or has_dispensing_line_clearance and edit_mode == 'view' or has_dispensing_line_clearance and edit_mode == 'print' %}
+    {% if has_line_clearance and disp_pe.process_signing_status == 'qa_signed' %}
 
     {% if edit_mode == 'dispensing' or edit_mode == 'qa' %}
 
@@ -2398,7 +2572,7 @@
 
                 <i class="fas fa-check-double me-2"></i>
 
-                <strong>ENDING LC COMPLETED:</strong> Both Beginning and Ending LCs are complete. Click <strong>Complete Dispensing</strong> below to finish this phase.
+                <strong>ENDING LC APPROVED:</strong> Both Beginning and Ending LCs are approved. Click <strong>Complete Dispensing</strong> below to finish this phase.
 
             </div>
 
@@ -2802,7 +2976,7 @@
 
     {% if mix_lc.beginning_lc_status == 'operator_filled' and user_role != 'qa' %}
 
-    <div class="no-print" style="background:#fff3cd;border:2px solid #ffc107;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
+    <div style="background:#fff3cd;border:2px solid #ffc107;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
 
         Beginning LC submitted — waiting for QA approval
 
@@ -2810,7 +2984,7 @@
 
     {% elif mix_lc.beginning_lc_status == 'qa_approved' %}
 
-    <div class="no-print" style="background:#d4edda;border:2px solid #28a745;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
+    <div style="background:#d4edda;border:2px solid #28a745;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
 
         &#10004; Beginning LC APPROVED by QA
 
@@ -2818,7 +2992,7 @@
 
     {% elif mix_lc.beginning_lc_status == 'qa_rejected' %}
 
-    <div class="no-print" style="background:#f8d7da;border:2px solid #dc3545;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
+    <div style="background:#f8d7da;border:2px solid #dc3545;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
 
         &#10008; Beginning LC REJECTED — please correct and resubmit
 
@@ -2826,7 +3000,7 @@
 
     {% elif mix_lc.beginning_lc_status == 'operator_filled' and user_role == 'qa' %}
 
-    <div class="no-print" style="background:#cce5ff;border:2px solid #007bff;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
+    <div style="background:#cce5ff;border:2px solid #007bff;padding:10px;margin-bottom:6px;text-align:center;font-weight:bold;">
 
         Beginning LC submitted by operator — review and approve/reject below
 
@@ -3030,7 +3204,7 @@
 
 <!-- ==================== PAGE 9 ==================== -->
 
-<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
+<div style="page-break-before:always;">
 
     <!-- KPI Header Page 9 -->
 
@@ -3166,7 +3340,7 @@
 
     {% if mp_status == 'operator_filled' %}
 
-    <div class="no-print" style="background:#17a2b8;color:#fff;padding:8px 12px;margin:8px 0;border-radius:4px;font-weight:bold;">
+    <div style="background:#17a2b8;color:#fff;padding:8px 12px;margin:8px 0;border-radius:4px;font-weight:bold;">
 
         &#9432; Mixing Process submitted &mdash; Awaiting QA verification of Steps 4 &amp; 8
 
@@ -3174,7 +3348,7 @@
 
     {% elif mp_status == 'qa_approved' %}
 
-    <div class="no-print" style="background:#28a745;color:#fff;padding:8px 12px;margin:8px 0;border-radius:4px;font-weight:bold;">
+    <div style="background:#28a745;color:#fff;padding:8px 12px;margin:8px 0;border-radius:4px;font-weight:bold;">
 
         &#10003; Mixing Process QA Approved
 
@@ -3280,7 +3454,7 @@
 
         {% elif step4_status == 'operator_filled' and user_role != 'qa' %}
 
-        <span class="no-print" style="background:#17a2b8;color:#fff;padding:6px 14px;border-radius:4px;font-size:13px;">&#9432; Step 4 Awaiting QA Verification</span>
+        <span style="background:#17a2b8;color:#fff;padding:6px 14px;border-radius:4px;font-size:13px;">&#9432; Step 4 Awaiting QA Verification</span>
 
         {% elif step4_status == 'operator_filled' and user_role == 'qa' %}
 
@@ -3288,7 +3462,7 @@
 
         {% elif step4_status == 'qa_approved' %}
 
-        <span class="no-print" style="background:#28a745;color:#fff;padding:6px 14px;border-radius:4px;font-size:13px;">&#10003; Step 4 QA Approved</span>
+        <span style="background:#28a745;color:#fff;padding:6px 14px;border-radius:4px;font-size:13px;">&#10003; Step 4 QA Approved</span>
 
         {% endif %}
 
@@ -3414,7 +3588,7 @@
 
         {% elif mp_status == 'qa_approved' %}
 
-        <span class="no-print" style="background:#28a745;color:#fff;padding:8px 16px;border-radius:4px;">&#10003; QA Approved</span>
+        <span style="background:#28a745;color:#fff;padding:8px 16px;border-radius:4px;">&#10003; QA Approved</span>
 
         {% endif %}
 
@@ -3440,7 +3614,7 @@
 
 <!-- ==================== PAGE 10 ==================== -->
 
-<div style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
+<div style="page-break-before:always;">
 
     <!-- KPI Header Page 10 -->
 
@@ -3676,7 +3850,7 @@
 
     {# QA approved — ending activities now unlocked #}
 
-    <div class="no-print" style="margin-top:8px;text-align:right;">
+    <div style="margin-top:8px;text-align:right;">
 
         <span style="background:#28a745;color:#fff;padding:8px 16px;border-radius:4px;">&#10003; QA Approved</span>
 
@@ -3690,7 +3864,7 @@
 
 
 
-    {# ========== MIXING ENDING LC — after QA IPC (Page 10) ========== #}
+    {# â•â•â•â•â•â•â•â•â•â• MIXING ENDING LC — after QA IPC (Page 10) â•â•â•â•â•â•â•â•â•â• #}
 
     {% with mix_lc=phase_executions.mixing %}
 
@@ -3704,7 +3878,7 @@
 
     {% if mix_lc.ending_lc_status == 'operator_filled' and user_role != 'qa' %}
 
-    <div class="no-print" style="background:#fff3cd;border:2px solid #ffc107;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
+    <div style="background:#fff3cd;border:2px solid #ffc107;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
 
         Ending LC submitted — waiting for QA approval
 
@@ -3712,15 +3886,15 @@
 
     {% elif mix_lc.ending_lc_status == 'qa_approved' %}
 
-    <div class="no-print" style="background:#d4edda;border:2px solid #28a745;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
+    <div style="background:#d4edda;border:2px solid #28a745;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
 
-        &#10004; Ending LC completed
+        &#10004; Ending LC APPROVED by QA
 
     </div>
 
     {% elif mix_lc.ending_lc_status == 'qa_rejected' %}
 
-    <div class="no-print" style="background:#f8d7da;border:2px solid #dc3545;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
+    <div style="background:#f8d7da;border:2px solid #dc3545;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
 
         &#10008; Ending LC REJECTED — please correct and resubmit
 
@@ -3728,7 +3902,7 @@
 
     {% elif mix_lc.ending_lc_status == 'operator_filled' and user_role == 'qa' %}
 
-    <div class="no-print" style="background:#cce5ff;border:2px solid #007bff;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
+    <div style="background:#cce5ff;border:2px solid #007bff;padding:10px;margin:8px 0 6px;text-align:center;font-weight:bold;">
 
         Ending LC submitted by operator — review and approve/reject below
 
@@ -4908,9 +5082,9 @@
 
     </div>
 
-    {% elif tube_filling_section_statuses.tf_machine_setup == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
+    {% elif tube_filling_section_statuses.tf_machine_setup == 'completed' %}
 
-    <div class="no-print" style="margin-top:6px;padding:8px 12px;background:#d4edda;border:1px solid #c3e6cb;border-radius:4px;font-size:12px;color:#155724;">
+    <div style="margin-top:6px;padding:8px 12px;background:#d4edda;border:1px solid #c3e6cb;border-radius:4px;font-size:12px;color:#155724;">
 
         <i class="fas fa-lock"></i> <strong>Machine Setup & Weight Range completed</strong> &mdash; section locked.
 
@@ -5212,9 +5386,9 @@
 
     </table>
 
-    {% if tube_filling_section_statuses.tf_weight_yield == 'qa_approved' and edit_mode != 'view' and edit_mode != 'print' %}
+    {% if tube_filling_section_statuses.tf_weight_yield == 'qa_approved' %}
 
-    <div class="no-print" style="margin-top:10px;padding:10px;background:#d4edda;border:1px solid #28a745;border-radius:4px;color:#155724;">
+    <div style="margin-top:10px;padding:10px;background:#d4edda;border:1px solid #28a745;border-radius:4px;color:#155724;">
 
         <strong><i class="fas fa-check-circle"></i> Yield Reconciliation — QA Approved</strong>
 
@@ -5230,7 +5404,7 @@
 
     {% elif tube_filling_section_statuses.tf_weight_yield == 'operator_filled' and edit_mode == 'tube_filling' and user_role != 'qa' %}
 
-    <div class="no-print" style="margin-top:10px;padding:10px;background:#cce5ff;border:1px solid #007bff;border-radius:4px;color:#004085;">
+    <div style="margin-top:10px;padding:10px;background:#cce5ff;border:1px solid #007bff;border-radius:4px;color:#004085;">
 
         <strong><i class="fas fa-clock"></i> Submitted — Awaiting QA Approval</strong>
 
@@ -5396,15 +5570,15 @@
 
                 <th style="border:1px solid #000;padding:5px;width:20%;">Individual Weights</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 1: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t1" value="{{ ipc.p1_t1|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t1|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 1: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t1" value="{{ ipc.p1_t1|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t1|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 2: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t2" value="{{ ipc.p1_t2|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t2|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 2: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t2" value="{{ ipc.p1_t2|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t2|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 3: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t3" value="{{ ipc.p1_t3|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t3|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 3: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t3" value="{{ ipc.p1_t3|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t3|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 4: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t4" value="{{ ipc.p1_t4|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t4|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 4: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t4" value="{{ ipc.p1_t4|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t4|default:"" }}{% endif %}</th>
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 5: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="time" step="60" name="p1_t5" value="{{ ipc.p1_t5|default:'' }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t5|default:"" }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 5: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p1 != 'completed' %}<input type="text" name="p1_t5" value="{{ ipc.p1_t5|default:'' }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc.p1_t5|default:"" }}{% endif %}</th>
 
             </tr>
 
@@ -5470,9 +5644,9 @@
 
     {% endif %}
 
-    {% if tf_ipc_page_statuses.p1 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
+    {% if tf_ipc_page_statuses.p1 == 'completed' %}
 
-    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 14 Complete</strong> &mdash; IPC Sheet 1 (Times 1-5) submitted.
 
@@ -5610,7 +5784,7 @@
 
                 {% with tkey="p2_t"|concat:tn %}
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="time" step="60" name="p2_t{{ tn }}" value="{{ ipc|dk:tkey }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="text" name="p2_t{{ tn }}" value="{{ ipc|dk:tkey }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
 
                 {% endwith %}
 
@@ -5618,7 +5792,7 @@
 
                 {% with tkey="p2_t10" %}
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time 10: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="time" step="60" name="p2_t10" value="{{ ipc|dk:tkey }}" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time 10: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p2 != 'completed' %}<input type="text" name="p2_t10" value="{{ ipc|dk:tkey }}" placeholder="HH:MM" style="width:70%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
 
                 {% endwith %}
 
@@ -5704,9 +5878,9 @@
 
     {% endif %}
 
-    {% if tf_ipc_page_statuses.p2 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
+    {% if tf_ipc_page_statuses.p2 == 'completed' %}
 
-    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 15 Complete</strong> &mdash; IPC Sheet 2 (Times 6-10) submitted.
 
@@ -5844,7 +6018,7 @@
 
                 {% with tkey="p3_t"|concat:tn %}
 
-                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p3 != 'completed' %}<input type="time" step="60" name="p3_t{{ tn }}" value="{{ ipc|dk:tkey }}" style="width:60%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
+                <th style="border:1px solid #000;padding:5px;width:16%;">Time {{ tn }}: {% if edit_mode == 'tube_filling' and user_role != 'qa' and tf_ipc_page_statuses.p3 != 'completed' %}<input type="text" name="p3_t{{ tn }}" value="{{ ipc|dk:tkey }}" placeholder="HH:MM" style="width:60%;background:#ffffdd;border:none;font-size:11px;">{% else %}{{ ipc|dk:tkey }}{% endif %}</th>
 
                 {% endwith %}
 
@@ -5926,9 +6100,9 @@
 
     {% endif %}
 
-    {% if tf_ipc_page_statuses.p3 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
+    {% if tf_ipc_page_statuses.p3 == 'completed' %}
 
-    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 16 Complete</strong> &mdash; IPC Sheet 3 (Times 11-15) submitted. All Production IPC pages done.
 
@@ -6154,9 +6328,9 @@
 
     {% endif %}
 
-    {% if tf_qa_ipc_page_statuses.qa1 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
+    {% if tf_qa_ipc_page_statuses.qa1 == 'completed' %}
 
-    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 17 Complete</strong> &mdash; QA IPC Sheet 1 (Intervals 1-2) submitted.
 
@@ -6164,7 +6338,7 @@
 
     {% elif edit_mode == 'tube_filling' and user_role != 'qa' %}
 
-    <div class="no-print" style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
+    <div style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
 
         <strong>&#9203; Waiting for QA</strong> &mdash; Production IPC complete. QA IPC Page 17 is awaiting QA officer input.
 
@@ -6174,7 +6348,7 @@
 
     {% else %}
 
-    <div class="no-print" style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
+    <div style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
 
         <strong>&#128274; QA IPC Locked</strong> &mdash; All Production IPC pages (14-16) must be completed before the QA IPC forms can be filled.
 
@@ -6390,9 +6564,9 @@
 
     {% endif %}
 
-    {% if tf_qa_ipc_page_statuses.qa2 == 'completed' and edit_mode != 'view' and edit_mode != 'print' %}
+    {% if tf_qa_ipc_page_statuses.qa2 == 'completed' %}
 
-    <div class="no-print" style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
+    <div style="background:#d4edda;border:1px solid #c3e6cb;padding:12px;margin:8px 0;border-radius:4px;color:#155724;">
 
         <strong>&#9989; Page 18 Complete</strong> &mdash; QA IPC Sheet 2 (Intervals 3-4) submitted.
 
@@ -6400,7 +6574,7 @@
 
     {% elif edit_mode == 'tube_filling' and user_role != 'qa' %}
 
-    <div class="no-print" style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
+    <div style="background:#fff3cd;border:1px solid #ffc107;padding:12px;margin:8px 0;border-radius:4px;color:#856404;">
 
         <strong>&#9203; Waiting for QA</strong> &mdash; QA IPC Page 18 is awaiting QA officer input.
 
@@ -6410,7 +6584,7 @@
 
     {% else %}
 
-    <div class="no-print" style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
+    <div style="background:#d1ecf1;border:1px solid #bee5eb;padding:12px;margin:8px 0;border-radius:4px;color:#0c5460;">
 
         <strong>&#128274; QA IPC Locked</strong> &mdash; All Production IPC pages (14-16) and QA IPC Page 17 must be completed first.
 
@@ -6698,111 +6872,91 @@
 
     {# Step 1: Beginning LC (Page 20) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-begin-lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ Begin LC</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-begin-lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">Begin LC</a>
 
-    {% elif ssblc == 'operator_filled' %}<a href="#oint-sec-begin-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] Begin LC</a>
+    {% elif ssblc == 'operator_filled' %}<a href="#oint-sec-begin-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">Begin LC</a>
 
-    {% else %}<a href="#oint-sec-begin-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[1] Begin LC</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-begin-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Begin LC</a>{% endif %}
 
     {# Step 2: Packing Process & Instructions (Page 21) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-process" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[2] Process</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-process" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Process</a>
 
-    {% else %}<a href="#oint-sec-process" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Process</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-process" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Process</a>{% endif %}
 
     {# Step 3: Packing Coding Control (Page 22) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-coding" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[3] Coding</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-coding" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Coding</a>
 
-    {% else %}<a href="#oint-sec-coding" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Coding</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-coding" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Coding</a>{% endif %}
 
     {# Step 4: Packing Procedure (Page 23) #}
 
-    {% if secondary_section_statuses.sec_packing_procedure == 'qa_signed' %}<a href="#oint-sec-procedure" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ Procedure</a>
+    {% if secondary_section_statuses.sec_packing_procedure == 'qa_signed' %}<a href="#oint-sec-procedure" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>
 
-    {% elif secondary_sections_data.sec_packing_procedure.proc_stage == 'sigs_submitted' or secondary_sections_data.sec_packing_procedure.proc_stage == 'recon_submitted' %}<a href="#oint-sec-procedure" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] Procedure</a>
+    {% elif secondary_sections_data.sec_packing_procedure.proc_stage == 'sigs_submitted' or secondary_sections_data.sec_packing_procedure.proc_stage == 'recon_submitted' %}<a href="#oint-sec-procedure" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>
 
-    {% elif secondary_sections_data.sec_packing_procedure.proc_stage != 'not_started' and secondary_sections_data.sec_packing_procedure.proc_stage %}<a href="#oint-sec-procedure" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">[IN PROGRESS] Procedure</a>
+    {% elif secondary_sections_data.sec_packing_procedure.proc_stage != 'not_started' and secondary_sections_data.sec_packing_procedure.proc_stage %}<a href="#oint-sec-procedure" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-procedure" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[4] Procedure</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-procedure" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>
 
-    {% else %}<a href="#oint-sec-procedure" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Procedure</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-procedure" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>{% endif %}
 
     {# Step 5: Shipper Weight Verification (Page 24) #}
 
-    {% if secondary_section_statuses.sec_shipper_weight == 'qa_signed' %}<a href="#oint-sec-shipper-wt" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ Shipper Wt</a>
+    {% if secondary_section_statuses.sec_shipper_weight == 'qa_signed' %}<a href="#oint-sec-shipper-wt" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">Shipper Wt</a>
 
-    {% elif secondary_section_statuses.sec_shipper_weight == 'operator_filled' %}<a href="#oint-sec-shipper-wt" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] Shipper Wt</a>
+    {% elif secondary_section_statuses.sec_shipper_weight == 'operator_filled' %}<a href="#oint-sec-shipper-wt" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">Shipper Wt</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-shipper-wt" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[5] Shipper Wt</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-shipper-wt" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Shipper Wt</a>
 
-    {% else %}<a href="#oint-sec-shipper-wt" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Shipper Wt</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-shipper-wt" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Shipper Wt</a>{% endif %}
 
     {# Step 6: IPC Section 1 — Coding (Page 25) #}
 
-    {% if secondary_section_statuses.sec_ipc_p54 == 'completed' %}<a href="#oint-sec-ipc-25" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ IPC-25</a>
+    {% if secondary_section_statuses.sec_ipc_p54 == 'completed' %}<a href="#oint-sec-ipc-25" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">IPC-25</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-25" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[6] IPC-25</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-25" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">IPC-25</a>
 
-    {% else %}<a href="#oint-sec-ipc-25" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] IPC-25</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-ipc-25" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">IPC-25</a>{% endif %}
 
     {# Step 7: IPC Section 2 — Unit Packing (Page 26) #}
 
-    {% if secondary_section_statuses.sec_ipc_p55 == 'completed' %}<a href="#oint-sec-ipc-26" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ IPC-26</a>
+    {% if secondary_section_statuses.sec_ipc_p55 == 'completed' %}<a href="#oint-sec-ipc-26" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">IPC-26</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-26" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[7] IPC-26</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-26" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">IPC-26</a>
 
-    {% else %}<a href="#oint-sec-ipc-26" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] IPC-26</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-ipc-26" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">IPC-26</a>{% endif %}
 
     {# Step 8: IPC Section 3 — Shipper Carton (Page 27) #}
 
-    {% if secondary_section_statuses.sec_ipc_p56 == 'completed' %}<a href="#oint-sec-ipc-27" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ IPC-27</a>
+    {% if secondary_section_statuses.sec_ipc_p56 == 'completed' %}<a href="#oint-sec-ipc-27" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">IPC-27</a>
 
-    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-27" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[8] IPC-27</a>
+    {% elif ssblc == 'qa_approved' %}<a href="#oint-sec-ipc-27" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">IPC-27</a>
 
-    {% else %}<a href="#oint-sec-ipc-27" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] IPC-27</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-ipc-27" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">IPC-27</a>{% endif %}
 
     {# Step 9: Finished Product Reconciliation (Page 28) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-recon" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[9] Recon</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-recon" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Recon</a>
 
-    {% else %}<a href="#oint-sec-recon" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Recon</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-recon" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Recon</a>{% endif %}
 
     {# Step 10: Batch Release Sheet (Page 29) #}
 
-    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-release" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[10] Release</a>
+    {% if ssblc == 'qa_approved' %}<a href="#oint-sec-release" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Release</a>
 
-    {% else %}<a href="#oint-sec-release" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] Release</a>{% endif %}
-
-    <span style="color:#aaa;">&gt;</span>
+    {% else %}<a href="#oint-sec-release" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Release</a>{% endif %}
 
     {# Step 11: Ending LC (Page 20 bottom) #}
 
-    {% if sselc == 'qa_approved' %}<a href="#oint-sec-end-lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">✓ End LC</a>
+    {% if sselc == 'qa_approved' %}<a href="#oint-sec-end-lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">End LC</a>
 
-    {% elif sselc == 'operator_filled' %}<a href="#oint-sec-end-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">[PENDING] End LC</a>
+    {% elif sselc == 'operator_filled' %}<a href="#oint-sec-end-lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">End LC</a>
 
-    {% elif all_secondary_sections_complete %}<a href="#oint-sec-end-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">[11] End LC</a>
+    {% elif all_secondary_sections_complete %}<a href="#oint-sec-end-lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">End LC</a>
 
-    {% else %}<a href="#oint-sec-end-lc" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">[LOCK] End LC</a>{% endif %}
+    {% else %}<a href="#oint-sec-end-lc" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">End LC</a>{% endif %}
 
     {% if all_secondary_sections_complete and sselc == 'qa_approved' %}&nbsp;<span class="badge bg-success ms-2">Secondary packing complete!</span>{% endif %}
 
@@ -7176,7 +7330,7 @@
 
                 <i class="fas fa-check-double me-2"></i>
 
-                <strong>ENDING LC COMPLETED:</strong> Both Beginning and Ending LCs are complete.
+                <strong>ENDING LC APPROVED:</strong> Both Beginning and Ending LCs are approved.
 
             </div>
 
@@ -7554,7 +7708,7 @@
 
     </form>
 
-    {% elif pp_status == 'completed' and edit_mode == 'secondary_packaging' %}
+    {% elif pp_status == 'completed' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Section Completed</span></div>
 
@@ -8000,11 +8154,11 @@
 
     </form>
 
-    {% elif cod_stage == 'recon_submitted' and user_role != 'qa' and edit_mode == 'secondary_packaging' %}
+    {% elif cod_stage == 'recon_submitted' and user_role != 'qa' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#fff3cd;color:#856404;padding:6px 16px;border-radius:4px;font-weight:bold;">&#9203; Awaiting QA Reconciliation Approval</span></div>
 
-    {% elif cod_stage == 'completed' and edit_mode == 'secondary_packaging' %}
+    {% elif cod_stage == 'completed' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Packing Coding Control — Fully Completed</span></div>
 
@@ -8320,15 +8474,15 @@
 
     </form>
 
-    {% elif proc_stage == 'persons_submitted' and edit_mode == 'secondary_packaging' %}
+    {% elif proc_stage == 'persons_submitted' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Secondary Packing Procedure — Fully Completed</span></div>
 
-    {% elif edit_mode == 'secondary_packaging' and proc_stage == 'not_started' or edit_mode == 'secondary_packaging' and proc_stage == 'sigs_submitted' %}
+    {% elif proc_stage == 'not_started' or proc_stage == 'sigs_submitted' %}
 
     <div style="margin-top:4px;text-align:center;font-size:11px;color:#888;">Reconciliation &amp; persons grid will unlock after signatures are QA-verified</div>
 
-    {% elif edit_mode == 'secondary_packaging' and proc_stage == 'sigs_qa_signed' or edit_mode == 'secondary_packaging' and proc_stage == 'recon_submitted' %}
+    {% elif proc_stage == 'sigs_qa_signed' or proc_stage == 'recon_submitted' %}
 
     <div style="margin-top:4px;text-align:center;font-size:11px;color:#888;">Persons grid will unlock after reconciliation is QA-verified</div>
 
@@ -8708,11 +8862,11 @@
 
     </form>
 
-    {% elif shpr_status == 'operator_filled' and user_role != 'qa' and edit_mode == 'secondary_packaging' %}
+    {% elif shpr_status == 'operator_filled' and user_role != 'qa' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#fff3cd;color:#856404;padding:6px 16px;border-radius:4px;font-weight:bold;">&#9203; Awaiting QA Approval</span></div>
 
-    {% elif shpr_status == 'qa_signed' and edit_mode == 'secondary_packaging' %}
+    {% elif shpr_status == 'qa_signed' %}
 
     <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Shipper Weight Verification — Completed</span></div>
 
@@ -9740,7 +9894,7 @@
 
     <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
 
-        <tr id="sec_fp_recon"><td colspan="6" style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;scroll-margin-top:80px;">FINISHED PRODUCT RECONCILIATION SHEET</td></tr>
+        <tr><td colspan="6" style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">FINISHED PRODUCT RECONCILIATION SHEET</td></tr>
 
     </table>
 
@@ -10166,7 +10320,7 @@
 
     {% elif fp_stage == 'completed' or fp_status == 'completed' %}
 
-    <div class="no-print" style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Finished Product Reconciliation Completed</span></div>
+    <div style="margin-top:8px;text-align:center;"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:4px;font-weight:bold;">&#10003; Finished Product Reconciliation Completed</span></div>
 
     {% endif %}
 
@@ -12024,9 +12178,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     }
 
-     /* â”€â”€ Per-page shift/date fields sit outside <form> tags.
+    /* â”€â”€ Per-page shift: each page has its own shift_page_X dropdown
 
-         On submit, inject all values so backend receives complete header metadata. â”€â”€ */
+       sitting outside <form> tags. On submit, inject ALL shift values. â”€â”€ */
 
     document.addEventListener('submit', function(e) {
 
@@ -12036,39 +12190,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.querySelectorAll('select.bmr-shift-select').forEach(function(sel) {
 
-            var existingShift = form.querySelector('input[name="' + sel.name + '"]');
-
-            if (existingShift) {
-
-                existingShift.value = sel.value || '';
-
-            } else {
+            if (sel.value && !form.querySelector('input[name="' + sel.name + '"]')) {
 
                 var h = document.createElement('input');
 
-                h.type = 'hidden'; h.name = sel.name; h.value = sel.value || '';
+                h.type = 'hidden'; h.name = sel.name; h.value = sel.value;
 
                 form.appendChild(h);
-
-            }
-
-        });
-
-        document.querySelectorAll('input.bmr-date-input').forEach(function(inp) {
-
-            var existingDate = form.querySelector('input[name="' + inp.name + '"]');
-
-            if (existingDate) {
-
-                existingDate.value = inp.value || '';
-
-            } else {
-
-                var hd = document.createElement('input');
-
-                hd.type = 'hidden'; hd.name = inp.name; hd.value = inp.value || '';
-
-                form.appendChild(hd);
 
             }
 

@@ -1,0 +1,52 @@
+.repeatable-editor {
+    max-width: 980px;
+    padding: 8px 0;
+}
+
+.repeatable-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.repeatable-row input {
+    min-height: 30px;
+    box-sizing: border-box;
+}
+
+.repeatable-text {
+    width: min(760px, 70vw);
+}
+
+.equipment-name {
+    width: 34%;
+}
+
+.equipment-set-value {
+    width: 34%;
+}
+
+.repeatable-add,
+.repeatable-remove {
+    border: 1px solid #8c8c8c;
+    border-radius: 3px;
+    background: #f8f8f8;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.repeatable-add {
+    color: #0b57a4;
+    border-color: #0b57a4;
+}
+
+.repeatable-remove {
+    color: #8a1c1c;
+}
+
+.repeatable-help {
+    color: #666;
+    margin: 6px 0 0;
+    font-size: 12px;
+}

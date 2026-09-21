@@ -81,6 +81,7 @@ PHASE_NAMES = {
     'BULK_PACKING': 'bulk_packing',
     
     # Capsule specific phases
+    'DRYING': 'drying',
     'FILLING': 'filling',
 }
 
@@ -113,6 +114,7 @@ PHASE_CHOICES = [
     (PHASE_NAMES['BULK_PACKING'], 'Bulk Packing'),
     
     # Capsule specific phases
+    (PHASE_NAMES['DRYING'], 'Drying'),
     (PHASE_NAMES['FILLING'], 'Filling'),
 ]
 
@@ -217,15 +219,22 @@ def is_tablet_type_2(tablet_type):
     """Check if tablet is type 2"""
     return tablet_type == TABLET_TYPES['TYPE_2']
 
-def get_packing_phase_for_product(product_type, tablet_type=None):
-    """Get the appropriate packing phase for a product"""
+def get_packing_phase_for_product(product_type, tablet_type=None, capsule_type=None):
+    """Get the appropriate packing phase for a product.
+
+    This compatibility helper must preserve the tablet/capsule variant split.
+    Capsules are not themselves a packing phase: normal capsules are blister
+    packed and UG capsules are bulk packed.
+    """
     if is_tablet(product_type):
         if tablet_type == TABLET_TYPES['TYPE_2']:
             return PHASE_NAMES['BULK_PACKING']
         else:
             return PHASE_NAMES['BLISTER_PACKING']
     elif is_capsule(product_type):
-        return PHASE_NAMES['FILLING']
+        if capsule_type == 'ug':
+            return PHASE_NAMES['BULK_PACKING']
+        return PHASE_NAMES['BLISTER_PACKING']
     elif is_ointment(product_type):
         return PHASE_NAMES['TUBE_FILLING']
     return None

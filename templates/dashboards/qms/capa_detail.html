@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ capa.capa_number }} - CAPA{% endblock %}
+
+{% block extra_css %}
+<style>
+    .capa-page { max-width: 1400px; margin:0 auto; padding:24px; background:#f4f7fb; }
+    .capa-hero { display:flex; justify-content:space-between; gap:22px; align-items:flex-start; padding:28px 32px; border-left:6px solid #2563eb; border-radius:18px; background:linear-gradient(135deg,#fff,#eef5ff); box-shadow:0 8px 26px rgba(15,23,42,.08); }
+    .capa-kicker { color:#2563eb; font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .capa-hero h1 { margin:7px 0 12px; color:#0f172a; font-size:clamp(24px,3vw,34px); font-weight:800; }
+    .capa-meta { display:flex; flex-wrap:wrap; gap:8px; color:#64748b; font-size:13px; }
+    .capa-meta span { padding:6px 10px; border:1px solid #dbe5f2; border-radius:999px; background:#fff; }
+    .capa-status { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+    .capa-status-badge { padding:8px 13px; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:12px; font-weight:800; text-transform:uppercase; }
+    .capa-shell { margin-top:20px; overflow:hidden; border:1px solid #dbe5f2; border-radius:18px; background:#fff; box-shadow:0 8px 26px rgba(15,23,42,.06); }
+    .capa-tabs { display:flex; gap:5px; overflow-x:auto; padding:8px; border-bottom:1px solid #e2e8f0; background:#f8fafc; }
+    .capa-tab { padding:12px 16px; border-radius:10px; color:#64748b; font-size:13px; font-weight:750; white-space:nowrap; cursor:pointer; }
+    .capa-tab.active, .capa-tab:hover { background:#2563eb; color:#fff; }
+    .capa-panel { display:none; padding:28px; }
+    .capa-panel.active { display:block; }
+    .capa-panel h2 { margin:0 0 20px; color:#0f172a; font-size:21px; font-weight:800; }
+    .capa-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+    .capa-field { display:flex; flex-direction:column; gap:7px; }
+    .capa-field.full { grid-column:1/-1; }
+    .capa-field label { color:#64748b; font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+    .capa-field input, .capa-field select, .capa-field textarea { border:1px solid #d6deea; border-radius:10px; padding:10px 12px; color:#1e293b; font:inherit; }
+    .capa-field textarea { min-height:105px; resize:vertical; }
+    .capa-card { padding:18px; border:1px solid #e2e8f0; border-radius:14px; background:#f8fafc; }
+    .capa-card h3 { margin:0 0 10px; color:#334155; font-size:14px; font-weight:800; }
+    .capa-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; padding-top:18px; border-top:1px solid #e2e8f0; }
+    .capa-actions .btn { border-radius:10px; font-weight:750; }
+    .capa-timeline { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-bottom:26px; }
+    .capa-step { padding:11px 7px; border-radius:9px; background:#e2e8f0; color:#64748b; font-size:10px; font-weight:800; text-align:center; }
+    .capa-step.current { background:#dbeafe; color:#1d4ed8; box-shadow:inset 0 -3px #2563eb; }
+    .capa-step.done { background:#dcfce7; color:#15803d; }
+    .capa-list { list-style:none; padding:0; margin:0; }
+    .capa-list li { display:flex; justify-content:space-between; gap:12px; padding:13px 0; border-bottom:1px solid #e2e8f0; color:#334155; }
+    .capa-list li:last-child { border-bottom:0; }
+    .capa-empty { padding:38px; border:1px dashed #cbd5e1; border-radius:12px; color:#64748b; text-align:center; }
+    @media (max-width:760px) { .capa-page { padding:12px; } .capa-hero { flex-direction:column; padding:22px 18px; } .capa-status { align-items:flex-start; } .capa-grid { grid-template-columns:1fr; } .capa-field.full { grid-column:auto; } .capa-timeline { grid-template-columns:repeat(2,1fr); } .capa-panel { padding:18px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="capa-page">
+    <section class="capa-hero">
+        <div>
+            <div class="capa-kicker">Corrective & Preventive Action</div>
+            <h1>{{ capa.capa_number }} · {{ action.title }}</h1>
+            <div class="capa-meta">
+                <span>Action: {{ action.qms_number }}</span>
+                <span>Source: {{ capa.get_source_type_display }}</span>
+                {% if capa.source_reference %}<span>{{ capa.source_reference }}</span>{% endif %}
+                {% if capa.action_owner %}<span>Owner: {{ capa.action_owner.get_full_name|default:capa.action_owner.username }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="capa-status">
+            <span class="capa-status-badge">{{ capa.get_status_display }}</span>
+            <span class="pill {% if capa.priority == 'critical' or capa.priority == 'high' %}pill-red{% elif capa.priority == 'medium' %}pill-amber{% else %}pill-gray{% endif %}">{{ capa.get_priority_display }} priority</span>
+        </div>
+    </section>
+
+    <section class="capa-shell">
+        <nav class="capa-tabs">
+            <div class="capa-tab active" data-panel="capa-overview">Overview</div>
+            <div class="capa-tab" data-panel="capa-analysis">Investigation & Actions</div>
+            <div class="capa-tab" data-panel="capa-effectiveness">Effectiveness</div>
+            <div class="capa-tab" data-panel="capa-evidence">Evidence ({{ attachments.count }})</div>
+            <div class="capa-tab" data-panel="capa-history">History & Comments</div>
+        </nav>
+
+        <form method="post" id="capaForm">
+            {% csrf_token %}
+            <input type="hidden" name="capa_operation" value="save" id="capaOperation">
+            <div style="margin:12px 0;max-width:320px"><label style="display:block;color:#64748b;font-size:11px;font-weight:800;text-transform:uppercase">Password for approval/closure</label><input type="password" name="signature_password" autocomplete="current-password" placeholder="Required for QA decisions" style="width:100%;padding:9px;border:1px solid #d6deea;border-radius:8px"></div>
+            <section class="capa-panel active" id="capa-overview">
+                <h2>CAPA governance and issue definition</h2>
+                <div class="capa-timeline">
+                    {% for value,label in capa.STATUS_CHOICES %}<div class="capa-step {% if capa.status == value %}current{% endif %}">{{ label }}</div>{% endfor %}
+                </div>
+                <div class="capa-grid">
+                    <div class="capa-field"><label>CAPA status</label><select name="status">{% for value,label in capa.STATUS_CHOICES %}<option value="{{ value }}" {% if capa.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                    <div class="capa-field"><label>Priority</label><select name="priority">{% for value,label in capa.PRIORITY_CHOICES %}<option value="{{ value }}" {% if capa.priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                    <div class="capa-field"><label>Source type</label><select name="source_type">{% for value,label in capa.SOURCE_CHOICES %}<option value="{{ value }}" {% if capa.source_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                    <div class="capa-field"><label>Source reference</label><input name="source_reference" value="{{ capa.source_reference }}" placeholder="Deviation, audit, complaint, or trend reference"></div>
+                    <div class="capa-field"><label>Link deviation / OOS</label><select name="source_deviation"><option value="">No deviation linked</option>{% for deviation in deviations %}<option value="{{ deviation.id }}" {% if capa.source_deviation_id == deviation.id %}selected{% endif %}>{{ deviation.deviation_number }} · {{ deviation.title|truncatechars:55 }}</option>{% endfor %}</select></div>
+                    <div class="capa-field"><label>Link audit finding</label><select name="source_audit"><option value="">No audit linked</option>{% for audit in audits %}<option value="{{ audit.id }}" {% if capa.source_audit_id == audit.id %}selected{% endif %}>{{ audit.audit_number }} · {{ audit.title|truncatechars:55 }}</option>{% endfor %}</select></div>
+                    <div class="capa-field"><label>Target completion date</label><input type="date" name="target_completion_date" value="{{ capa.target_completion_date|date:'Y-m-d' }}"></div>
+                    <div class="capa-field full"><label>Problem statement</label><textarea name="problem_statement" placeholder="Define the quality problem, scope, impact, and affected product/process.">{{ capa.problem_statement }}</textarea></div>
+                    <div class="capa-field full"><label>Immediate containment</label><textarea name="containment_action" placeholder="Document actions taken to control risk before permanent action is implemented.">{{ capa.containment_action }}</textarea></div>
+                </div>
+            </section>
+
+            <section class="capa-panel" id="capa-analysis">
+                <h2>Investigation and action plan</h2>
+                <div class="capa-grid">
+                    <div class="capa-field"><label>Root cause method</label><input name="root_cause_method" value="{{ capa.root_cause_method }}" placeholder="5 Whys, Fishbone, Fault Tree..."></div>
+                    <div class="capa-field"><label>Action owner</label><select name="action_owner"><option value="">Unassigned</option>{% for user in users %}<option value="{{ user.id }}" {% if capa.action_owner_id == user.id %}selected{% endif %}>{{ user.get_full_name|default:user.username }}</option>{% endfor %}</select></div>
+                    <div class="capa-field full"><label>Root cause analysis</label><textarea name="root_cause_analysis" placeholder="Document evidence-based root cause analysis and rationale.">{{ capa.root_cause_analysis }}</textarea></div>
+                    <div class="capa-field"><label>Corrective action plan</label><textarea name="corrective_action_plan" placeholder="Actions that remove the identified cause.">{{ capa.corrective_action_plan }}</textarea></div>
+                    <div class="capa-field"><label>Preventive action plan</label><textarea name="preventive_action_plan" placeholder="Actions that prevent recurrence elsewhere.">{{ capa.preventive_action_plan }}</textarea></div>
+                </div>
+            </section>
+
+            <section class="capa-panel" id="capa-effectiveness">
+                <h2>Effectiveness verification and closure</h2>
+                <div class="capa-card" style="margin-bottom:18px;"><h3>Closure readiness</h3>{% if capa.is_ready_for_closure %}<span class="pill pill-green">Ready for QA closure</span>{% else %}<span class="pill pill-amber">Completion evidence required before closure</span>{% endif %}{% if approval_route %}<div style="margin-top:10px;color:#64748b;font-size:12px;">Approval route: <strong>{{ approval_route.get_status_display }}</strong>{% for step in approval_route.steps.all %} · {{ step.role }}: {{ step.get_decision_display }}{% endfor %}</div>{% endif %}</div>
+                <div class="capa-grid">
+                    <div class="capa-field"><label>Effectiveness method</label><input name="effectiveness_method" value="{{ capa.effectiveness_method }}" placeholder="Trend review, audit, sampling, KPI..."></div>
+                    <div class="capa-field"><label>Review date</label><input type="date" name="effectiveness_review_date" value="{{ capa.effectiveness_review_date|date:'Y-m-d' }}"></div>
+                    <div class="capa-field full"><label>Acceptance criteria</label><textarea name="effectiveness_criteria" placeholder="Define measurable criteria that demonstrate the CAPA is effective.">{{ capa.effectiveness_criteria }}</textarea></div>
+                    <div class="capa-field"><label>Effectiveness result</label><select name="effectiveness_result">{% for value,label in capa.EFFECTIVENESS_CHOICES %}<option value="{{ value }}" {% if capa.effectiveness_result == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                    <div class="capa-field"><label>Evidence / result summary</label><textarea name="effectiveness_evidence" placeholder="Summarize evidence and measured result.">{{ capa.effectiveness_evidence }}</textarea></div>
+                    <div class="capa-field full"><label>Closure justification</label><textarea name="closure_justification">{{ capa.closure_justification }}</textarea></div>
+                </div>
+            </section>
+
+            <section class="capa-panel" id="capa-evidence">
+                <h2>CAPA evidence</h2>
+                <div class="capa-card">
+                    <p>Upload investigation, implementation, training, validation, and effectiveness evidence.</p>
+                    <input type="file" id="capaFile" style="display:none" onchange="uploadCapaFile()">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('capaFile').click()">Upload evidence</button>
+                </div>
+                <ul class="capa-list" style="margin-top:18px;">{% for attachment in attachments %}<li><span>{{ attachment.filename }}<small style="display:block;color:#64748b;">{{ attachment.file_size|filesizeformat }} · {{ attachment.uploaded_at|date:'M d, Y H:i' }}</small></span><a class="btn btn-sm btn-outline-primary" href="{% url 'dashboards:qms_attachment_download' attachment.id %}">Download</a></li>{% empty %}<li class="capa-empty">No evidence uploaded yet.</li>{% endfor %}</ul>
+            </section>
+
+            <section class="capa-panel" id="capa-history">
+                <h2>History and discussion</h2>
+                <div class="capa-card"><textarea id="capaComment" style="width:100%;min-height:90px;border:1px solid #d6deea;border-radius:10px;padding:10px;" placeholder="Add an internal QA note or investigation comment..."></textarea><button type="button" class="btn btn-outline-primary" style="margin-top:10px;" onclick="addCapaComment()">Add comment</button></div>
+                <ul class="capa-list" style="margin-top:18px;">{% for comment in comments %}<li><span><strong>{{ comment.user.username }}</strong><small style="display:block;color:#64748b;">{{ comment.created_at|date:'M d, Y H:i' }}</small><span style="display:block;margin-top:5px;">{{ comment.comment_text }}</span></span></li>{% empty %}<li class="capa-empty">No comments yet.</li>{% endfor %}</ul>
+                <h3 style="margin-top:28px;color:#334155;font-size:15px;">Activity log</h3>
+                <ul class="capa-list">{% for item in activity_log %}<li><span>{{ item.description }}</span><small style="color:#64748b;">{{ item.timestamp|date:'M d, Y H:i' }}</small></li>{% empty %}<li class="capa-empty">No activity recorded yet.</li>{% endfor %}</ul>
+            </section>
+
+            <div class="capa-actions" style="padding:0 28px 28px;margin-top:0;border-top:0;">
+                <button class="btn btn-primary" type="submit">Save CAPA</button>
+                <button class="btn btn-outline-primary" type="submit" onclick="document.getElementById('capaOperation').value='submit_review'">Submit for QA review</button>
+                <button class="btn btn-outline-success" type="submit" onclick="document.getElementById('capaOperation').value='approve'">Approve review</button>
+                <button class="btn btn-outline-success" type="submit" onclick="document.getElementById('capaOperation').value='verify_effectiveness'">Verify effectiveness</button>
+                <button class="btn btn-success" type="submit" onclick="document.getElementById('capaOperation').value='close'">Close CAPA</button>
+                <button class="btn btn-outline-danger" type="submit" onclick="document.getElementById('capaOperation').value='cancel'">Cancel</button>
+            </div>
+        </form>
+    </section>
+</main>
+<script>
+document.querySelectorAll('.capa-tab').forEach(function(tab) { tab.addEventListener('click', function() { document.querySelectorAll('.capa-tab,.capa-panel').forEach(function(item) { item.classList.remove('active'); }); tab.classList.add('active'); document.getElementById(tab.dataset.panel).classList.add('active'); }); });
+function uploadCapaFile() { const input = document.getElementById('capaFile'); const data = new FormData(); data.append('file', input.files[0]); data.append('description', 'CAPA evidence'); fetch('{% url "dashboards:qms_action_upload" action.id %}', {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}, body:data}).then(function(response){ if(response.ok) window.location.reload(); }); }
+function addCapaComment() { const text = document.getElementById('capaComment').value.trim(); if(!text) return; const data = new FormData(); data.append('comment', text); data.append('is_internal', '1'); fetch('{% url "dashboards:qms_action_comment" action.id %}', {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}, body:data}).then(function(response){ if(response.ok) window.location.reload(); }); }
+</script>
+{% include "dashboards/qms/_record_links.html" %}
+{% endblock %}

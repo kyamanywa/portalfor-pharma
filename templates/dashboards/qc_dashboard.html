@@ -196,6 +196,8 @@
 .qc-tab.active .qc-tab-count { background: #eef5ff; color: #1a6fb5; }
 .qc-tab-content { display: none; }
 .qc-tab-content.active { display: block; }
+.qc-main.qms-mode .qc-home-block,
+.qc-main.qms-mode .qc-work-tabs { display: none !important; }
 
 /* Empty state */
 .qc-empty { text-align: center; padding: 32px 20px; color: #9aa5c9; }
@@ -248,6 +250,52 @@
             {% else %}<span class="nav-badge gray">0</span>{% endif %}
         </a>
 
+        <a class="qc-nav-item {% if quality_lot_stats.open > 0 %}active{% endif %}"
+           href="#" onclick="switchQcTab('tab-quality-lots'); return false;">
+            <span class="nav-icon"><i class="fas fa-clipboard-check"></i></span>
+            <span class="nav-label">Quality Lots</span>
+            {% if quality_lot_stats.open > 0 %}<span class="nav-badge blue">{{ quality_lot_stats.open }}</span>
+            {% else %}<span class="nav-badge gray">{{ quality_lot_stats.total }}</span>{% endif %}
+        </a>
+
+        <div class="qc-nav-section-label" style="margin-top:8px;">QC Modules</div>
+
+        <a class="qc-nav-item" href="#" onclick="switchQcTab('tab-qms-oos'); return false;">
+            <span class="nav-icon"><i class="fas fa-triangle-exclamation"></i></span>
+            <span class="nav-label">OOS Lab Investigation</span>
+            <span class="nav-badge {% if qc_qms_stats.oos > 0 %}red{% else %}gray{% endif %}">{{ qc_qms_stats.oos }}</span>
+        </a>
+
+        <a class="qc-nav-item" href="#" onclick="switchQcTab('tab-qms-stability'); return false;">
+            <span class="nav-icon"><i class="fas fa-temperature-half"></i></span>
+            <span class="nav-label">Stability Studies</span>
+            <span class="nav-badge {% if qc_qms_stats.stability > 0 %}blue{% else %}gray{% endif %}">{{ qc_qms_stats.stability }}</span>
+        </a>
+
+        <a class="qc-nav-item" href="#" onclick="switchQcTab('tab-qms-coa'); return false;">
+            <span class="nav-icon"><i class="fas fa-file-signature"></i></span>
+            <span class="nav-label">COA</span>
+            <span class="nav-badge {% if qc_qms_stats.coa > 0 %}blue{% else %}gray{% endif %}">{{ qc_qms_stats.coa }}</span>
+        </a>
+
+        <a class="qc-nav-item" href="#" onclick="switchQcTab('tab-qms-supplier'); return false;">
+            <span class="nav-icon"><i class="fas fa-boxes-stacked"></i></span>
+            <span class="nav-label">Supplier / Material QC</span>
+            <span class="nav-badge {% if qc_qms_stats.supplier_quality > 0 %}blue{% else %}gray{% endif %}">{{ qc_qms_stats.supplier_quality }}</span>
+        </a>
+
+        <a class="qc-nav-item" href="#" onclick="switchQcTab('tab-qms-enterprise'); return false;">
+            <span class="nav-icon"><i class="fas fa-layer-group"></i></span>
+            <span class="nav-label">QC Enterprise</span>
+            <span class="nav-badge blue">{{ qms_enterprise_stats.lab_specs|add:qms_enterprise_stats.sampling_plans }}</span>
+        </a>
+
+        <a class="qc-nav-item" href="{% url 'dashboards:qms_qc_register' %}">
+            <span class="nav-icon"><i class="fas fa-folder-plus"></i></span>
+            <span class="nav-label">Controlled QC Register</span>
+            <span class="nav-badge green">Open</span>
+        </a>
+
         <div class="qc-nav-section-label" style="margin-top:8px;">Quarantine</div>
 
         <a class="qc-nav-item {% if quarantine_samples %}active{% endif %}"
@@ -298,7 +346,7 @@
     </div>
 
     <!-- KPI Cards -->
-    <div class="kpi-grid">
+    <div class="kpi-grid qc-home-block">
         <div class="kpi-card amber">
             <div class="kpi-icon amber"><i class="fas fa-clock"></i></div>
             <div><div class="kpi-value">{{ stats.pending_tests }}</div><div class="kpi-label">Pending Tests</div></div>
@@ -317,9 +365,81 @@
         </div>
     </div>
 
+    <div class="kpi-grid qc-home-block">
+        <div class="kpi-card blue">
+            <div class="kpi-icon blue"><i class="fas fa-clipboard-list"></i></div>
+            <div><div class="kpi-value">{{ quality_lot_stats.total }}</div><div class="kpi-label">Total Quality Lots</div></div>
+        </div>
+        <div class="kpi-card amber">
+            <div class="kpi-icon amber"><i class="fas fa-hourglass-half"></i></div>
+            <div><div class="kpi-value">{{ quality_lot_stats.open }}</div><div class="kpi-label">Open Lots</div></div>
+        </div>
+        <div class="kpi-card green">
+            <div class="kpi-icon green"><i class="fas fa-check-double"></i></div>
+            <div><div class="kpi-value">{{ quality_lot_stats.accepted }}</div><div class="kpi-label">Accepted Lots</div></div>
+        </div>
+        <div class="kpi-card red">
+            <div class="kpi-icon red"><i class="fas fa-triangle-exclamation"></i></div>
+            <div><div class="kpi-value">{{ quality_lot_stats.rejected }}</div><div class="kpi-label">Rejected Lots</div></div>
+        </div>
+    </div>
+
+    <div class="qc-section qc-home-block" id="quality-lots-panel">
+        <div class="qc-section-header">
+            <div class="title">
+                <div class="section-ico" style="background:#eef5ff;color:#3a8dde;"><i class="fas fa-clipboard-check"></i></div>
+                Inspection Lots
+            </div>
+        </div>
+        <div class="p-3">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h6 class="fw-bold mb-2">Pending Release / Testing</h6>
+                    {% if inspection_lots_pending %}
+                    <table class="qc-table">
+                        <thead><tr><th>Lot</th><th>Batch</th><th>Type</th><th>Status</th></tr></thead>
+                        <tbody>
+                        {% for lot in inspection_lots_pending %}
+                        <tr>
+                            <td>{{ lot.lot_number }}</td>
+                            <td>{{ lot.bmr.batch_number }}</td>
+                            <td>{{ lot.get_inspection_type_display }}</td>
+                            <td><span class="pill pill-amber">{{ lot.get_status_display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="qc-empty py-3"><p>No pending inspection lots.</p></div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <h6 class="fw-bold mb-2">In Inspection</h6>
+                    {% if inspection_lots_in_progress %}
+                    <table class="qc-table">
+                        <thead><tr><th>Lot</th><th>Batch</th><th>Started</th><th>Assigned</th></tr></thead>
+                        <tbody>
+                        {% for lot in inspection_lots_in_progress %}
+                        <tr>
+                            <td>{{ lot.lot_number }}</td>
+                            <td>{{ lot.bmr.batch_number }}</td>
+                            <td>{{ lot.started_at|date:"M d, H:i"|default:"-" }}</td>
+                            <td>{{ lot.assigned_to.get_full_name|default:lot.assigned_to.username|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="qc-empty py-3"><p>No inspection lots currently in test.</p></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main section card with tabs -->
-    <div class="qc-section">
-        <div class="qc-tabs">
+    <div class="qc-section" id="qc-workspace-section">
+        <div class="qc-tabs qc-work-tabs">
             <div class="qc-tab active" id="tab-btn-pending" onclick="switchQcTab('tab-pending')">
                 <i class="fas fa-clock me-1"></i>Pending Tests
                 <span class="qc-tab-count">{{ stats.pending_tests }}</span>
@@ -327,6 +447,30 @@
             <div class="qc-tab" id="tab-btn-inprogress" onclick="switchQcTab('tab-inprogress')">
                 <i class="fas fa-vial me-1"></i>In Testing
                 <span class="qc-tab-count">{{ stats.in_testing }}</span>
+            </div>
+            <div class="qc-tab" id="tab-btn-quality-lots" onclick="switchQcTab('tab-quality-lots')">
+                <i class="fas fa-clipboard-check me-1"></i>Quality Lots
+                <span class="qc-tab-count">{{ quality_lot_stats.total }}</span>
+            </div>
+            <div class="qc-tab" id="tab-btn-qms-oos" onclick="switchQcTab('tab-qms-oos')">
+                <i class="fas fa-triangle-exclamation me-1"></i>OOS Lab
+                <span class="qc-tab-count">{{ qc_qms_stats.oos }}</span>
+            </div>
+            <div class="qc-tab" id="tab-btn-qms-stability" onclick="switchQcTab('tab-qms-stability')">
+                <i class="fas fa-temperature-half me-1"></i>Stability
+                <span class="qc-tab-count">{{ qc_qms_stats.stability }}</span>
+            </div>
+            <div class="qc-tab" id="tab-btn-qms-coa" onclick="switchQcTab('tab-qms-coa')">
+                <i class="fas fa-file-signature me-1"></i>COA
+                <span class="qc-tab-count">{{ qc_qms_stats.coa }}</span>
+            </div>
+            <div class="qc-tab" id="tab-btn-qms-supplier" onclick="switchQcTab('tab-qms-supplier')">
+                <i class="fas fa-boxes-stacked me-1"></i>Supplier QC
+                <span class="qc-tab-count">{{ qc_qms_stats.supplier_quality }}</span>
+            </div>
+            <div class="qc-tab" id="tab-btn-qms-enterprise" onclick="switchQcTab('tab-qms-enterprise')">
+                <i class="fas fa-layer-group me-1"></i>QC Enterprise
+                <span class="qc-tab-count">{{ qms_enterprise_stats.lab_specs|add:qms_enterprise_stats.sampling_plans }}</span>
             </div>
             <div class="qc-tab" id="tab-btn-quarantine" onclick="switchQcTab('tab-quarantine')">
                 <i class="fas fa-flask me-1"></i>Quarantine Samples
@@ -381,6 +525,192 @@
                 <p>No pending QC tests at the moment.</p>
             </div>
             {% endif %}
+        </div>
+
+        <!-- TAB: Quality Lots -->
+        <div class="qc-tab-content" id="tab-quality-lots">
+            {% if quality_lots %}
+            <table class="qc-table">
+                <thead>
+                    <tr>
+                        <th>Lot</th>
+                        <th>Batch</th>
+                        <th>Product</th>
+                        <th>Phase</th>
+                        <th>Inspection Type</th>
+                        <th>Status</th>
+                        <th>Usage Decision</th>
+                        <th>Assigned / Decision By</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lot in quality_lots %}
+                    <tr>
+                        <td><a href="{% url 'dashboards:quality_lot_detail' lot.pk %}" class="batch-link">{{ lot.lot_number }}</a></td>
+                        <td><a href="{% url 'bmr:detail' lot.bmr.pk %}" class="batch-link">{{ lot.bmr.batch_number }}</a></td>
+                        <td>{{ lot.product.product_name }}</td>
+                        <td>
+                            {% if lot.phase_execution %}
+                            <span class="pill pill-blue">{{ lot.phase_execution.phase.get_phase_name_display }}</span>
+                            {% else %}
+                            <span class="pill pill-gray">Manual</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ lot.get_inspection_type_display }}</td>
+                        <td>
+                            {% if lot.status == 'accepted' %}<span class="pill pill-green">{{ lot.get_status_display }}</span>
+                            {% elif lot.status == 'rejected' %}<span class="pill pill-red">{{ lot.get_status_display }}</span>
+                            {% elif lot.status == 'in_inspection' %}<span class="pill pill-blue">{{ lot.get_status_display }}</span>
+                            {% else %}<span class="pill pill-amber">{{ lot.get_status_display }}</span>{% endif %}
+                        </td>
+                        <td>{{ lot.get_usage_decision_display|default:"No Decision" }}</td>
+                        <td>
+                            {% if lot.decision_by %}{{ lot.decision_by.get_full_name|default:lot.decision_by.username }}
+                            {% elif lot.assigned_to %}{{ lot.assigned_to.get_full_name|default:lot.assigned_to.username }}
+                            {% else %}&mdash;{% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'dashboards:quality_lot_detail' lot.pk %}" class="btn btn-outline-info btn-qc">
+                                <i class="fas fa-pen"></i> Results
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="qc-empty">
+                <i class="fas fa-clipboard-check"></i>
+                <p>No quality lots yet. They will appear when QC testing starts or when QA starts final inspection.</p>
+            </div>
+            {% endif %}
+
+            {% if open_quality_defects %}
+            <div class="qc-section-header" style="border-top:1px solid #f0f2f5;">
+                <div class="title">
+                    <div class="section-ico" style="background:#fff0f0;color:#e53e3e;"><i class="fas fa-triangle-exclamation"></i></div>
+                    Open Defects
+                </div>
+            </div>
+            <table class="qc-table">
+                <thead><tr><th>Lot</th><th>Batch</th><th>Type</th><th>Severity</th><th>Status</th><th>Description</th></tr></thead>
+                <tbody>
+                    {% for defect in open_quality_defects %}
+                    <tr>
+                        <td>{{ defect.lot.lot_number }}</td>
+                        <td>{{ defect.lot.bmr.batch_number }}</td>
+                        <td>{{ defect.get_defect_type_display }}</td>
+                        <td><span class="pill {% if defect.severity == 'critical' %}pill-red{% elif defect.severity == 'major' %}pill-amber{% else %}pill-gray{% endif %}">{{ defect.get_severity_display }}</span></td>
+                        <td>{{ defect.get_status_display }}</td>
+                        <td>{{ defect.description|truncatechars:80 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            <div class="qc-section-header" style="border-top:1px solid #f0f2f5;">
+                <div class="title">
+                    <div class="section-ico" style="background:#eef5ff;color:#1a6fb5;"><i class="fas fa-flask-vial"></i></div>
+                    QC QMS Work Queue
+                </div>
+                <span class="pill pill-blue">{{ qc_qms_actions|length }} open</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 22px;border-bottom:1px solid #f0f2f5;">
+                <div style="background:#fff8e7;border-radius:8px;padding:10px;text-align:center;"><strong>{{ qc_qms_stats.oos }}</strong><br><small>OOS Lab</small></div>
+                <div style="background:#e6f9f2;border-radius:8px;padding:10px;text-align:center;"><strong>{{ qc_qms_stats.stability }}</strong><br><small>Stability</small></div>
+                <div style="background:#eef2ff;border-radius:8px;padding:10px;text-align:center;"><strong>{{ qc_qms_stats.coa }}</strong><br><small>COA</small></div>
+                <div style="background:#fff0f0;border-radius:8px;padding:10px;text-align:center;"><strong>{{ qc_qms_stats.supplier_quality }}</strong><br><small>Supplier</small></div>
+            </div>
+            {% if qc_qms_actions %}
+            <table class="qc-table">
+                <thead><tr><th>No.</th><th>Category</th><th>Batch</th><th>Priority</th><th>Status</th><th>Due</th></tr></thead>
+                <tbody>
+                    {% for action in qc_qms_actions %}
+                    <tr>
+                        <td>{{ action.qms_number }}</td>
+                        <td>{{ action.get_category_display }}</td>
+                        <td>{% if action.bmr %}<a href="{% url 'bmr:detail' action.bmr.pk %}" class="batch-link">{{ action.bmr.batch_number }}</a>{% else %}-{% endif %}</td>
+                        <td><span class="pill {% if action.priority == 'critical' or action.priority == 'high' %}pill-red{% elif action.priority == 'medium' %}pill-amber{% else %}pill-gray{% endif %}">{{ action.get_priority_display }}</span></td>
+                        <td>{{ action.get_status_display }}</td>
+                        <td>{{ action.due_date|date:"M d, Y"|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="qc-empty">
+                <i class="fas fa-clipboard-list"></i>
+                <p>No open QC QMS actions.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- TAB: OOS Lab Investigation -->
+        <div class="qc-tab-content" id="tab-qms-oos">
+            <div class="qc-section-header"><div class="title"><div class="section-ico" style="background:#fff0f0;color:#c53030;"><i class="fas fa-triangle-exclamation"></i></div>OOS Lab Investigation</div><span class="pill pill-red">{{ qc_qms_stats.oos }} open</span></div>
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+                <div><strong>Result Review</strong><br><small>Analyst result, repeat/confirmatory test, and method check.</small></div>
+                <div><strong>Specification Check</strong><br><small>Compare against template-linked BMR limits and approved standards.</small></div>
+                <div><strong>Investigation</strong><br><small>Sample handling, equipment, reagent, environment, and calculation review.</small></div>
+                <div><strong>QA Communication</strong><br><small>Creates linked QA deviation and CAPA actions on rejection.</small></div>
+            </div>
+            {% with actions=qc_qms_by_category.oos category="deviation" module_name="OOS Lab Investigation" create_hint="Describe failed result, sample, method, and investigation need." empty_text="No open OOS lab investigations." %}
+            {% include "dashboards/partials/qms_module_panel.html" %}
+            {% endwith %}
+        </div>
+
+        <!-- TAB: Stability Studies -->
+        <div class="qc-tab-content" id="tab-qms-stability">
+            <div class="qc-section-header"><div class="title"><div class="section-ico" style="background:#e6f9f2;color:#0a7a55;"><i class="fas fa-temperature-half"></i></div>Stability Studies</div><span class="pill pill-green">{{ qc_qms_stats.stability }} open</span></div>
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                <div><strong>Long Term</strong><br><small>25C / 60% RH pull schedule, assay, dissolution, appearance, microbial where applicable.</small></div>
+                <div><strong>Accelerated</strong><br><small>40C / 75% RH pulls and trend review for early degradation signals.</small></div>
+                <div><strong>Trend & Approval</strong><br><small>QC records results, QA reviews trend impact before disposition.</small></div>
+            </div>
+            {% with actions=qc_qms_by_category.stability category="stability" module_name="Stability Study" create_hint="Describe long-term/accelerated pull, condition, and tests required." empty_text="No open stability study actions." %}
+            {% include "dashboards/partials/qms_module_panel.html" %}
+            {% endwith %}
+        </div>
+
+        <!-- TAB: Certificate of Analysis -->
+        <div class="qc-tab-content" id="tab-qms-coa">
+            <div class="qc-section-header"><div class="title"><div class="section-ico" style="background:#eef2ff;color:#1a6fb5;"><i class="fas fa-file-signature"></i></div>Certificate of Analysis</div><span class="pill pill-blue">{{ qc_qms_stats.coa }} open</span></div>
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+                <div><strong>Results</strong><br><small>Pull accepted inspection-lot results and BMR template-linked QC values.</small></div>
+                <div><strong>Specifications</strong><br><small>Display product method, limits, units, and pass/fail criteria.</small></div>
+                <div><strong>Approval</strong><br><small>QC prepares COA; QA releases approved certificate.</small></div>
+                <div><strong>Traceability</strong><br><small>COA references batch, lot, analyst, approver, and test dates.</small></div>
+            </div>
+            {% include "dashboards/partials/qc_coa_report_panel.html" %}
+            {% with actions=qc_qms_by_category.coa category="coa" module_name="COA" create_hint="Describe COA request, batch, market, and required specifications." empty_text="No COA actions awaiting QC." %}
+            {% include "dashboards/partials/qms_module_panel.html" %}
+            {% endwith %}
+        </div>
+
+        <!-- TAB: Supplier / Material QC -->
+        <div class="qc-tab-content" id="tab-qms-supplier">
+            <div class="qc-section-header"><div class="title"><div class="section-ico" style="background:#fff8e7;color:#b7791f;"><i class="fas fa-boxes-stacked"></i></div>Supplier / Material QC</div><span class="pill pill-amber">{{ qc_qms_stats.supplier_quality }} open</span></div>
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                <div><strong>Incoming Material</strong><br><small>AR number, sampling, quarantine status, and test release.</small></div>
+                <div><strong>Vendor Trend</strong><br><small>Repeat failures, rejected lots, supplier complaints, and qualification status.</small></div>
+                <div><strong>Disposition</strong><br><small>QC test outcome communicates to QA supplier qualification actions.</small></div>
+            </div>
+            {% with actions=qc_qms_by_category.supplier_quality category="supplier_quality" module_name="Supplier / Material QC" create_hint="Describe material, AR number, supplier issue, or release test." empty_text="No open supplier/material QC actions." %}
+            {% include "dashboards/partials/qms_module_panel.html" %}
+            {% endwith %}
+        </div>
+
+        <!-- TAB: QC Enterprise QMS -->
+        <div class="qc-tab-content" id="tab-qms-enterprise">
+            <div class="qc-section-header"><div class="title"><div class="section-ico" style="background:#eef2ff;color:#3a5bd4;"><i class="fas fa-layer-group"></i></div>QC Enterprise QMS</div><span class="pill pill-blue">{{ qms_enterprise_stats.lab_specs }} specs</span></div>
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                <div><strong>Sampling & Specifications</strong><br><small>AQL sampling plans, lab methods, limits, units, and active specifications.</small></div>
+                <div><strong>Stability & Calibration</strong><br><small>Pull schedules, chambers, test status, instrument calibration due dates.</small></div>
+                <div><strong>Supplier / Reports</strong><br><small>Supplier qualification, COA/stability exports, and escalation rules.</small></div>
+            </div>
+            {% include "dashboards/partials/qms_enterprise_panel.html" %}
         </div>
 
         <!-- TAB 2: In Testing -->
@@ -524,7 +854,7 @@
     </div><!-- /qc-section -->
 
     <!-- QC Guidelines card -->
-    <div class="qc-section">
+    <div class="qc-section qc-home-block">
         <div class="qc-section-header">
             <div class="title">
                 <div class="section-ico" style="background:#eef5ff;color:#3a8dde;"><i class="fas fa-clipboard-list"></i></div>
@@ -583,6 +913,11 @@
                                   placeholder="Document test parameters, observations and findings…"></textarea>
                         <small class="form-text text-muted">Required for Reject/Fail decisions.</small>
                     </div>
+                    <div id="signaturePasswordGroup" style="display:none;margin-top:14px;">
+                        <label class="form-label fw-semibold">Re-enter your password <span class="text-danger">*</span></label>
+                        <input class="form-control" type="password" id="signature_password" name="signature_password" autocomplete="current-password">
+                        <small class="form-text text-muted">Required to confirm a QC pass or fail decision.</small>
+                    </div>
                     <input type="hidden" id="test_phase_id" name="phase_id">
                     <input type="hidden" id="test_action" name="action">
                 </div>
@@ -597,6 +932,9 @@
 
 <script>
 function switchQcTab(tabId) {
+    const isQms = tabId.indexOf('tab-qms-') === 0;
+    const main = document.querySelector('.qc-main');
+    if (main) main.classList.toggle('qms-mode', isQms);
     document.querySelectorAll('.qc-tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.qc-tab').forEach(el => el.classList.remove('active'));
     const content = document.getElementById(tabId);
@@ -604,6 +942,10 @@ function switchQcTab(tabId) {
     const btnId = 'tab-btn-' + tabId.replace('tab-', '');
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.add('active');
+    if (isQms) {
+        const workspace = document.getElementById('qc-workspace-section');
+        if (workspace) workspace.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 function filterQcTable(query) {
@@ -633,6 +975,8 @@ function openTestModal(phaseId, phaseName, bmrNumber, action) {
             <small>Batch will advance to the next workflow phase.</small></div>`;
         submitEl.textContent = 'Approve & Pass';
         submitEl.className = 'btn btn-success';
+        document.getElementById('signaturePasswordGroup').style.display = '';
+        document.getElementById('signature_password').required = true;
     } else if (action === 'fail') {
         titleEl.textContent = 'Reject / Fail QC Test';
         bodyEl.innerHTML = `<div class="alert alert-danger mb-0" style="border-radius:8px;">
@@ -641,6 +985,13 @@ function openTestModal(phaseId, phaseName, bmrNumber, action) {
         submitEl.textContent = 'Reject & Fail';
         submitEl.className = 'btn btn-danger';
         commentsEl.required = true;
+        document.getElementById('signaturePasswordGroup').style.display = '';
+        document.getElementById('signature_password').required = true;
+    }
+    if (action === 'start') {
+        document.getElementById('signaturePasswordGroup').style.display = 'none';
+        document.getElementById('signature_password').required = false;
+        document.getElementById('signature_password').value = '';
     }
     document.getElementById('test_phase_id').value = phaseId;
     document.getElementById('test_action').value = action;

@@ -84,28 +84,38 @@ def product_is_ointment_like(product) -> bool:
 def get_packing_phase_for_product(product) -> Optional[str]:
     """Return the canonical packing phase name for a product.
 
-    Uses ProductTypeConfiguration.default_packing_phase when available, else falls
-    back to sensible defaults based on legacy product_type values and tablet_type.
+    Product variants determine the packing route for tablets and capsules:
+
+    - normal tablets and capsules use blister packing;
+    - tablet type 2 and UG capsules use bulk packing.
+
+    ProductTypeConfiguration is intentionally consulted only for product types
+    without a variant-specific packing rule.  A generic ``capsule`` setting
+    cannot safely choose between blister and bulk because that choice is stored
+    on the product's ``capsule_type`` field.
     """
     if product is None:
         return None
 
-    cfg = get_product_type_config_for(product)
-    if cfg and cfg.default_packing_phase:
-        return cfg.default_packing_phase
-
-    # Legacy fallback logic
     key = getattr(product, 'product_type', '')
     if is_tablet(key):
         tablet_type = getattr(product, 'tablet_type', TABLET_TYPES['NORMAL'])
         if tablet_type and tablet_type == 'tablet_2':
             return 'bulk_packing'
         return 'blister_packing'
+
     if is_capsule(key):
         capsule_type = getattr(product, 'capsule_type', 'normal') or 'normal'
         if capsule_type == 'ug':
             return 'bulk_packing'
         return 'blister_packing'
+
+    # Custom/non-variant product types may still use an administrator-defined
+    # packing phase.
+    cfg = get_product_type_config_for(product)
+    if cfg and cfg.default_packing_phase:
+        return cfg.default_packing_phase
+
     if is_ointment(key):
         return 'secondary_packaging'
 

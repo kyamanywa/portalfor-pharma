@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ report_label }} {{ report_number }}{% endblock %}
+{% block extra_css %}
+<style>
+@page { size:A4; margin:14mm; }
+.qms-pdf-shell { background:#fff !important; padding:0 !important; min-height:0 !important; }
+.qms-pdf-card { border:1px solid #cbd5e1 !important; border-radius:0 !important; box-shadow:none !important; }
+.qms-pdf-brand { display:flex; align-items:center; gap:14px; padding:0 0 12px; border-bottom:3px solid #0b4f8a; margin-bottom:14px; }
+.qms-pdf-brand img { width:58px; height:58px; object-fit:contain; }
+.qms-pdf-brand h1 { margin:0; color:#123b68; font-size:19px; }
+.qms-pdf-brand p { margin:3px 0 0; color:#52657c; font-size:10px; }
+.qms-pdf-code { margin-left:auto; text-align:right; color:#52657c; font-size:10px; }
+.qms-pdf-code strong { display:block; color:#123b68; font-size:12px; }
+.qms-pdf-section { page-break-inside:avoid; }
+.qms-pdf-footer { margin-top:16px; padding-top:7px; border-top:1px solid #cbd5e1; color:#64748b; font-size:9px; }
+@media print { body { background:#fff !important; } .qms-pdf-shell { margin:0 !important; } .no-print { display:none !important; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="qms-pdf-shell" style="padding:18px;background:#eef1f5;min-height:100vh;">
+    <div class="no-print" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px;">
+        <div style="min-width:260px;flex:1;">
+            <h2 style="font-size:26px;margin:0;color:#071735;">{{ report_label }} Report</h2>
+            <p style="margin:8px 0 0;color:#55607d;font-size:14px;">{{ report_number }} · {{ report_title }}</p>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'dashboards:qms_reports' %}">Back to Search</a>
+            <a class="btn btn-primary btn-sm" href="{{ download_url }}">Download PDF</a>
+        </div>
+    </div>
+
+    <div class="qms-pdf-card" style="background:#fff;border:1px solid #dce1e8;border-radius:12px;overflow:hidden;box-shadow:0 10px 28px rgba(15,23,42,.08);">
+        <div class="qms-pdf-brand">
+            <img src="{% if qms_logo_uri %}{{ qms_logo_uri }}{% else %}{% static 'kpi_logo.png' %}{% endif %}" alt="KPI logo">
+            <div><h1>Kampala Pharmaceutical Industries</h1><p>Controlled Quality Management System Record</p></div>
+            <div class="qms-pdf-code"><strong>{{ report_number }}</strong>{{ report_label }}</div>
+        </div>
+        <div style="padding:20px 24px;border-bottom:1px solid #edf0f5;background:#f7f9fc;">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;">
+                <div style="min-width:220px;flex:1;">
+                    <div style="font-size:12px;font-weight:700;color:#5c6a90;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Report Overview</div>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+                        <div><strong style="display:block;font-size:15px;color:#071735;">{{ report_label }}</strong><span style="color:#5c6a90;">Report Type</span></div>
+                        <div><strong style="display:block;font-size:15px;color:#071735;">{{ report_number }}</strong><span style="color:#5c6a90;">Report No.</span></div>
+                        <div><strong style="display:block;font-size:15px;color:#071735;">{% if record.get_status_display %}{{ record.get_status_display }}{% else %}{{ record.status|default:"Active" }}{% endif %}</strong><span style="color:#5c6a90;">Status</span></div>
+                        <div><strong style="display:block;font-size:15px;color:#071735;">{{ generated_at|date:"M d, Y H:i" }}</strong><span style="color:#5c6a90;">Generated</span></div>
+                    </div>
+                </div>
+                <div style="min-width:220px;flex:1;display:flex;flex-direction:column;justify-content:center;">
+                    <div style="font-size:12px;font-weight:700;color:#5c6a90;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Prepared for</div>
+                    <div style="font-size:15px;color:#071735;">Kampala Pharmaceutical Industries</div>
+                    <div style="color:#5c6a90;line-height:1.6;margin-top:6px;">Clean, structured QMS record summary with clearly separated metadata and detail sections.</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="padding:22px 24px;">
+            <section style="margin-bottom:24px;">
+                <h3 style="font-size:18px;margin:0 0 12px;color:#183b7d;">Record Details</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
+                    {% for label,value in report_fields %}
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;">
+                        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5c6a90;margin-bottom:8px;">{{ label }}</div>
+                        <div style="font-size:14px;color:#182a46;line-height:1.5;">{{ value|default:"-" }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {% if report_type == "lab" %}
+            <section>
+                <h3 style="font-size:18px;margin:0 0 12px;color:#183b7d;">OOS / OOT Investigation Flow</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+                    <div style="background:#fff;border:1px solid #e4ebf5;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:700;color:#5c6a90;margin-bottom:6px;">Analyst Review</div><div style="color:#182a46;">{{ record.analyst_review|default:"Pending" }}</div></div>
+                    <div style="background:#fff;border:1px solid #e4ebf5;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:700;color:#5c6a90;margin-bottom:6px;">Instrument Review</div><div style="color:#182a46;">{{ record.instrument_review|default:"Pending" }}</div></div>
+                    <div style="background:#fff;border:1px solid #e4ebf5;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:700;color:#5c6a90;margin-bottom:6px;">Method Review</div><div style="color:#182a46;">{{ record.method_review|default:"Pending" }}</div></div>
+                    <div style="background:#fff;border:1px solid #e4ebf5;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:700;color:#5c6a90;margin-bottom:6px;">Sample Review</div><div style="color:#182a46;">{{ record.sample_review|default:"Pending" }}</div></div>
+                    <div style="background:#fff;border:1px solid #e4ebf5;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:700;color:#5c6a90;margin-bottom:6px;">Root Cause</div><div style="color:#182a46;">{{ record.root_cause|default:"Pending" }}</div></div>
+                    <div style="background:#fff;border:1px solid #e4ebf5;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:700;color:#5c6a90;margin-bottom:6px;">QA Conclusion</div><div style="color:#182a46;">{{ record.qa_conclusion|default:"Pending" }}</div></div>
+                </div>
+            </section>
+            {% endif %}
+            {% if report_type == "capa" and capa_record %}
+            <section style="margin-top:24px;">
+                <h3 style="font-size:18px;margin:0 0 12px;color:#183b7d;">CAPA Lifecycle Summary</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;">
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Status</strong><br>{{ capa_record.get_status_display }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Source</strong><br>{{ capa_record.get_source_type_display }} · {{ capa_record.source_reference|default:"Not linked" }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Root Cause</strong><br>{{ capa_record.root_cause_analysis|default:"Pending" }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Effectiveness</strong><br>{{ capa_record.get_effectiveness_result_display|default:"Not assessed" }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Closure Readiness</strong><br>{% if capa_record.is_ready_for_closure %}Ready{% else %}Incomplete{% endif %}</div>
+                </div>
+            </section>
+            {% endif %}
+            {% if report_type == "change_control" and change_record %}
+            <section style="margin-top:24px;">
+                <h3 style="font-size:18px;margin:0 0 12px;color:#183b7d;">Change Control Lifecycle Summary</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;">
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Type / Risk</strong><br>{{ change_record.get_change_type_display }} · {{ change_record.get_risk_level_display }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Status</strong><br>{{ change_record.get_status_display }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Impact Summary</strong><br>{{ change_record.impact_summary|default:"Pending" }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Implementation</strong><br>{{ change_record.implementation_notes|default:"Pending" }}</div>
+                    <div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Effectiveness</strong><br>{{ change_record.get_effectiveness_result_display|default:"Not assessed" }}</div>
+                </div>
+            </section>
+            {% endif %}
+            {% if report_type == "document" and document_record %}
+            <section class="qms-pdf-section" style="margin-top:24px;border:1px solid #b7d7c2;background:#f4fbf6;padding:14px;border-radius:8px;"><h3 style="font-size:16px;margin:0 0 8px;color:#183b7d;">Controlled Source File</h3>{% if document_record.controlled_file %}<strong>File attached:</strong> {{ document_record.controlled_file.name|cut:"qms_documents/" }}<div style="margin-top:5px;color:#52657c;">This is the actual SOP/document content. The QMS report is the control-history summary.</div>{% else %}<strong style="color:#7a5a16;">No controlled file uploaded.</strong><div style="margin-top:5px;color:#7a5a16;">Upload the revised SOP/document file before approval. This report cannot show the document contents until the file is attached.</div>{% endif %}</section>
+            <section style="margin-top:24px;"><h3 style="font-size:18px;margin:0 0 12px;color:#183b7d;">Document Control Summary</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;"><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Type / Version</strong><br>{{ document_record.get_document_type_display }} · {{ document_record.version }}</div><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Status</strong><br>{{ document_record.get_status_display }}</div><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Review Control</strong><br>Next review: {{ document_record.next_review_date|date:"M d, Y"|default:"Not scheduled" }}</div><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Approval</strong><br>{% if document_record.ready_for_effective %}Ready / effective controlled document{% else %}Workflow incomplete{% endif %}</div></div></section>
+            {% if document_record.revision_history %}<section style="margin-top:24px;"><h3 style="font-size:18px;margin:0 0 12px;color:#183b7d;">Revision History</h3><div style="border:1px solid #e5ebf5;border-radius:10px;overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead style="background:#f7f9fc;"><tr><th style="padding:10px;text-align:left;">From version</th><th style="padding:10px;text-align:left;">To version</th><th style="padding:10px;text-align:left;">Previous status</th><th style="padding:10px;text-align:left;">New status</th></tr></thead><tbody>{% for revision in document_record.revision_history %}<tr><td style="padding:10px;border-top:1px solid #edf0f5;">{{ revision.from_version }}</td><td style="padding:10px;border-top:1px solid #edf0f5;">{{ revision.to_version }}</td><td style="padding:10px;border-top:1px solid #edf0f5;">{{ revision.from_status|title }}</td><td style="padding:10px;border-top:1px solid #edf0f5;">{{ revision.to_status|title }}</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
+            {% endif %}
+            {% if report_type == "query" and query_record %}
+            <section style="margin-top:24px;"><h3 style="font-size:18px;margin:0 0 12px;color:#183b7d;">Quality Query Lifecycle Summary</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;"><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Type / Priority</strong><br>{{ query_record.get_query_type_display }} · {{ query_record.get_priority_display }}</div><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Status</strong><br>{{ query_record.get_status_display }}</div><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Impact / Root Cause</strong><br>{{ query_record.impact_assessment|default:query_record.root_cause|default:"Pending" }}</div><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Response / Resolution</strong><br>{{ query_record.resolution|default:query_record.response|default:"Pending" }}</div><div style="background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;padding:14px;"><strong>Closure Readiness</strong><br>{% if query_record.ready_for_close %}Ready{% else %}Incomplete{% endif %}</div></div></section>
+            {% endif %}
+        </div>
+    </div>
+    <div class="qms-pdf-footer">Controlled QMS report · Generated {{ generated_at|date:"M d, Y H:i" }} · Verify the current controlled file before use.</div>
+</div>
+{% endblock %}

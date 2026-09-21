@@ -201,7 +201,7 @@
                                                     <i class="fas fa-eye"></i> View
                                                 </a>
                                                 {% if phase.status != 'completed' and phase.status != 'rejected' %}
-                                                <a href="{% url 'dashboards:phase_form' phase.id %}"
+                                                <a href="{% url 'dashboards:phase_form' phase.id %}{% if phase.phase.phase_name == 'blister_packing' or phase.phase.phase_name == 'bulk_packing' %}#packing-sec-machine_setup{% endif %}"
                                                    class="btn btn-sm {% if phase.phase_has_lc and phase.lc_submitted %}btn-success{% elif phase.template_section_completed %}btn-success{% elif phase.has_saved_data %}btn-info{% else %}btn-warning{% endif %}">
                                                     <i class="fas fa-file-alt"></i>
                                                     {% if phase.phase_has_lc and phase.lc_submitted %}Filled{% elif phase.template_section_completed %}Filled{% elif phase.has_saved_data %}Continue{% else %}Draft{% endif %}

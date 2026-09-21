@@ -17,6 +17,37 @@ logger = logging.getLogger('workflow')
 
 class WorkflowService:
     """Service to manage workflow progression and phase automation"""
+
+    @classmethod
+    def activate_packing_phase(cls, bmr):
+        """Promote the product-specific packing phase to ``pending``.
+
+        This is an idempotent repair helper for legacy BMRs where packaging
+        material release was completed without activating the configured
+        packing phase.  Never changes a phase that is already active or done.
+        """
+        packing_phase_name = util_get_packing_phase_for_product(
+            getattr(bmr, 'product', None)
+        )
+        if not packing_phase_name:
+            return None
+
+        execution = BatchPhaseExecution.objects.filter(
+            bmr=bmr,
+            phase__phase_name=packing_phase_name,
+        ).select_related('phase').first()
+        if not execution or execution.status != 'not_ready':
+            return execution
+
+        execution.status = 'pending'
+        execution.save(update_fields=['status'])
+        logger.info(
+            "Activated %s phase for legacy BMR %s",
+            packing_phase_name,
+            getattr(bmr, 'batch_number', bmr.pk),
+        )
+        return execution
+
     @classmethod
     def initialize_workflow_from_template(cls, bmr):
         """Initialize workflow phases for a BMR using the new template system"""
@@ -298,6 +329,16 @@ class WorkflowService:
             
             # Cannot start phases that are not pending
             if current_execution.status != 'pending':
+                return False
+
+            # Production phases are strictly sequential.  This guard also
+            # protects legacy batches whose records were opened by an older
+            # route that did not enforce the single-active-phase rule.
+            another_active_phase = BatchPhaseExecution.objects.filter(
+                bmr=bmr,
+                status='in_progress',
+            ).exclude(pk=current_execution.pk).exists()
+            if another_active_phase:
                 return False
             
             # Get all phases with lower order (prerequisites)
@@ -591,7 +632,7 @@ class WorkflowService:
                 if prerequisites_met:
                     next_phase.status = 'pending' 
                     next_phase.save()
-                    logger.info(f"[WORKFLOW DEBUG] ✓ Activated next sequential phase: {next_phase.phase.phase_name} for BMR {bmr.batch_number}")
+                    logger.info(f"[WORKFLOW DEBUG] [OK] Activated next sequential phase: {next_phase.phase.phase_name} for BMR {bmr.batch_number}")
                     return True
                 else:
                     logger.warning(f"Cannot activate {next_phase.phase.phase_name} for BMR {bmr.batch_number} - prerequisites not met")
@@ -676,6 +717,7 @@ class WorkflowService:
             'blending_operator': ['blending'],
             'compression_operator': ['compression'],
             'coating_operator': ['coating'],
+            'drying_operator': ['drying'],
             'filling_operator': ['filling'],
             'tube_filling_operator': ['tube_filling'],
             'packing_operator': ['blister_packing', 'bulk_packing', 'secondary_packaging'],

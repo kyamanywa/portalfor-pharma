@@ -262,8 +262,8 @@
                         <td><strong>{{ entry.bmr.batch_number }}</strong></td>
                         <td>{{ entry.bmr.manufacturing_date|date:"Y-m-d" }}</td>
                         <td>{{ entry.bmr.expiry_date|date:"Y-m-d" }}</td>
-                        {% for ar_number in entry.aligned_ingredients %}
-                        <td>{{ ar_number }}</td>
+                        {% for ingredient in entry.active_ingredients %}
+                        <td>{{ ingredient.ar_number }}</td>
                         {% endfor %}
                         <td>{{ entry.bmr.batch_size }} {{ entry.bmr.batch_size_unit }}</td>
                         <td>

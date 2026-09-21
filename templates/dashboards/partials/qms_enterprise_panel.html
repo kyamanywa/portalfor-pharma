@@ -1,0 +1,85 @@
+<style>
+    .qms-enterprise-wrap{padding:16px 18px;}
+    .qms-enterprise-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;}
+    .qms-enterprise-actions h3{font-size:16px;margin:0;color:#071735;}
+    .qms-enterprise-actions p{margin:2px 0 0;color:#647098;font-size:12px;}
+    .qms-metric-grid{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:8px;margin-bottom:14px;}
+    .qms-metric{border:1px solid #e4e8f2;background:#f8fafc;border-radius:8px;padding:10px;min-height:68px;}
+    .qms-metric strong{display:block;font-size:20px;line-height:1;color:#071735;}
+    .qms-metric small{display:block;margin-top:7px;color:#5f6d96;line-height:1.25;}
+    .qms-work-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+    .qms-workbox{border:1px solid #e4e8f2;border-radius:8px;overflow:hidden;background:#fff;}
+    .qms-workbox h4{font-size:13px;margin:0;padding:10px 12px;background:#f5f7fb;border-bottom:1px solid #e4e8f2;color:#071735;}
+    .qms-workbox .rowline{padding:9px 12px;border-bottom:1px solid #f0f2f6;font-size:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;}
+    .qms-workbox .rowline:last-child{border-bottom:none;}
+    .qms-workbox .empty{padding:14px 12px;color:#7c86ad;font-size:12px;}
+    .qms-layer-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .qms-layer-table th{background:#f5f7fb;color:#53618e;text-transform:uppercase;font-size:11px;letter-spacing:.04em;text-align:left;padding:9px;border:1px solid #e4e8f2;}
+    .qms-layer-table td{padding:9px;border:1px solid #e4e8f2;vertical-align:top;}
+    @media (max-width:1200px){.qms-metric-grid{grid-template-columns:repeat(3,1fr)}.qms-work-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="qms-enterprise-wrap">
+    <div class="qms-enterprise-actions">
+        <div>
+            <h3>Operational overview</h3>
+            <p>Monitor approvals, QC master data, regulatory work, suppliers, training, and escalation queues.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}">Search Reports</a>
+            <a class="btn btn-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=stability">Stability Reports</a>
+        </div>
+    </div>
+
+    <div class="qms-metric-grid">
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.approval_routes }}</strong><small>Approval routes</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.sampling_plans }}</strong><small>Sampling plans</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.lab_specs }}</strong><small>Lab specifications</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.stability_pulls }}</strong><small>Stability pulls</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.calibrations_due }}</strong><small>Calibration due</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.training_due }}</strong><small>Training due</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.suppliers }}</strong><small>Supplier qualifications</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.complaints }}</strong><small>Complaints/recalls</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.regulatory_packages }}</strong><small>Regulatory packages</small></div>
+        <div class="qms-metric"><strong>{{ qms_enterprise_stats.notification_rules }}</strong><small>Escalation rules</small></div>
+    </div>
+
+    <div class="qms-work-grid">
+        <div class="qms-workbox">
+            <h4>Regulatory Packages</h4>
+            {% for package in qms_enterprise_latest.regulatory_packages %}
+            <div class="rowline">
+                <span>{{ package.package_number }} - {{ package.title|truncatechars:30 }}</span>
+                <a href="{% url 'dashboards:qms_regulatory_package_detail' package.pk %}" class="btn btn-outline-primary btn-sm">Workspace</a>
+            </div>
+            {% empty %}<div class="empty">No regulatory packages.</div>{% endfor %}
+        </div>
+        <div class="qms-workbox">
+            <h4>Stability Pulls</h4>
+            {% for pull in qms_enterprise_latest.stability_pulls %}
+            <div class="rowline"><span>{{ pull.product|default:"Product" }} {{ pull.time_point }}</span><span>{{ pull.pull_date|date:"M d" }}</span></div>
+            {% empty %}<div class="empty">No stability pulls scheduled.</div>{% endfor %}
+        </div>
+        <div class="qms-workbox">
+            <h4>Supplier Qualification</h4>
+            {% for supplier in qms_enterprise_latest.supplier_qualifications %}
+            <div class="rowline"><span>{{ supplier.supplier_name|truncatechars:34 }}</span><span class="pill pill-blue">{{ supplier.get_status_display }}</span></div>
+            {% empty %}<div class="empty">No supplier records.</div>{% endfor %}
+        </div>
+        <div class="qms-workbox">
+            <h4>Calibration / Training</h4>
+            {% for calibration in qms_enterprise_latest.calibrations %}
+            <div class="rowline"><a href="{% url 'dashboards:qms_calibration_detail' calibration.pk %}" style="color:#2563eb;text-decoration:none">{{ calibration.equipment_id }} - {{ calibration.equipment_name|truncatechars:22 }}</a><span>{{ calibration.next_due_date|date:"M d"|default:"-" }}</span></div>
+            {% empty %}<div class="empty">No calibration due records.</div>{% endfor %}
+        </div>
+    </div>
+
+    <table class="qms-layer-table">
+        <thead><tr><th>Layer</th><th>Operational Coverage</th><th>Reports</th></tr></thead>
+        <tbody>
+            <tr><td>Approvals / E-Signatures</td><td>Prepared, reviewed, approved, rejected, signature event, signer hash, field audit trail.</td><td><a href="{% url 'dashboards:qms_reports' %}?type=document">Document reports</a></td></tr>
+            <tr><td>QC Master Data</td><td>AQL sampling plans, lab specifications, stability pulls, calibration records.</td><td><a href="{% url 'dashboards:qms_reports' %}?type=stability">Stability reports</a></td></tr>
+            <tr><td>Supplier / Training / Regulatory</td><td>Supplier qualification, SOP training, regulatory packages, complaint/recall oversight, escalation rules.</td><td><a href="{% url 'dashboards:qms_reports' %}">Enterprise reports</a></td></tr>
+        </tbody>
+    </table>
+</div>

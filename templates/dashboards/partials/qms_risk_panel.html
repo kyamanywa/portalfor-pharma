@@ -1,0 +1,336 @@
+<div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;">
+    <form method="post" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="qms_risk_create">
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Risk Title</label>
+            <input class="form-control form-control-sm" name="title" placeholder="Process or quality risk" required>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Method</label>
+            <select class="form-select form-select-sm" name="method">
+                <option value="fmea">FMEA</option>
+                <option value="haccp">HACCP</option>
+                <option value="risk_matrix">Risk Matrix</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Area</label>
+            <input class="form-control form-control-sm" name="process_area" placeholder="Granulation, QC lab...">
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Hazard</label>
+            <input class="form-control form-control-sm" name="hazard" placeholder="Hazard / failure mode">
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Severity (S)</label>
+            <input class="form-control form-control-sm" type="number" min="1" max="10" name="severity" value="1">
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Occurrence (O)</label>
+            <input class="form-control form-control-sm" type="number" min="1" max="10" name="occurrence" value="1">
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Detectability (D)</label>
+            <input class="form-control form-control-sm" type="number" min="1" max="10" name="detectability" value="1">
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:700;color:#5c6a90;text-transform:uppercase;">Mitigation</label>
+            <input class="form-control form-control-sm" name="mitigation_plan" placeholder="Controls or action plan">
+        </div>
+        <div style="display:flex;justify-content:flex-end;align-items:end;">
+            <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-plus me-1"></i>Add</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.risk-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    margin: 16px;
+}
+.risk-stat-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+.risk-stat-card:hover {
+    transform: translateY(-4px);
+}
+.risk-stat-number {
+    font-size: 36px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+}
+.risk-stat-label {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.risk-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+.risk-card {
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid #e5e7eb;
+    transition: all 0.3s;
+    overflow: hidden;
+}
+.risk-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+.risk-card.risk-critical {
+    border-left-color: #dc2626;
+}
+.risk-card.risk-high {
+    border-left-color: #ea580c;
+}
+.risk-card.risk-medium {
+    border-left-color: #f59e0b;
+}
+.risk-card.risk-low {
+    border-left-color: #10b981;
+}
+.risk-card-header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+}
+.risk-card-header:hover {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+.risk-card-number {
+    font-size: 13px;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 6px;
+}
+.risk-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+.risk-card-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.risk-method-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.risk-card-body {
+    padding: 20px;
+}
+.risk-rpn-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.risk-rpn-box {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+.risk-rpn-label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.risk-rpn-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.risk-rpn-formula {
+    font-size: 12px;
+    color: #94a3b8;
+}
+.risk-level-indicator {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    margin-top: 8px;
+}
+.risk-level-critical {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.risk-level-high {
+    background: #ffedd5;
+    color: #ea580c;
+}
+.risk-level-medium {
+    background: #fef3c7;
+    color: #f59e0b;
+}
+.risk-level-low {
+    background: #d1fae5;
+    color: #10b981;
+}
+.risk-hazard-box {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+.risk-controls-box {
+    background: #dbeafe;
+    border-left: 4px solid #3b82f6;
+    padding: 12px;
+    border-radius: 6px;
+}
+.risk-box-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.risk-box-text {
+    font-size: 14px;
+    color: #1e293b;
+    line-height: 1.5;
+}
+.risk-reduction {
+    display: inline-block;
+    background: #d1fae5;
+    color: #10b981;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-top: 12px;
+}
+</style>
+
+<!-- Stats Grid -->
+<div class="risk-stats-grid">
+    <div class="risk-stat-card">
+        <div class="risk-stat-number">{{ qms_record_stats.risks }}</div>
+        <div class="risk-stat-label">Open Assessments</div>
+    </div>
+    <div class="risk-stat-card">
+        <div class="risk-stat-number">{{ qms_record_stats.critical_risks }}</div>
+        <div class="risk-stat-label">Critical Risks</div>
+    </div>
+    <div class="risk-stat-card">
+        <div class="risk-stat-number">{{ qms_risks|length }}</div>
+        <div class="risk-stat-label">Total Risks</div>
+    </div>
+    <div class="risk-stat-card">
+        <div class="risk-stat-number">FMEA</div>
+        <div class="risk-stat-label">Method Active</div>
+    </div>
+</div>
+
+{% if qms_risks %}
+<div class="risk-cards-grid">
+    {% for risk in qms_risks %}
+    <div class="risk-card risk-{{ risk.risk_level }}">
+        <!-- Card Header (Clickable) -->
+        <div class="risk-card-header" onclick="window.location.href='{% url 'dashboards:qms_risk_detail' risk.id %}'">
+            <div class="risk-card-number">{{ risk.risk_number }}</div>
+            <div class="risk-card-title">{{ risk.title }}</div>
+            <div class="risk-card-meta">
+                <span class="risk-method-badge">{{ risk.get_method_display }}</span>
+                <span style="font-size: 12px; color: #64748b;">
+                    <i class="fas fa-map-marker-alt"></i> {{ risk.process_area|default:"No area" }}
+                </span>
+                <span class="pill {% if risk.status == 'approved' %}pill-green{% elif risk.status == 'in_review' %}pill-blue{% elif risk.status == 'mitigation' %}pill-orange{% else %}pill-gray{% endif %}">
+                    {{ risk.get_status_display }}
+                </span>
+            </div>
+        </div>
+        
+        <!-- Card Body -->
+        <div class="risk-card-body">
+            <!-- RPN Section -->
+            <div class="risk-rpn-section">
+                <div class="risk-rpn-box" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+                    <div class="risk-rpn-label">Initial RPN</div>
+                    <div class="risk-rpn-value" style="color: #f59e0b;">{{ risk.rpn }}</div>
+                    <div class="risk-rpn-formula">S{{ risk.severity }} × O{{ risk.occurrence }} × D{{ risk.detectability }}</div>
+                    <div class="risk-level-indicator risk-level-{{ risk.risk_level }}">
+                        {{ risk.get_risk_level_display|upper }}
+                    </div>
+                </div>
+                
+                <div class="risk-rpn-box" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+                    <div class="risk-rpn-label">Residual RPN</div>
+                    <div class="risk-rpn-value" style="color: #10b981;">{{ risk.residual_rpn }}</div>
+                    <div class="risk-rpn-formula">S{{ risk.residual_severity }} × O{{ risk.residual_occurrence }} × D{{ risk.residual_detectability }}</div>
+                    {% if risk.rpn > risk.residual_rpn %}
+                    <div class="risk-reduction">
+                        ↓ Risk Mitigated
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Hazard -->
+            {% if risk.hazard or risk.failure_mode %}
+            <div class="risk-hazard-box">
+                <div class="risk-box-label">⚠️ Hazard / Failure Mode</div>
+                <div class="risk-box-text">{{ risk.hazard|default:risk.failure_mode }}</div>
+            </div>
+            {% endif %}
+            
+            <!-- Current Controls -->
+            {% if risk.current_controls %}
+            <div class="risk-controls-box">
+                <div class="risk-box-label">🛡️ Current Controls</div>
+                <div class="risk-box-text">{{ risk.current_controls }}</div>
+            </div>
+            {% endif %}
+            
+            <!-- Action Button -->
+            <div style="margin-top: 16px; text-align: center;">
+                <a href="{% url 'dashboards:qms_risk_detail' risk.id %}" class="btn btn-outline-primary btn-sm" style="width: 100%;">
+                    <i class="fas fa-eye"></i> View Full Assessment
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="qa-empty" style="margin: 40px; text-align: center; padding: 60px;">
+    <i class="fas fa-shield-alt" style="font-size: 64px; color: #cbd5e1; margin-bottom: 20px;"></i>
+    <p style="font-size: 18px; color: #64748b; font-weight: 600;">No risk assessments yet.</p>
+    <p style="color: #94a3b8;">Create your first FMEA to identify and mitigate quality risks.</p>
+</div>
+{% endif %}

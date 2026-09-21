@@ -1,0 +1,792 @@
+<div class="hqa-module-panel" id="module-card-sampling">
+    <div class="hqa-module-header">
+        <h2>Sampling Plans</h2>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?q=sampling">Sampling Reports</a>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_sampling_create">
+            
+            <div class="form-group">
+                <label>PLAN NAME</label>
+                <input name="name" placeholder="Plan name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>PRODUCT</label>
+                <select name="product">
+                    <option value="">Select Product</option>
+                    {% for product in products %}
+                    <option value="{{ product.pk }}">{{ product.product_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>INSPECTION TYPE</label>
+                <input name="inspection_type" placeholder="Visual, dimensional, etc.">
+            </div>
+            
+            <div class="form-group">
+                <label>AQL LEVEL</label>
+                <input name="aql_level" placeholder="Acceptable Quality Level">
+            </div>
+            
+            <div class="form-group">
+                <label>SAMPLE SIZE</label>
+                <input type="number" name="sample_size" min="0" placeholder="Number of samples">
+            </div>
+            
+            <div class="form-group">
+                <label>ACCEPTANCE NUMBER</label>
+                <input type="number" name="acceptance_number" min="0" placeholder="Accept threshold">
+            </div>
+            
+            <div class="form-group">
+                <label>REJECTION NUMBER</label>
+                <input type="number" name="rejection_number" min="0" placeholder="Reject threshold">
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.sampling_plans|length }}</span>
+                <span class="qms-metric-label">Active sampling plans</span>
+            </div>
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.products|length }}</span>
+                <span class="qms-metric-label">Products covered</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Plan Name</th>
+                        <th>Product</th>
+                        <th>Inspection Type</th>
+                        <th>AQL</th>
+                        <th>Sample Size</th>
+                        <th>Accept / Reject</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.sampling_plans %}
+                    <tr>
+                        <td><strong>{{ item.name }}</strong></td>
+                        <td>{{ item.product|default:"-" }}</td>
+                        <td>{{ item.inspection_type|default:"-" }}</td>
+                        <td>{{ item.aql_level|default:"-" }}</td>
+                        <td>{{ item.sample_size }}</td>
+                        <td><span class="badge bg-success">A{{ item.acceptance_number }}</span> / <span class="badge bg-danger">R{{ item.rejection_number }}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('sampling', {id:'{{ item.id }}', name:'{{ item.name|escapejs }}', product:'{{ item.product.id|default:"" }}', inspection_type:'{{ item.inspection_type|escapejs }}', aql_level:'{{ item.aql_level|escapejs }}', sample_size:'{{ item.sample_size }}', acceptance_number:'{{ item.acceptance_number }}', rejection_number:'{{ item.rejection_number }}', procedure_reference:'{{ item.procedure_reference|escapejs }}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('sampling', '{{ item.id }}', '{{ item.name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No sampling plans defined yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="hqa-module-panel" id="module-card-lab-specs">
+    <div class="hqa-module-header">
+        <h2>Lab Specifications</h2>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?q=specification">Specification Reports</a>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_lab_spec_create">
+            
+            <div class="form-group">
+                <label>PRODUCT</label>
+                <select name="product">
+                    <option value="">Select Product</option>
+                    {% for product in products %}
+                    <option value="{{ product.pk }}">{{ product.product_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>TEST NAME</label>
+                <input name="test_name" placeholder="Test name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>METHOD REFERENCE</label>
+                <input name="method_reference" placeholder="USP, BP, in-house method">
+            </div>
+            
+            <div class="form-group">
+                <label>SPECIFICATION</label>
+                <input name="specification" placeholder="Acceptance criteria" required>
+            </div>
+            
+            <div class="form-group">
+                <label>UNIT</label>
+                <input name="unit" placeholder="mg, %, ppm, etc.">
+            </div>
+            
+            <div class="form-group">
+                <label>EFFECTIVE DATE</label>
+                <input type="date" name="effective_date">
+            </div>
+            
+            <div class="form-group">
+                <label>EXPIRY DATE</label>
+                <input type="date" name="expiry_date">
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.lab_specs|length }}</span>
+                <span class="qms-metric-label">Active specifications</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Product</th>
+                        <th>Method</th>
+                        <th>Specification</th>
+                        <th>Unit</th>
+                        <th>Effective Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.lab_specs %}
+                    <tr>
+                        <td><strong>{{ item.test_name }}</strong></td>
+                        <td>{{ item.product|default:"-" }}</td>
+                        <td>{{ item.method_reference|default:"-" }}</td>
+                        <td>{{ item.specification }}</td>
+                        <td>{{ item.unit|default:"-" }}</td>
+                        <td>{{ item.effective_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('lab_spec', {id:'{{ item.id }}', product:'{{ item.product.id|default:"" }}', test_name:'{{ item.test_name|escapejs }}', method_reference:'{{ item.method_reference|escapejs }}', specification:'{{ item.specification|escapejs }}', unit:'{{ item.unit|escapejs }}', effective_date:'{{ item.effective_date|date:"Y-m-d"|default:"" }}', expiry_date:'{{ item.expiry_date|date:"Y-m-d"|default:"" }}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('lab_spec', '{{ item.id }}', '{{ item.test_name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No lab specifications defined yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="hqa-module-panel" id="module-card-stability">
+    <div class="hqa-module-header">
+        <h2>Stability Pulls</h2>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=stability">Stability Reports</a>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_stability_create">
+            
+            <div class="form-group">
+                <label>PRODUCT</label>
+                <select name="product">
+                    <option value="">Select Product</option>
+                    {% for product in products %}
+                    <option value="{{ product.pk }}">{{ product.product_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>CONDITION</label>
+                <select name="condition">
+                    <option value="long_term">Long Term</option>
+                    <option value="accelerated">Accelerated</option>
+                    <option value="intermediate">Intermediate</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>TIME POINT</label>
+                <input name="time_point" placeholder="0M, 3M, 6M, 12M" required>
+            </div>
+            
+            <div class="form-group">
+                <label>CHAMBER</label>
+                <input name="chamber" placeholder="Chamber ID or location">
+            </div>
+            
+            <div class="form-group">
+                <label>PULL DATE</label>
+                <input type="date" name="pull_date" required>
+            </div>
+            
+            <div class="form-group">
+                <label>STATUS</label>
+                <select name="status">
+                    <option value="scheduled">Scheduled</option>
+                    <option value="pulled">Pulled</option>
+                    <option value="tested">Tested</option>
+                    <option value="reviewed">Reviewed</option>
+                </select>
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.stability_pulls|length }}</span>
+                <span class="qms-metric-label">Scheduled pulls</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Condition</th>
+                        <th>Time Point</th>
+                        <th>Chamber</th>
+                        <th>Pull Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.stability_pulls %}
+                    <tr>
+                        <td><strong>{{ item.product|default:"-" }}</strong></td>
+                        <td>{{ item.get_condition_display }}</td>
+                        <td>{{ item.time_point }}</td>
+                        <td>{{ item.chamber|default:"-" }}</td>
+                        <td>{{ item.pull_date|date:"M d, Y" }}</td>
+                        <td><span class="badge bg-info">{{ item.get_status_display }}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('stability', {id:'{{ item.id }}', product:'{{ item.product.id|default:"" }}', condition:'{{ item.condition }}', time_point:'{{ item.time_point|escapejs }}', chamber:'{{ item.chamber|escapejs }}', pull_date:'{{ item.pull_date|date:"Y-m-d" }}', status:'{{ item.status }}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('stability', '{{ item.id }}', '{{ item.time_point|escapejs }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No stability pulls scheduled yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="hqa-module-panel" id="module-card-supplier">
+    <div class="hqa-module-header">
+        <h2>Supplier Qualification</h2>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=supplier">Supplier Reports</a>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_supplier_create">
+            
+            <div class="form-group">
+                <label>SUPPLIER NAME</label>
+                <input name="supplier_name" placeholder="Supplier name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>MATERIAL NAME</label>
+                <input name="material_name" placeholder="Raw material or component">
+            </div>
+            
+            <div class="form-group">
+                <label>STATUS</label>
+                <select name="status">
+                    <option value="candidate">Candidate</option>
+                    <option value="approved">Approved</option>
+                    <option value="conditional">Conditional</option>
+                    <option value="disqualified">Disqualified</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>RISK LEVEL</label>
+                <select name="risk_level">
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>QUALIFICATION SCORE</label>
+                <input type="number" name="qualification_score" placeholder="0-100">
+            </div>
+            
+            <div class="form-group">
+                <label>NEXT AUDIT DATE</label>
+                <input type="date" name="next_audit_date">
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.supplier_qualifications|length }}</span>
+                <span class="qms-metric-label">Qualified suppliers</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Supplier</th>
+                        <th>Material</th>
+                        <th>Status</th>
+                        <th>Risk Level</th>
+                        <th>Score</th>
+                        <th>Next Audit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.supplier_qualifications %}
+                    <tr>
+                        <td><strong>{{ item.supplier_name }}</strong></td>
+                        <td>{{ item.material_name|default:"-" }}</td>
+                        <td><span class="badge {% if item.calculated_status == 'overdue' %}bg-danger{% elif item.calculated_status == 'due' %}bg-warning text-dark{% elif item.calculated_status == 'out_of_service' %}bg-secondary{% else %}bg-success{% endif %}">{{ item.calculated_status_display }}</span></td>
+                        <td><span class="badge bg-warning">{{ item.get_risk_level_display }}</span></td>
+                        <td>{{ item.qualification_score }}</td>
+                        <td>{{ item.next_audit_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('supplier', {id:'{{ item.id }}', supplier_name:'{{ item.supplier_name|escapejs }}', material_name:'{{ item.material_name|escapejs }}', status:'{{ item.status }}', risk_level:'{{ item.risk_level }}', qualification_score:'{{ item.qualification_score }}', next_audit_date:'{{ item.next_audit_date|date:"Y-m-d"|default:"" }}', approval_notes:'{{ item.approval_notes|escapejs }}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('supplier', '{{ item.id }}', '{{ item.supplier_name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No supplier qualifications on record.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="hqa-module-panel" id="module-card-calibration">
+    <div class="hqa-module-header">
+        <h2>Calibration Schedule</h2>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=calibration">Calibration Reports</a>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_calibration_create">
+            
+            <div class="form-group">
+                <label>EQUIPMENT ID</label>
+                <input name="equipment_id" placeholder="Unique equipment identifier" required>
+            </div>
+            
+            <div class="form-group">
+                <label>EQUIPMENT NAME</label>
+                <input name="equipment_name" placeholder="Equipment name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>DEPARTMENT</label>
+                <input name="department" placeholder="Production, QC, warehouse">
+            </div>
+            
+            <div class="form-group">
+                <label>STATUS</label>
+                <select name="status">
+                    <option value="in_service">In Service</option>
+                    <option value="due">Due</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="out_of_service">Out of Service</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>LAST CALIBRATED</label>
+                <input type="date" name="last_calibrated">
+            </div>
+            
+            <div class="form-group">
+                <label>NEXT DUE DATE</label>
+                <input type="date" name="next_due_date">
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.calibrations|length }}</span>
+                <span class="qms-metric-label">Equipment tracked</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Equipment ID</th>
+                        <th>Equipment Name</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Last Calibrated</th>
+                        <th>Next Due</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.calibrations %}
+                    <tr>
+                        <td><a href="{% url 'dashboards:qms_calibration_detail' item.id %}" style="font-weight:700;color:#2563eb;text-decoration:none">{{ item.equipment_id }}</a></td>
+                        <td>{{ item.equipment_name }}</td>
+                        <td>{{ item.department|default:"-" }}</td>
+                        <td><span class="badge bg-success">{{ item.get_status_display }}</span></td>
+                        <td>{{ item.last_calibrated|date:"M d, Y"|default:"-" }}</td>
+                        <td>{{ item.next_due_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboards:qms_calibration_detail' item.id %}">Workspace</a>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('calibration', {id:'{{ item.id }}', equipment_id:'{{ item.equipment_id|escapejs }}', equipment_name:'{{ item.equipment_name|escapejs }}', department:'{{ item.department|escapejs }}', status:'{{ item.status }}', last_calibrated:'{{ item.last_calibrated|date:"Y-m-d"|default:"" }}', next_due_date:'{{ item.next_due_date|date:"Y-m-d"|default:"" }}', notes:'{{ item.notes|escapejs }}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('calibration', '{{ item.id }}', '{{ item.equipment_id|escapejs }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No calibration records defined yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="hqa-module-panel" id="module-card-training">
+    <div class="hqa-module-header">
+        <h2>Training Management</h2>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=training">Training Reports</a>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_training_create">
+            
+            <div class="form-group">
+                <label>DOCUMENT</label>
+                <select name="document">
+                    <option value="">Select Document</option>
+                    {% for doc in qms_documents %}
+                    <option value="{{ doc.pk }}">{{ doc.document_number }} - {{ doc.title|truncatechars:35 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>TRAINEE</label>
+                <select name="trainee">
+                    <option value="">Select Trainee</option>
+                    {% for user in qms_users %}
+                    <option value="{{ user.pk }}">{{ user.get_full_name|default:user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>TRAINING TYPE</label>
+                <input name="training_type" value="SOP Revision" placeholder="SOP revision, new hire, etc.">
+            </div>
+            
+            <div class="form-group">
+                <label>STATUS</label>
+                <select name="status">
+                    <option value="assigned">Assigned</option>
+                    <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>ASSIGNED DATE</label>
+                <input type="date" name="assigned_date">
+            </div>
+            
+            <div class="form-group">
+                <label>DUE DATE</label>
+                <input type="date" name="due_date">
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.training|length }}</span>
+                <span class="qms-metric-label">Training assignments</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Document</th>
+                        <th>Trainee</th>
+                        <th>Training Type</th>
+                        <th>Status</th>
+                        <th>Assigned</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.training %}
+                    <tr>
+                        <td><strong>{{ item.document|default:"-" }}</strong><br><small>{{ item.training_number }}</small></td>
+                        <td>{{ item.trainee|default:"-" }}</td>
+                        <td>{{ item.training_type }}</td>
+                        <td><span class="badge bg-primary">{{ item.get_status_display }}</span></td>
+                        <td>{{ item.assigned_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>{{ item.due_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>
+                            <a class="btn btn-sm btn-primary" href="{% url 'dashboards:qms_training_detail' item.pk %}">Workspace</a>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('training', {id:'{{ item.id }}', document:'{{ item.document.id|default:"" }}', trainee:'{{ item.trainee.id|default:"" }}', training_type:'{{ item.training_type|escapejs }}', status:'{{ item.status }}', assigned_date:'{{ item.assigned_date|date:"Y-m-d"|default:"" }}', due_date:'{{ item.due_date|date:"Y-m-d"|default:"" }}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('training', '{{ item.id }}', 'Training {{ item.id }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No training assignments yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="hqa-module-panel" id="module-card-regulatory">
+    <div class="hqa-module-header">
+        <h2>Regulatory Packages</h2>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=regulatory">Regulatory Reports</a>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_regulatory_create">
+            
+            <div class="form-group">
+                <label>PACKAGE TITLE</label>
+                <input name="title" placeholder="Regulatory package title" required>
+            </div>
+            
+            <div class="form-group">
+                <label>MARKET</label>
+                <input name="market" placeholder="Target market or region">
+            </div>
+            
+            <div class="form-group">
+                <label>AUTHORITY</label>
+                <input name="authority" placeholder="Regulatory authority">
+            </div>
+            
+            <div class="form-group">
+                <label>DOSSIER REFERENCE</label>
+                <input name="dossier_reference" placeholder="Dossier or CTD reference">
+            </div>
+            
+            <div class="form-group">
+                <label>STATUS</label>
+                <select name="status">
+                    <option value="draft">Draft</option>
+                    <option value="compiling">Compiling</option>
+                    <option value="qa_review">QA Review</option>
+                    <option value="submitted">Submitted</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>SUBMISSION DATE</label>
+                <input type="date" name="submission_date">
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.regulatory_packages|length }}</span>
+                <span class="qms-metric-label">Regulatory packages</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Package No.</th>
+                        <th>Title</th>
+                        <th>Market</th>
+                        <th>Authority</th>
+                        <th>Status</th>
+                        <th>Submission Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.regulatory_packages %}
+                    <tr>
+                        <td><strong>{{ item.package_number }}</strong></td>
+                        <td><a href="{% url 'dashboards:qms_regulatory_package_detail' item.pk %}">{{ item.title }}</a></td>
+                        <td>{{ item.market|default:"-" }}</td>
+                        <td>{{ item.authority|default:"-" }}</td>
+                        <td><span class="badge bg-info">{{ item.get_status_display }}</span></td>
+                        <td>{{ item.submission_date|date:"M d, Y"|default:"-" }}</td>
+                        <td>
+                            <a class="btn btn-sm btn-primary" href="{% url 'dashboards:qms_regulatory_package_detail' item.pk %}">Workspace</a>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('regulatory', {id:'{{ item.id }}', title:'{{ item.title|escapejs }}', market:'{{ item.market|escapejs }}', authority:'{{ item.authority|escapejs }}', status:'{{ item.status }}', dossier_reference:'{{ item.dossier_reference|escapejs }}', submission_date:'{{ item.submission_date|date:"Y-m-d"|default:"" }}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('regulatory', '{{ item.id }}', '{{ item.package_number|escapejs }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No regulatory packages defined yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="hqa-module-panel" id="module-card-rules">
+    <div class="hqa-module-header">
+        <h2>Escalation Rules</h2>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <form method="post" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="hqa_run_capa_alerts">
+                <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-bell me-1"></i>Run CAPA alerts now</button>
+            </form>
+            <form method="post" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="hqa_run_change_control_alerts">
+                <button class="btn btn-outline-primary btn-sm" type="submit"><i class="fas fa-code-branch me-1"></i>Run change alerts</button>
+            </form>
+            <form method="post" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="hqa_run_calibration_alerts">
+                <button class="btn btn-outline-primary btn-sm" type="submit"><i class="fas fa-ruler-combined me-1"></i>Run calibration alerts</button>
+            </form>
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}">Notification Reports</a>
+        </div>
+    </div>
+    <div class="hqa-module-content">
+        <form method="post" class="qms-form-grid">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hqa_rule_create">
+            
+            <div class="form-group">
+                <label>RULE NAME</label>
+                <input name="name" placeholder="Descriptive rule name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>TRIGGER TYPE</label>
+                <select name="trigger_type">
+                    <option value="document_expiry">Document Expiry</option>
+                    <option value="capa_overdue">CAPA Overdue</option>
+                    <option value="change_control_overdue">Change Control Overdue</option>
+                    <option value="change_control_due">Change Control Due</option>
+                    <option value="audit_due">Audit Due</option>
+                    <option value="calibration_due">Calibration Due</option>
+                    <option value="training_overdue">Training Overdue</option>
+                    <option value="stability_pull_due">Stability Pull Due</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>DAYS BEFORE</label>
+                <input type="number" name="days_before" value="7" placeholder="Alert threshold">
+            </div>
+            
+            <div class="form-group">
+                <label>ROLE TO NOTIFY</label>
+                <input name="role_to_notify" value="qa" placeholder="Target role or user">
+            </div>
+            
+            <div class="form-group form-submit">
+                <button type="submit" class="btn btn-primary">+ Add</button>
+            </div>
+        </form>
+        
+        <div class="qms-summary-row">
+            <div class="qms-metric">
+                <span class="qms-metric-value">{{ qms_enterprise_modules.notification_rules|length }}</span>
+                <span class="qms-metric-label">Active rules</span>
+            </div>
+        </div>
+        
+        <div class="hqa-table-wrapper">
+            <table class="hqa-data-table">
+                <thead>
+                    <tr>
+                        <th>Rule Name</th>
+                        <th>Trigger</th>
+                        <th>Days Before</th>
+                        <th>Notify Role</th>
+                        <th>Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in qms_enterprise_modules.notification_rules %}
+                    <tr>
+                        <td><strong>{{ item.name }}</strong></td>
+                        <td>{{ item.get_trigger_type_display }}</td>
+                        <td>{{ item.days_before }}</td>
+                        <td><span class="badge bg-secondary">{{ item.role_to_notify }}</span></td>
+                        <td>{% if item.is_active %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editHqaRecord('rule', {id:'{{ item.id }}', name:'{{ item.name|escapejs }}', trigger_type:'{{ item.trigger_type }}', days_before:'{{ item.days_before }}', role_to_notify:'{{ item.role_to_notify|escapejs }}', is_active:'{% if item.is_active %}1{% else %}0{% endif %}'})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteHqaRecord('rule', '{{ item.id }}', '{{ item.name|escapejs }}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted">No escalation rules configured yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -19,19 +19,6 @@ class Command(BaseCommand):
                 'No hard-coded defaults will be applied.'
             )
         )
-                created_count += 1
-                self.stdout.write(f'✅ Created: {setting_name} = {default_value}')
-            else:
-                updated_count += 1
-                self.stdout.write(f'📋 Exists: {setting_name} = {setting_obj.setting_value}')
-        
-        self.stdout.write(
-            self.style.SUCCESS(
-                f'\n🎯 Timing settings initialized!\n'
-                f'Created: {created_count}, Existing: {updated_count}\n'
-                f'Configure these settings in Django Admin -> System Timing Settings'
-            )
-        )
 
     def _get_description(self, setting_name):
         descriptions = {

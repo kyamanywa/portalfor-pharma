@@ -1,7 +1,10 @@
-from django.contrib import admin
-from django import forms
 import json
 import re
+
+from django.contrib import admin
+from django import forms
+from django.core.exceptions import ValidationError
+from django.utils.html import format_html
 from .models import Product, ProductIngredient, ProductSpecification, PackagingMaterial, ProductRevisionHistory
 from workflow.constants import (
     get_product_type_choices, get_coating_type_choices, get_tablet_type_choices,
@@ -9,44 +12,109 @@ from workflow.constants import (
 )
 from bmr.models import EquipmentEntry, YieldReconciliationRow, WeightRangeLimit, BMRProcedureStep
 
-class ProductAdminForm(forms.ModelForm):
-    LINE_LIST_JSON_FIELDS = [
-        'general_instructions',
-        'dry_mixing_instructions',
-        'wet_mixing_instructions',
-        'drying_instructions',
-        'final_drying_instructions',
-        'compression_instructions',
-        'coating_precautions',
-        'coating_solution_instructions',
-        'coating_procedure_steps',
-        'dispensing_clearance_start_items',
-        'dispensing_clearance_end_items',
-        'granulation_clearance_start_items',
-        'granulation_clearance_end_items',
-        'blending_clearance_start_items',
-        'blending_clearance_end_items',
-        'compression_clearance_start_items',
-        'compression_clearance_end_items',
-        'sorting_clearance_start_items',
-        'sorting_clearance_end_items',
-        'coating_clearance_start_items',
-        'coating_clearance_end_items',
-        'mixing_clearance_start_items',
-        'mixing_clearance_end_items',
-        'tube_filling_clearance_start_items',
-        'tube_filling_clearance_end_items',
-        'packing_clearance_start_items',
-        'packing_clearance_end_items',
-        'secondary_packaging_clearance_start_items',
-        'secondary_packaging_clearance_end_items',
-        'packing_instructions',
-        'packing_reference_docs',
-        'secondary_packing_steps',
-    ]
+class RepeatableTextListWidget(forms.Widget):
+    """Edit a JSON list of checklist strings as normal repeatable rows."""
 
+    class Media:
+        css = {'all': ('products/admin_repeatable_fields.css',)}
+        js = ('products/admin_repeatable_fields.js',)
+
+    def format_value(self, value):
+        if value in (None, ''):
+            return []
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (TypeError, ValueError):
+                return []
+        return value if isinstance(value, list) else []
+
+    def value_from_datadict(self, data, files, name):
+        return data.get(name, '[]')
+
+    def render(self, name, value, attrs=None, renderer=None):
+        values = self.format_value(value)
+        attrs = attrs or {}
+        field_id = attrs.get('id', name)
+        payload = json.dumps([str(item) for item in values], ensure_ascii=False)
+        rows = [format_html(
+            '<div class="repeatable-row"><input type="text" class="repeatable-text" value="{}">'
+            '<button type="button" class="repeatable-remove">Remove</button></div>', item
+        ) for item in values]
+        if not rows:
+            rows.append(format_html(
+                '<div class="repeatable-row"><input type="text" class="repeatable-text" value="">'
+                '<button type="button" class="repeatable-remove">Remove</button></div>'
+            ))
+        return format_html(
+            '<div class="repeatable-editor" data-editor-type="text-list">'
+            '<input type="hidden" id="{}" name="{}" value="{}">'
+            '<div class="repeatable-rows">{}</div>'
+            '<button type="button" class="repeatable-add">Add item</button>'
+            '<p class="repeatable-help">Leave blank rows empty; they will not be saved.</p></div>',
+            field_id, name, payload, ''.join(str(row) for row in rows),
+        )
+
+
+class EquipmentParamsWidget(forms.Widget):
+    """Edit coating equipment dictionaries as parameter and set-value rows."""
+
+    class Media:
+        css = {'all': ('products/admin_repeatable_fields.css',)}
+        js = ('products/admin_repeatable_fields.js',)
+
+    def format_value(self, value):
+        if value in (None, ''):
+            return []
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (TypeError, ValueError):
+                return []
+        return value if isinstance(value, list) else []
+
+    def value_from_datadict(self, data, files, name):
+        return data.get(name, '[]')
+
+    def render(self, name, value, attrs=None, renderer=None):
+        values = self.format_value(value)
+        attrs = attrs or {}
+        field_id = attrs.get('id', name)
+        payload = json.dumps(values, ensure_ascii=False)
+        rows = []
+        for item in values:
+            item = item if isinstance(item, dict) else {}
+            rows.append(format_html(
+                '<div class="repeatable-row equipment-row">'
+                '<input type="text" class="equipment-name" placeholder="Parameter" value="{}">'
+                '<input type="text" class="equipment-set-value" placeholder="Set value" value="{}">'
+                '<button type="button" class="repeatable-remove">Remove</button></div>',
+                item.get('name', ''), item.get('set_value', ''),
+            ))
+        if not rows:
+            rows.append(format_html(
+                '<div class="repeatable-row equipment-row">'
+                '<input type="text" class="equipment-name" placeholder="Parameter" value="">'
+                '<input type="text" class="equipment-set-value" placeholder="Set value" value="">'
+                '<button type="button" class="repeatable-remove">Remove</button></div>'
+            ))
+        return format_html(
+            '<div class="repeatable-editor" data-editor-type="equipment">'
+            '<input type="hidden" id="{}" name="{}" value="{}">'
+            '<div class="repeatable-rows">{}</div>'
+            '<button type="button" class="repeatable-add">Add parameter</button>'
+            '<p class="repeatable-help">Enter the parameter name and approved set value. Do not type JSON.</p></div>',
+            field_id, name, payload, ''.join(str(row) for row in rows),
+        )
+
+
+class ProductAdminForm(forms.ModelForm):
+    LINE_LIST_JSON_FIELDS = {
+        'general_instructions', 'dry_mixing_instructions', 'wet_mixing_instructions',
+        'drying_instructions', 'final_drying_instructions', 'compression_instructions',
+        'packing_instructions', 'packing_reference_docs', 'secondary_packing_steps',
+    }
     DICT_LIST_JSON_FIELDS = {
-        'coating_equipment_params': ('name', 'set_value'),
         'mixing_steps': ('step', 'instruction'),
         'mixing_equipment': ('name', 'id'),
         'tube_filling_equipment': ('name', 'id'),
@@ -64,6 +132,63 @@ class ProductAdminForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Keep the older text-entry behavior for other configurable lists that
+        # are not part of the coating/checklist row editors below.
+        for field_name in self.LINE_LIST_JSON_FIELDS:
+            if field_name not in self.fields:
+                continue
+            original = self.fields[field_name]
+            self.fields[field_name] = forms.CharField(
+                required=original.required,
+                label=original.label,
+                widget=forms.Textarea(attrs={'rows': 4}),
+                help_text=f'{original.help_text} Enter one item per line.',
+            )
+            self.initial[field_name] = self._serialize_line_list(self.initial.get(field_name))
+
+        for field_name, keys in self.DICT_LIST_JSON_FIELDS.items():
+            if field_name not in self.fields:
+                continue
+            original = self.fields[field_name]
+            left_key, right_key = keys
+            self.fields[field_name] = forms.CharField(
+                required=original.required,
+                label=original.label,
+                widget=forms.Textarea(attrs={'rows': 4}),
+                help_text=f'{original.help_text} Enter one row per line as "{left_key} | {right_key}".',
+            )
+            self.initial[field_name] = self._serialize_dict_list(self.initial.get(field_name), keys)
+
+        # Keep JSONField storage for compatibility, but edit these values as
+        # repeatable rows instead of requiring JSON syntax.
+        checklist_fields = (
+            'dispensing_clearance_start_items', 'dispensing_clearance_end_items',
+            'granulation_clearance_start_items', 'granulation_clearance_end_items',
+            'blending_clearance_start_items', 'blending_clearance_end_items',
+            'compression_clearance_start_items', 'compression_clearance_end_items',
+            'sorting_clearance_start_items', 'sorting_clearance_end_items',
+            'coating_clearance_start_items', 'coating_clearance_end_items',
+            'mixing_clearance_start_items', 'mixing_clearance_end_items',
+            'tube_filling_clearance_start_items', 'tube_filling_clearance_end_items',
+            'packing_clearance_start_items', 'packing_clearance_end_items',
+            'secondary_packaging_clearance_start_items',
+            'secondary_packaging_clearance_end_items',
+            'coating_precautions', 'coating_solution_instructions',
+            'coating_procedure_steps',
+        )
+        for field_name in checklist_fields:
+            if field_name in self.fields:
+                self.fields[field_name].widget = RepeatableTextListWidget()
+                self.fields[field_name].help_text = (
+                    'Add one item per row. Leave empty to use the standard template items.'
+                )
+
+        if 'coating_equipment_params' in self.fields:
+            self.fields['coating_equipment_params'].widget = EquipmentParamsWidget()
+            self.fields['coating_equipment_params'].help_text = (
+                'Add one row per equipment setting: parameter name and approved set value.'
+            )
         
         # Dynamically set product_type choices from database + hardcoded
         self.fields['product_type'].choices = get_product_type_choices()
@@ -78,7 +203,20 @@ class ProductAdminForm(forms.ModelForm):
         self.fields['tablet_type'].help_text = "Select tablet type for tablets only"
         self.fields['capsule_type'].help_text = "Select capsule type — Normal goes to Blister Packing, UG goes to Bulk Packing"
 
-        self._replace_json_inputs_with_plain_text()
+    def clean_coating_equipment_params(self):
+        rows = self.cleaned_data.get('coating_equipment_params') or []
+        cleaned = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            name = str(row.get('name', '')).strip()
+            set_value = str(row.get('set_value', '')).strip()
+            if not name and not set_value:
+                continue
+            if not name:
+                raise ValidationError('Each coating equipment row must have a parameter name.')
+            cleaned.append({'name': name, 'set_value': set_value})
+        return cleaned
 
     @staticmethod
     def _serialize_line_list(value):
@@ -91,130 +229,62 @@ class ProductAdminForm(forms.ModelForm):
         if not isinstance(value, list):
             return ''
         left_key, right_key = keys
-        rows = []
-        for item in value:
-            if not isinstance(item, dict):
-                continue
-            left = str(item.get(left_key, '')).strip()
-            right = str(item.get(right_key, '')).strip()
-            if left or right:
-                rows.append(f"{left} | {right}")
-        return '\n'.join(rows)
+        return '\n'.join(
+            f"{str(item.get(left_key, '')).strip()} | {str(item.get(right_key, '')).strip()}"
+            for item in value if isinstance(item, dict) and (item.get(left_key) or item.get(right_key))
+        )
 
     @staticmethod
     def _parse_line_list(raw):
         if raw is None:
             return []
         text = str(raw).strip()
-        if not text:
-            return []
-
         if text.startswith('['):
             try:
                 parsed = json.loads(text)
                 if isinstance(parsed, list):
                     return [str(item).strip() for item in parsed if str(item).strip()]
-            except Exception:
+            except (TypeError, ValueError):
                 pass
-
-        items = []
-        for line in text.splitlines():
-            normalized = line.strip().lstrip('-').lstrip('*').strip()
-            if normalized:
-                items.append(normalized)
-        return items
+        return [line.strip().lstrip('-').lstrip('*').strip() for line in text.splitlines() if line.strip()]
 
     @staticmethod
     def _parse_dict_list(raw, keys):
-        if raw is None:
-            return []
-        text = str(raw).strip()
-        if not text:
-            return []
-
+        left_key, right_key = keys
+        text = str(raw or '').strip()
         if text.startswith('['):
             try:
                 parsed = json.loads(text)
                 if isinstance(parsed, list):
-                    left_key, right_key = keys
-                    normalized = []
-                    for item in parsed:
-                        if not isinstance(item, dict):
-                            continue
-                        left = str(item.get(left_key, '')).strip()
-                        right = str(item.get(right_key, '')).strip()
-                        if left or right:
-                            normalized.append({left_key: left, right_key: right})
-                    return normalized
-            except Exception:
+                    return [
+                        {left_key: str(item.get(left_key, '')).strip(), right_key: str(item.get(right_key, '')).strip()}
+                        for item in parsed if isinstance(item, dict)
+                    ]
+            except (TypeError, ValueError):
                 pass
-
-        left_key, right_key = keys
         rows = []
         for index, line in enumerate(text.splitlines(), start=1):
             value = line.strip()
             if not value:
                 continue
-
             if '|' in value:
                 left, right = [part.strip() for part in value.split('|', 1)]
+            elif left_key == 'step':
+                match = re.match(r'^(\d+[a-zA-Z]?)\s*[\.:\)-]?\s*(.*)$', value)
+                left, right = (match.group(1), match.group(2)) if match else (str(index), value)
             else:
-                # Allow "3. Some instruction" style for step lines.
-                step_match = re.match(r'^(\d+[a-zA-Z]?)\s*[\.:\)-]?\s*(.*)$', value)
-                if left_key == 'step' and step_match:
-                    left = step_match.group(1).strip()
-                    right = step_match.group(2).strip()
-                elif left_key == 'step':
-                    left = str(index)
-                    right = value
-                else:
-                    left = value
-                    right = ''
-
-            if left or right:
-                rows.append({left_key: left, right_key: right})
+                left, right = value, ''
+            rows.append({left_key: left, right_key: right})
         return rows
-
-    def _replace_json_inputs_with_plain_text(self):
-        for field_name in self.LINE_LIST_JSON_FIELDS:
-            if field_name not in self.fields:
-                continue
-            original = self.fields[field_name]
-            self.fields[field_name] = forms.CharField(
-                required=original.required,
-                label=original.label,
-                widget=forms.Textarea(attrs={'rows': 4}),
-                help_text=f"{original.help_text} Enter one item per line.",
-            )
-            self.initial[field_name] = self._serialize_line_list(self.initial.get(field_name))
-
-        for field_name, keys in self.DICT_LIST_JSON_FIELDS.items():
-            if field_name not in self.fields:
-                continue
-            original = self.fields[field_name]
-            left_key, right_key = keys
-            self.fields[field_name] = forms.CharField(
-                required=original.required,
-                label=original.label,
-                widget=forms.Textarea(attrs={'rows': 4}),
-                help_text=(
-                    f"{original.help_text} Enter one row per line as "
-                    f"'{left_key} | {right_key}'."
-                ),
-            )
-            self.initial[field_name] = self._serialize_dict_list(self.initial.get(field_name), keys)
 
     def clean(self):
         cleaned_data = super().clean()
-
         for field_name in self.LINE_LIST_JSON_FIELDS:
             if field_name in cleaned_data:
                 cleaned_data[field_name] = self._parse_line_list(cleaned_data.get(field_name))
-
         for field_name, keys in self.DICT_LIST_JSON_FIELDS.items():
             if field_name in cleaned_data:
                 cleaned_data[field_name] = self._parse_dict_list(cleaned_data.get(field_name), keys)
-
         return cleaned_data
 
 
@@ -287,27 +357,21 @@ class BMRProcedureStepInline(admin.TabularInline):
 
     def get_formset(self, request, obj=None, **kwargs):
         base_formset = super().get_formset(request, obj, **kwargs)
-        product_type = getattr(obj, 'product_type', None)
-        allowed = self.PHASES_BY_PRODUCT_TYPE.get(product_type)
-
+        allowed = self.PHASES_BY_PRODUCT_TYPE.get(getattr(obj, 'product_type', None))
         if not allowed:
             return base_formset
-
-        allowed_choices = [
-            choice for choice in BMRProcedureStep.PHASE_CHOICES
-            if choice[0] in allowed
-        ]
+        allowed_choices = [choice for choice in BMRProcedureStep.PHASE_CHOICES if choice[0] in allowed]
 
         class FilteredPhaseFormSet(base_formset):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def __init__(self, *args, **inner_kwargs):
+                super().__init__(*args, **inner_kwargs)
                 for form in self.forms:
                     field = form.fields.get('phase')
                     if not field:
                         continue
                     existing_value = form.initial.get('phase') or form.data.get(form.add_prefix('phase'))
                     choices = list(allowed_choices)
-                    if existing_value and existing_value not in {c[0] for c in choices}:
+                    if existing_value and existing_value not in {choice[0] for choice in choices}:
                         label = dict(BMRProcedureStep.PHASE_CHOICES).get(existing_value, existing_value)
                         choices.append((existing_value, label))
                     field.choices = [('', '---------')] + choices
@@ -438,8 +502,7 @@ class ProductAdmin(admin.ModelAdmin):
                 'compression_instructions',
             ),
             'classes': ('collapse',),
-            'description': 'Instruction strings printed inside each BMR page. '
-                           'Enter one instruction per line (JSON is no longer required).'
+            'description': 'Enter one instruction per row. JSON is handled automatically.'
         }),
         ('Film Coating Parameters', {
             'fields': (
@@ -453,8 +516,8 @@ class ProductAdmin(admin.ModelAdmin):
             ),
             'classes': ('collapse',),
             'description': 'Film coating configuration. '
-                           'Equipment Params: enter one row per line as "name | set_value". '
-                           'Precautions & Procedure Steps: enter one item per line. '
+                           'Equipment Params: JSON list of dicts e.g. [{"name":"Spray gun pressure","set_value":"2.0–2.25 kg/cm³"}]. '
+                           'Precautions & Procedure Steps: JSON lists of strings e.g. ["Step 1","Step 2"]. '
                            'Individual pressure/speed/temp fields are legacy defaults used when equipment_params is empty.'
         }),
         ('BMR Content — Line Clearance Checklists', {
@@ -481,9 +544,8 @@ class ProductAdmin(admin.ModelAdmin):
                 'secondary_packaging_clearance_end_items',
             ),
             'classes': ('collapse',),
-            'description': 'Checklist items for each phase\'s line clearance form. '
-                           'Leave empty to use defaults from the template. '
-                           'Enter one item per line.'
+            'description': 'Add one checklist item per row for each phase. '
+                           'Leave a phase empty to use the default items built into the template.'
         }),
         ('Capsule Specifications', {
             'fields': (
@@ -502,27 +564,6 @@ class ProductAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
             'description': 'Capsule filling machine setup, shell colours/printing, and weight specifications shown on BMR page 14.'
         }),
-        ('Ointment Parameters', {
-            'fields': (
-                'mixing_steps',
-                'mixing_equipment',
-                'mixing_jacket_temperature',
-                'mixing_cool_temperature',
-                'mixing_appearance',
-                'tube_filling_weight',
-                'tube_filling_equipment',
-                'tube_filling_yield_min',
-                'tube_filling_yield_max',
-                'tube_filling_hopper_temperature',
-                'tube_filling_ipc_page_count',
-                'tube_filling_qa_ipc_page_count',
-                'packing_instructions',
-                'packing_reference_docs',
-                'secondary_packing_steps',
-            ),
-            'classes': ('collapse',),
-            'description': 'Master data for ointment mixing, tube filling, and secondary packing.'
-        }),
         ('Special Instructions', {
             'fields': (
                 'special_instructions',
@@ -537,11 +578,9 @@ class ProductAdmin(admin.ModelAdmin):
 
     def get_inline_instances(self, request, obj=None):
         inlines = super().get_inline_instances(request, obj)
-        # Some inlines are only relevant for tablets/capsules, not ointments.
-        # Keep BMRProcedureStepInline for ointments because ointment templates
-        # read mixing/tube_filling/secondary_packaging steps from it.
+        # Some inlines are only relevant for tablets/capsules, not ointments
         if obj and obj.product_type == 'ointment':
-            exclude = (WeightRangeLimitInline, YieldReconciliationRowInline)
+            exclude = (WeightRangeLimitInline, YieldReconciliationRowInline, BMRProcedureStepInline)
             inlines = [i for i in inlines if not isinstance(i, exclude)]
         return inlines
 

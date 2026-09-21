@@ -4,44 +4,23 @@ Django settings for kampala_pharma project.
 
 from pathlib import Path
 import os
+import pkgutil_compat
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Environment Configuration Support
-try:
-    import environ
-    env = environ.Env(
-        DEBUG=(bool, False),
-        SECRET_KEY=(str, 'django-insecure-kampala-pharma-development-key-change-in-production'),
-        ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
-        USE_2FA=(bool, False),
-    )
-    # Read .env file if it exists
-    env_file = BASE_DIR / '.env'
-    if env_file.exists():
-        environ.Env.read_env(env_file)
-        SECRET_KEY = env('SECRET_KEY')
-        DEBUG = env('DEBUG')
-        ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
-    else:
-        # Development fallback
-        SECRET_KEY = 'django-insecure-kampala-pharma-development-key-change-in-production'
-        DEBUG = True
-        ALLOWED_HOSTS = ['*']
-        print("⚠️  WARNING: No .env file found. Using development defaults.")
-        print("⚠️  Create a .env file for production deployment!")
-except ImportError:
-    print("⚠️  django-environ not installed. Install with: pip install django-environ")
-    SECRET_KEY = 'django-insecure-kampala-pharma-development-key-change-in-production'
-    DEBUG = True
-    ALLOWED_HOSTS = ['*']
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'django-insecure-kampala-pharma-development-key-change-in-production'
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    # 'daphne',  # Commented out - not installed
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -52,10 +31,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
-    # Security and Compliance Apps
-    'simple_history',  # Immutable audit trails
-    'axes',  # Brute force protection
-    'drf_spectacular',  # API documentation
     # Custom apps
     'accounts',
     'products',
@@ -68,21 +43,39 @@ INSTALLED_APPS = [
 ]
 
 # Add optional security and integration features if available
-OPTIONAL_APPS = [
+OPTIONAL_APPS_BEGINNING = [
+    'daphne',  # ASGI server for async support (must be first)
+]
+
+OPTIONAL_APPS_END = [
+    'channels',  # Django Channels for WebSockets
     'django_otp',
     'django_otp.plugins.otp_totp', 
     'django_otp.plugins.otp_static',
-    'channels',
+    'axes',  # Brute-force protection
 ]
 
-# Check and add available optional apps
-for app in OPTIONAL_APPS:
+# Check and add daphne at the beginning if available
+for app in OPTIONAL_APPS_BEGINNING:
+    try:
+        __import__(app)
+        INSTALLED_APPS.insert(0, app)
+        print(f"[OK] {app} - Available")
+    except ImportError:
+        print(f"[OPTIONAL] {app} - Not installed (optional)")
+
+# Check and add other optional apps at the end
+for app in OPTIONAL_APPS_END:
     try:
         __import__(app)
         INSTALLED_APPS.append(app)
         print(f"[OK] {app} - Available")
     except ImportError:
         print(f"[OPTIONAL] {app} - Not installed (optional)")
+
+AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
+if 'axes' in INSTALLED_APPS:
+    AUTHENTICATION_BACKENDS.insert(0, 'axes.backends.AxesStandaloneBackend')
 
 # Add OTP middleware only if django_otp is available
 MIDDLEWARE = [
@@ -92,7 +85,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'axes.middleware.AxesMiddleware',  # Brute force protection (must be after AuthenticationMiddleware)
 ]
 
 if 'django_otp' in INSTALLED_APPS:
@@ -101,9 +93,11 @@ if 'django_otp' in INSTALLED_APPS:
 MIDDLEWARE.extend([
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'accounts.middleware.session_timeout.SessionTimeoutMiddleware',  # RE-ENABLED for security
-    'simple_history.middleware.HistoryRequestMiddleware',  # Audit trail middleware
+    # 'accounts.middleware.session_timeout.SessionTimeoutMiddleware',  # TEMPORARILY DISABLED - CAUSING LOGIN ISSUES
 ])
+
+if 'axes' in INSTALLED_APPS:
+    MIDDLEWARE.append('axes.middleware.AxesMiddleware')
 
 ROOT_URLCONF = 'kampala_pharma.urls'
 
@@ -232,6 +226,9 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # Batch number settings
 BATCH_NUMBER_PREFIX_LENGTH = 3
 BATCH_NUMBER_YEAR_LENGTH = 4
+
+# Session timeout setting (12 hours = 43200 seconds)
+SESSION_TIMEOUT = 43200
 
 # Logging configuration
 LOGGING = {
@@ -422,89 +419,6 @@ PHARMACEUTICAL_SETTINGS = {
 
 # System Version for API
 SYSTEM_VERSION = '2.0.0'
-
-# =============================================================================
-# SECURITY ENHANCEMENTS
-# =============================================================================
-
-# Django Axes - Brute Force Protection (Configurable via .env)
-AXES_ENABLED = env.bool('AXES_ENABLED', default=True)
-AXES_FAILURE_LIMIT = env.int('AXES_FAILURE_LIMIT', default=5)  # Lock after X failed attempts
-AXES_COOLOFF_TIME = env.int('AXES_COOLOFF_TIME', default=1)  # Lockout duration in hours
-AXES_LOCKOUT_TEMPLATE = 'accounts/account_locked.html'
-AXES_LOCKOUT_URL = '/accounts/locked/'
-AXES_RESET_ON_SUCCESS = True
-AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]  # Lock by combination of username and IP (more secure)
-AXES_ENABLE_ACCESS_FAILURE_LOG = True
-AXES_USERNAME_FORM_FIELD = 'username'
-AXES_PASSWORD_FORM_FIELD = 'password'
-# Use cache for better performance
-AXES_CACHE = 'default'
-
-# Authentication Backend (Axes must be first)
-AUTHENTICATION_BACKENDS = [
-    'axes.backends.AxesStandaloneBackend',  # Axes authentication
-    'django.contrib.auth.backends.ModelBackend',  # Default Django auth
-]
-
-# Password Validation - Enhanced for pharma compliance
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 12,  # Increased from default 8 for pharma compliance
-        }
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-# Django Simple History - Audit Trail Configuration
-SIMPLE_HISTORY_HISTORY_ID_USE_UUID = True  # More secure IDs
-SIMPLE_HISTORY_REVERT_DISABLED = True  # Prevent reverting changes (immutability)
-SIMPLE_HISTORY_HISTORY_CHANGE_REASON_USE_TEXT_FIELD = True  # Allow detailed reasons
-
-# API Documentation - drf-spectacular
-REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'
-
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'KPI Operations Management System API',
-    'DESCRIPTION': 'RESTful API for pharmaceutical manufacturing operations',
-    'VERSION': SYSTEM_VERSION,
-    'SERVE_INCLUDE_SCHEMA': False,
-    'CONTACT': {
-        'name': 'KPI IT Department',
-        'email': 'it@kpi.com',
-    },
-    'LICENSE': {
-        'name': 'Proprietary',
-    },
-    'TAGS': [
-        {'name': 'Authentication', 'description': 'User authentication and authorization'},
-        {'name': 'BMR', 'description': 'Batch Manufacturing Records'},
-        {'name': 'Workflow', 'description': 'Production workflow management'},
-        {'name': 'Products', 'description': 'Product master data'},
-        {'name': 'Quality', 'description': 'Quality control and quarantine'},
-    ],
-    'SWAGGER_UI_SETTINGS': {
-        'deepLinking': True,
-        'persistAuthorization': True,
-        'displayOperationId': True,
-    },
-    'COMPONENT_SPLIT_REQUEST': True,
-}
-
-# Rate Limiting for API Security
-RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = 'default'
-RATELIMIT_VIEW = 'kampala_pharma.views.ratelimit_error'
 SYSTEM_BUILD = 'enterprise-ready'
 
 print("[OK] KPI Operations System - Enhanced Configuration Loaded")
@@ -514,30 +428,3 @@ if 'channels' in INSTALLED_APPS:
     print("[OK] Real-time Features: READY")
 print("[OK] API Framework: ENABLED")
 print("[OK] Security: ENHANCED")
-
-# =============================================================================
-# DYNAMIC SETTINGS FROM DATABASE
-# =============================================================================
-# Load security settings from database if available (overrides .env)
-try:
-    from accounts.security_settings import SecuritySettings
-    
-    # Try to load settings from database
-    db_settings = SecuritySettings.get_settings()
-    
-    # Override AXES settings from database
-    AXES_ENABLED = db_settings.axes_enabled
-    AXES_FAILURE_LIMIT = db_settings.axes_failure_limit
-    AXES_COOLOFF_TIME = float(db_settings.axes_cooloff_hours)
-    
-    # Override password settings
-    for validator in AUTH_PASSWORD_VALIDATORS:
-        if 'MinimumLengthValidator' in validator.get('NAME', ''):
-            validator['OPTIONS'] = {'min_length': db_settings.password_min_length}
-    
-    print(f"[OK] Security Settings loaded from database (Updated: {db_settings.last_updated.strftime('%Y-%m-%d %H:%M')})")
-    
-except Exception as e:
-    # Database not available yet (migrations) or settings don't exist
-    # Use .env defaults
-    pass

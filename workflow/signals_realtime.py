@@ -45,6 +45,11 @@ def phase_execution_saved(sender, instance, created, update_fields, **kwargs):
             # Always notify admin and production manager
             notify_roles.add('admin')
             notify_roles.add('production_manager')
+
+            # Machine breakdowns require maintenance attention
+            if instance.breakdown_occurred:
+                notify_roles.add('maintenance')
+                notify_roles.add('equipment_operator')
             
             # Add role-specific notifications based on phase
             if phase.phase_name in ['mixing', 'granulation', 'blending', 'compression', 'coating', 'filling']:
@@ -82,6 +87,51 @@ def phase_execution_saved(sender, instance, created, update_fields, **kwargs):
             
     except Exception as e:
         logger.error(f"Error sending phase execution notification: {e}")
+
+
+@receiver(post_save, sender='workflow.BatchPhaseExecution')
+def breakdown_recorded_notification(sender, instance, created, **kwargs):
+    """Create an in-app maintenance alert the first time a breakdown is recorded."""
+    if not instance.breakdown_occurred:
+        return
+
+    try:
+        from dashboards.models import NotificationAlert
+
+        already_notified = NotificationAlert.objects.filter(
+            phase_execution=instance,
+            notification_type='system_maintenance',
+            title__startswith='Machine breakdown'
+        ).exists()
+        if already_notified:
+            return
+
+        bmr = instance.bmr
+        product_name = getattr(getattr(bmr, 'product', None), 'product_name', 'Unknown product')
+        stage_name = instance.phase.get_phase_name_display()
+        machine_name = instance.machine_used.name if instance.machine_used else 'Machine not specified'
+        batch_number = getattr(bmr, 'batch_number', 'Unknown batch')
+
+        recipients = User.objects.filter(
+            role__in=('maintenance', 'equipment_operator'),
+            is_active=True,
+        )
+        for recipient in recipients:
+            NotificationAlert.objects.create(
+                recipient=recipient,
+                notification_type='system_maintenance',
+                priority='critical',
+                title=f'Machine breakdown: {machine_name}',
+                message=(
+                    f'{product_name} | Batch {batch_number} | '
+                    f'Stage: {stage_name} | Machine: {machine_name}. '
+                    f'Reason: {instance.breakdown_reason or "Not provided"}'
+                ),
+                bmr=bmr,
+                phase_execution=instance,
+            )
+    except Exception as e:
+        logger.error(f"Error creating maintenance breakdown notification: {e}")
 
 
 @receiver(post_save, sender='bmr.BMR')

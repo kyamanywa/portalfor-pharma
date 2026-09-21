@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}Head QA Dashboard{% endblock %}
+{% block content %}
+<style>
+    .hqa-shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh;background:#eef1f5;}
+    .hqa-side{background:#141c31;color:#dbe6ff;padding:18px 14px;position:sticky;top:0;height:100vh;}
+    .hqa-brand{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:18px;}
+    .hqa-nav{display:grid;gap:7px;}
+    .hqa-nav a{color:#bcd0ff;text-decoration:none;padding:10px 12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+    .hqa-nav a:hover,.hqa-nav a.active{background:#243153;color:#fff;}
+    .hqa-main{padding:20px;}
+    .hqa-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+    .hqa-header h1{font-size:24px;margin:0;color:#071735;}
+    .hqa-header p{margin:4px 0 0;color:#6976a4;}
+    .hqa-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;}
+    .hqa-kpi{background:#fff;border:1px solid #e4e8f2;border-radius:8px;padding:13px;box-shadow:0 1px 5px rgba(15,23,42,.06);}
+    .hqa-kpi strong{display:block;font-size:24px;color:#071735;}
+    .hqa-kpi small{color:#65729e;}
+    .hqa-card{background:#fff;border:1px solid #e4e8f2;border-radius:8px;box-shadow:0 1px 5px rgba(15,23,42,.06);margin-bottom:14px;overflow:hidden;}
+    .hqa-card-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7ebf3;}
+    .hqa-card-head h2{font-size:16px;margin:0;color:#071735;}
+    .hqa-tab{display:none;}
+    .hqa-tab.active{display:block;}
+    .hqa-nav .module-link{padding-left:22px;}
+    .hqa-module-panel{scroll-margin-top:16px;display:none;margin-bottom:20px;}
+    .hqa-module-panel.active{display:block;}
+    .hqa-module-header{background:#fff;border:1px solid #e4e8f2;border-radius:8px 8px 0 0;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(15,23,42,.05);}
+    .hqa-module-header h2{font-size:20px;margin:0;color:#071735;font-weight:600;}
+    .hqa-module-content{background:#fff;border:1px solid #e4e8f2;border-top:none;border-radius:0 0 8px 8px;padding:0;box-shadow:0 2px 6px rgba(15,23,42,.04);}
+    .hqa-form{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:8px;padding:20px 20px;border-bottom:1px solid #e7ebf3;align-items:end;background:#fafbfd;}
+    .hqa-form input,.hqa-form select{border:1px solid #cfd7e8;border-radius:7px;padding:9px 12px;font-size:13px;min-width:0;}
+    .hqa-form button{white-space:nowrap;}
+    .qms-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 20px;padding:24px;background:#fafbfd;border-bottom:1px solid #e7ebf3;}
+    .qms-form-grid .form-group{display:flex;flex-direction:column;}
+    .qms-form-grid .form-group label{font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.05em;margin-bottom:6px;}
+    .qms-form-grid .form-group input,
+    .qms-form-grid .form-group select{border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px;font-size:14px;background:#fff;transition:border .2s;}
+    .qms-form-grid .form-group input:focus,
+    .qms-form-grid .form-group select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1);}
+    .qms-form-grid .form-submit{display:flex;align-items:flex-end;}
+    .qms-form-grid .form-submit button{padding:10px 18px;font-size:14px;font-weight:500;}
+    .qms-summary-row{display:flex;gap:16px;padding:20px 24px;background:#f8fafc;border-bottom:1px solid #e7ebf3;}
+    .qms-metric{display:flex;flex-direction:column;}
+    .qms-metric-value{font-size:28px;font-weight:700;color:#0f172a;line-height:1;}
+    .qms-metric-label{font-size:12px;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:.04em;}
+    .hqa-table-wrapper{padding:20px;}
+    .hqa-data-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .hqa-data-table thead tr{background:#f8f9fb;}
+    .hqa-data-table th{color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:.05em;text-align:left;padding:12px 16px;border-bottom:2px solid #e4e8f2;font-weight:600;}
+    .hqa-data-table td{padding:12px 16px;border-bottom:1px solid #f1f3f7;color:#334155;}
+    .hqa-data-table tbody tr:hover{background:#f8fafc;}
+    .hqa-data-table .text-center{text-align:center;color:#94a3b8;font-style:italic;}
+    .hqa-data-table .text-muted{color:#94a3b8;}
+    .hqa-mini-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .hqa-mini-table th{background:#f5f7fb;color:#53618e;text-transform:uppercase;font-size:11px;letter-spacing:.04em;text-align:left;padding:9px;border:1px solid #e4e8f2;}
+    .hqa-mini-table td{padding:9px;border:1px solid #e4e8f2;vertical-align:top;}
+    @media(max-width:1100px){.hqa-shell{grid-template-columns:1fr}.hqa-side{position:relative;height:auto}.hqa-kpis{grid-template-columns:repeat(2,1fr)}.qms-form-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="hqa-shell">
+    <aside class="hqa-side">
+        <div class="hqa-brand">Head QA Command</div>
+        <nav class="hqa-nav">
+            <a href="#hqa-enterprise" data-tab="enterprise" class="active" onclick="showHqaTab('enterprise', this); return false;">Enterprise QMS <span>{{ qms_enterprise_stats.lab_investigations|add:qms_enterprise_stats.quality_queries }}</span></a>
+            <a href="#hqa-documents" data-tab="documents" onclick="showHqaTab('documents', this); return false;">Documents <span>{{ qms_record_stats.documents }}</span></a>
+            <a href="#hqa-deviation" data-tab="deviation" onclick="showHqaTab('deviation', this); return false;">Deviation / OOS <span>{{ qms_record_stats.deviations }}</span></a>
+            <a href="#hqa-capa" data-tab="capa" onclick="showHqaTab('capa', this); return false;">CAPA <span>{{ qa_qms_stats.capa }}</span></a>
+            <a href="#hqa-change-control" data-tab="change-control" onclick="showHqaTab('change-control', this); return false;">Change Control <span>{{ qa_qms_stats.change_control|default:0 }}</span></a>
+            <a href="#hqa-audit" data-tab="audit" onclick="showHqaTab('audit', this); return false;">Audit <span>{{ qms_record_stats.audits }}</span></a>
+            <a href="#hqa-risk" data-tab="risk" onclick="showHqaTab('risk', this); return false;">Risk <span>{{ qms_record_stats.risks }}</span></a>
+            <a href="#hqa-queries" data-tab="queries" onclick="showHqaTab('queries', this); return false;">Queries <span>{{ qms_enterprise_stats.quality_queries }}</span></a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="sampling" onclick="showHqaTab('enterprise-detail', this, 'sampling'); return false;">Sampling Plans</a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="lab-specs" onclick="showHqaTab('enterprise-detail', this, 'lab-specs'); return false;">Lab Specifications</a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="stability" onclick="showHqaTab('enterprise-detail', this, 'stability'); return false;">Stability Pulls</a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="supplier" onclick="showHqaTab('enterprise-detail', this, 'supplier'); return false;">Supplier Qualification</a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="calibration" onclick="showHqaTab('enterprise-detail', this, 'calibration'); return false;">Calibration</a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="training" onclick="showHqaTab('enterprise-detail', this, 'training'); return false;">Training</a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="regulatory" onclick="showHqaTab('enterprise-detail', this, 'regulatory'); return false;">Regulatory Packages</a>
+            <a href="#hqa-enterprise-detail" class="module-link" data-tab="enterprise-detail" data-module="rules" onclick="showHqaTab('enterprise-detail', this, 'rules'); return false;">Escalation Rules</a>
+            <a href="{% url 'dashboards:qms_reports' %}">All Reports <span>PDF</span></a>
+            <a href="{% url 'dashboards:qa_dashboard' %}">QA Operations <span>QA</span></a>
+        </nav>
+    </aside>
+
+    <main class="hqa-main">
+        <div class="hqa-header">
+            <div>
+                <h1>Head of Quality Assurance Dashboard</h1>
+                <p>Enterprise quality and compliance modules are organized here for the Head QA role.</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <a class="btn btn-primary btn-sm" href="{% url 'dashboards:qms_reports' %}">All Reports</a>
+            </div>
+        </div>
+
+        <section class="hqa-tab active" id="hqa-enterprise">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>Enterprise QMS</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}">Search Reports</a></div>
+                {% include "dashboards/partials/qms_enterprise_panel.html" %}
+            </div>
+        </section>
+
+        <section class="hqa-tab" id="hqa-queries">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>Queries</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=query">Query Reports</a></div>
+                {% include "dashboards/partials/qms_query_panel.html" %}
+            </div>
+        </section>
+
+        <section class="hqa-tab" id="hqa-documents">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>Document Control</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=document">Document Reports</a></div>
+                {% include "dashboards/partials/qms_document_panel.html" %}
+            </div>
+        </section>
+
+        <section class="hqa-tab" id="hqa-deviation">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>Deviation / OOS</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=deviation">Deviation Reports</a></div>
+                {% include "dashboards/partials/qms_deviation_panel.html" %}
+            </div>
+        </section>
+        <section class="hqa-tab" id="hqa-capa">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>CAPA</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=capa">CAPA Reports</a></div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 18px;background:#f8fafc;border-bottom:1px solid #e5eaf2;">
+                    <a href="{% url 'dashboards:qms_reports' %}?type=capa" style="text-decoration:none;color:#0f172a;"><strong style="display:block;font-size:20px;">{{ qms_record_stats.capa_total }}</strong><small>Total CAPAs</small></a>
+                    <a href="#qms-work-items-capa" style="text-decoration:none;color:#0f172a;"><strong style="display:block;font-size:20px;color:#2563eb;">{{ qms_record_stats.capa_open }}</strong><small>Open CAPAs</small></a>
+                    <a href="{% url 'dashboards:qms_reports' %}?type=capa&q=overdue" style="text-decoration:none;color:#0f172a;"><strong style="display:block;font-size:20px;color:#dc2626;">{{ qms_record_stats.capa_overdue }}</strong><small>Overdue</small></a>
+                    <a href="{% url 'dashboards:qms_reports' %}?type=capa" style="text-decoration:none;color:#0f172a;"><strong style="display:block;font-size:20px;color:#d97706;">{{ qms_record_stats.capa_effectiveness_pending }}</strong><small>Effectiveness pending</small></a>
+                </div>
+                {% with actions=qa_qms_by_category.capa category="capa" module_name="CAPA" create_hint="Describe corrective/preventive action needed." empty_text="No CAPA actions." %}{% include "dashboards/partials/qms_module_panel.html" %}{% endwith %}
+            </div>
+        </section>
+
+        <section class="hqa-tab" id="hqa-change-control">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>Change Control</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=change">Change Reports</a></div>
+                {% include "dashboards/partials/qms_change_control_panel.html" %}
+            </div>
+        </section>
+
+        <section class="hqa-tab" id="hqa-audit">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>Audit Management</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=audit">Audit Reports</a></div>
+                {% include "dashboards/partials/qms_audit_panel.html" %}
+            </div>
+        </section>
+
+        <section class="hqa-tab" id="hqa-risk">
+            <div class="hqa-card">
+                <div class="hqa-card-head"><h2>Risk Management</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=risk">Risk Reports</a></div>
+                {% include "dashboards/partials/qms_risk_panel.html" %}
+            </div>
+        </section>
+
+        <section class="hqa-tab" id="hqa-enterprise-detail">
+            {% include "dashboards/partials/head_qa_enterprise_modules.html" %}
+        </section>
+    </main>
+</div>
+
+<script>
+function showHqaTab(name, el, moduleName){
+    document.querySelectorAll('.hqa-tab').forEach(function(tab){tab.classList.remove('active');});
+    document.querySelectorAll('.hqa-nav a').forEach(function(link){link.classList.remove('active');});
+    var tab = document.getElementById('hqa-' + name);
+    if(tab){tab.classList.add('active');}
+    if(el){
+        el.classList.add('active');
+    } else {
+        var navLink = document.querySelector('.hqa-nav a[data-tab="' + name + '"]');
+        if(navLink){navLink.classList.add('active');}
+    }
+    if(moduleName){
+        setTimeout(function(){ showHqaModule(moduleName, el); }, 50);
+    }
+    var stateHash = 'hqa-' + name + (moduleName ? '?module=' + encodeURIComponent(moduleName) : '');
+    if(history.replaceState){
+        history.replaceState(null, '', '#' + stateHash);
+    } else {
+        window.location.hash = stateHash;
+    }
+}
+function showHqaModule(name, el){
+    document.querySelectorAll('.hqa-module-panel').forEach(function(panel){panel.classList.remove('active');});
+    var mod = document.getElementById('module-card-' + name);
+    if(mod){
+        mod.classList.add('active');
+        setTimeout(function(){ 
+            mod.scrollIntoView({behavior:'smooth', block:'start'}); 
+        }, 100);
+    }
+}
+
+// Edit and Delete Functions for QMS Enterprise Modules
+function editHqaRecord(module, recordData) {
+    var panel = document.getElementById('module-card-' + module);
+    if (!panel) return;
+    
+    var form = panel.querySelector('form');
+    if (!form) return;
+    
+    // Check if record_id field exists, if not create it
+    var recordIdField = form.querySelector('input[name="record_id"]');
+    if (!recordIdField) {
+        recordIdField = document.createElement('input');
+        recordIdField.type = 'hidden';
+        recordIdField.name = 'record_id';
+        form.insertBefore(recordIdField, form.firstChild);
+    }
+    recordIdField.value = recordData.id;
+    
+    // Change form action from create to update
+    var actionField = form.querySelector('input[name="action"]');
+    if (actionField) {
+        actionField.value = actionField.value.replace('_create', '_update');
+    }
+    
+    // Populate form fields with record data
+    Object.keys(recordData).forEach(function(key) {
+        var field = form.querySelector('[name="' + key + '"]');
+        if (field && recordData[key]) {
+            field.value = recordData[key];
+        }
+    });
+    
+    // Change submit button text
+    var submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = 'Update';
+        submitBtn.classList.remove('btn-primary');
+        submitBtn.classList.add('btn-warning');
+    }
+    
+    // Add cancel button if not exists
+    var cancelBtn = form.querySelector('.btn-cancel-edit');
+    if (!cancelBtn) {
+        cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn btn-secondary btn-sm btn-cancel-edit ms-2';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = function() { resetHqaForm(module); };
+        submitBtn.parentNode.appendChild(cancelBtn);
+    }
+    
+    // Scroll to form
+    form.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function resetHqaForm(module) {
+    var panel = document.getElementById('module-card-' + module);
+    if (!panel) return;
+    
+    var form = panel.querySelector('form');
+    if (!form) return;
+    
+    // Remove record_id field
+    var recordIdField = form.querySelector('input[name="record_id"]');
+    if (recordIdField) {
+        recordIdField.remove();
+    }
+    
+    // Change form action from update to create
+    var actionField = form.querySelector('input[name="action"]');
+    if (actionField) {
+        actionField.value = actionField.value.replace('_update', '_create');
+    }
+    
+    // Reset all fields
+    form.reset();
+    
+    // Change submit button back
+    var submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = '+ Add';
+        submitBtn.classList.remove('btn-warning');
+        submitBtn.classList.add('btn-primary');
+    }
+    
+    // Remove cancel button
+    var cancelBtn = form.querySelector('.btn-cancel-edit');
+    if (cancelBtn) {
+        cancelBtn.remove();
+    }
+}
+
+function deleteHqaRecord(module, recordId, recordName) {
+    if (!confirm('Are you sure you want to delete: ' + recordName + '?')) {
+        return;
+    }
+    
+    // Create hidden form and submit
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '';
+    
+    // CSRF token
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    var csrfField = document.createElement('input');
+    csrfField.type = 'hidden';
+    csrfField.name = 'csrfmiddlewaretoken';
+    csrfField.value = csrfToken;
+    form.appendChild(csrfField);
+    
+    // Action field
+    var actionField = document.createElement('input');
+    actionField.type = 'hidden';
+    actionField.name = 'action';
+    actionField.value = 'hqa_' + module + '_delete';
+    form.appendChild(actionField);
+    
+    // Record ID field
+    var idField = document.createElement('input');
+    idField.type = 'hidden';
+    idField.name = 'record_id';
+    idField.value = recordId;
+    form.appendChild(idField);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function initHqaModules(){
+    var defaultModule = document.getElementById('module-card-sampling');
+    if(defaultModule){
+        defaultModule.classList.add('active');
+    }
+}
+window.addEventListener('DOMContentLoaded', function(){
+    var hash = window.location.hash.replace(/^#/, '');
+    var moduleName = null;
+    
+    // Check for module parameter in URL (e.g., #hqa-enterprise-detail?module=lab-specs)
+    if(hash.indexOf('?') > -1){
+        var parts = hash.split('?');
+        hash = parts[0];
+        var params = new URLSearchParams(parts.slice(1).join('?'));
+        moduleName = params.get('module');
+    }
+    
+    if(hash){
+        var tabName = hash.replace(/^hqa-/, '');
+        
+        if(document.getElementById('hqa-' + tabName)){
+            showHqaTab(tabName, null, moduleName);
+        } else {
+            showHqaTab('enterprise');
+        }
+    } else {
+        showHqaTab('enterprise');
+    }
+    initHqaModules();
+});
+
+</script>
+{% endblock %}

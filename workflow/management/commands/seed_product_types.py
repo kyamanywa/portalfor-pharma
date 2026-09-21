@@ -25,7 +25,10 @@ class Command(BaseCommand):
                 'product_type_key': 'capsule',
                 'product_type_display': 'Capsule',
                 'description': 'Capsule products with blending and filling workflow',
-                'default_packing_phase': 'filling',
+                # Capsule packing depends on Product.capsule_type: normal is
+                # blister packing and UG is bulk packing.  There is no single
+                # generic capsule packing phase.
+                'default_packing_phase': '',
                 'is_active': True,
             },
             {

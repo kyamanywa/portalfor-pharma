@@ -8,7 +8,6 @@ import logging
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
 import json
-from simple_history.models import HistoricalRecords  # Audit trail support
 
 # Import template models
 from .template_models import (
@@ -219,12 +218,6 @@ class BMR(models.Model):
     # Comments and Notes
     qa_comments = models.TextField(blank=True)
     regulatory_comments = models.TextField(blank=True)
-    
-    # Audit trail - tracks all changes to BMR (21 CFR Part 11 compliance)
-    history = HistoricalRecords(
-        history_change_reason_field=models.TextField(null=True),
-        excluded_fields=['updated_date'],  # Don't track updated_date changes
-    )
     
     class Meta:
         ordering = ['-created_date']
@@ -515,6 +508,7 @@ class BMRSignature(models.Model):
         ('production_started', 'Production Started'),
         ('production_completed', 'Production Completed'),
         ('qc_approved', 'QC Approved'),
+        ('qc_rejected', 'QC Rejected'),
         ('final_approval', 'Final Approval'),
     ]
     
@@ -523,6 +517,12 @@ class BMRSignature(models.Model):
     signed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     signed_date = models.DateTimeField(auto_now_add=True)
     comments = models.TextField(blank=True)
+    reauthenticated = models.BooleanField(
+        default=False,
+        help_text='Whether the signer re-entered their password for this critical action.'
+    )
+    reauthenticated_at = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
     
     class Meta:
         unique_together = ['bmr', 'signature_type', 'signed_by']

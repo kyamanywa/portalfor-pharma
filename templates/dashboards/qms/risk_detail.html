@@ -1,0 +1,380 @@
+{% extends "dashboards/qms/action_detail.html" %}
+{% load static %}
+
+{% block title %}{{ risk.risk_number }} - Risk Assessment{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .risk-detail-page { max-width: 1280px; }
+    .risk-detail-page .qms-header { position: relative; overflow: hidden; padding: 28px 32px; border: 1px solid #dbe5f2; border-left: 6px solid #10b981; border-radius: 18px; background: linear-gradient(135deg,#ffffff 0%,#f0fdf9 100%); box-shadow: 0 10px 30px rgba(15,23,42,.08); }
+    .risk-detail-page .qms-header:after { content: ''; position:absolute; width:220px; height:220px; right:-90px; top:-110px; border-radius:50%; background:rgba(16,185,129,.08); }
+    .risk-detail-page .qms-header-title { position:relative; z-index:1; color:#0f172a; font-size:clamp(21px,3vw,30px); font-weight:800; letter-spacing:-.02em; }
+    .risk-detail-page .qms-header-meta { position:relative; z-index:1; flex-wrap:wrap; gap:10px 18px; margin-top:14px; color:#64748b; }
+    .risk-detail-page .qms-header-meta span { padding:6px 11px; border:1px solid #dbe5f2; border-radius:999px; background:rgba(255,255,255,.8); }
+    .risk-detail-page .qms-tabs { overflow-x:auto; gap:5px; padding:7px; border:1px solid #dbe5f2; border-radius:14px 14px 0 0; background:#f8fafc; scrollbar-width:thin; }
+    .risk-detail-page .qms-tab { flex:0 0 auto; padding:12px 15px; border:0; border-radius:10px; color:#64748b; font-size:13px; font-weight:700; white-space:nowrap; }
+    .risk-detail-page .qms-tab:hover { background:#e8f1fb; color:#1d4ed8; }
+    .risk-detail-page .qms-tab.active { border:0; background:#2563eb; color:#fff; box-shadow:0 4px 10px rgba(37,99,235,.2); }
+    .risk-detail-page .qms-tab-content { padding:30px; border:1px solid #dbe5f2; border-top:0; border-radius:0 0 18px 18px; background:#fff; box-shadow:0 10px 30px rgba(15,23,42,.07); }
+    .risk-detail-page .qms-tab-pane h5 { margin:0 0 22px; color:#0f172a; font-size:20px; font-weight:800; }
+    .risk-detail-page .qms-info-grid { gap:14px; }
+    .risk-detail-page .qms-info-item { min-height:86px; padding:16px; border:1px solid #e2e8f0; border-radius:13px; background:#f8fafc; }
+    .risk-detail-page .qms-info-item label { color:#71809a; font-size:10px; font-weight:800; letter-spacing:.08em; }
+    .risk-detail-page .qms-info-item .value { color:#0f172a; font-size:16px; font-weight:650; }
+    .risk-detail-page .qms-info-item select { max-width:220px; border-radius:9px; border-color:#cbd5e1; }
+    .risk-detail-page #tab-fmea > div { margin-top:16px !important; padding:18px; border:1px solid #e2e8f0; border-radius:14px; background:#f8fafc; }
+    .risk-detail-page #tab-fmea label { display:block; margin-bottom:8px; color:#64748b !important; font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+    .risk-detail-page #tab-fmea > div > div { min-height:46px; margin-top:0 !important; padding:0 !important; background:transparent !important; color:#1e293b; line-height:1.65; }
+    .risk-detail-page #tab-scoring table { overflow:hidden; border:1px solid #dbe5f2; border-radius:12px; }
+    .risk-detail-page #tab-scoring th { color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+    .risk-detail-page #tab-mitigation > div[style*="background: #e8f5e9"] { border:1px solid #a7f3d0; background:#ecfdf5 !important; color:#14532d; }
+    @media (max-width: 700px) {
+        .risk-detail-page { padding:12px; }
+        .risk-detail-page .qms-header { padding:22px 18px; }
+        .risk-detail-page .qms-header-meta { display:flex; }
+        .risk-detail-page .qms-header-meta span { font-size:12px; }
+        .risk-detail-page .qms-tab-content { padding:18px; }
+        .risk-detail-page .qms-info-grid { grid-template-columns:1fr; }
+        .risk-detail-page #tab-mitigation .d-flex { flex-direction:column; gap:12px !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="qms-detail-container risk-detail-page">
+    <div class="qms-header">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="qms-header-title">{{ risk.risk_number }} - {{ risk.title }}</div>
+                <div class="qms-header-meta">
+                    <span><strong>Method:</strong> {{ risk.get_method_display }}</span>
+                    <span><strong>RPN:</strong> {{ risk.rpn }}</span>
+                    <span><strong>Risk Level:</strong> <span class="priority-badge priority-{{ risk.risk_level }}">{{ risk.get_risk_level_display }}</span></span>
+                </div>
+            </div>
+            <div>
+                <span class="status-badge status-{{ risk.status }}">{{ risk.get_status_display }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="qms-tabs">
+        <div class="qms-tab active" onclick="switchTab('overview')">📋 Overview</div>
+        <div class="qms-tab" onclick="switchTab('fmea')">⚠️ FMEA Analysis</div>
+        <div class="qms-tab" onclick="switchTab('scoring')">📊 Risk Scoring</div>
+        <div class="qms-tab" onclick="switchTab('mitigation')">🛡️ Mitigation</div>
+        <div class="qms-tab" onclick="switchTab('attachments')">📎 Files ({{ attachments.count }})</div>
+        <div class="qms-tab" onclick="switchTab('comments')">💬 Comments ({{ comments.count }})</div>
+        <div class="qms-tab" onclick="switchTab('activity')">📊 Activity</div>
+    </div>
+    
+    <div class="qms-tab-content">
+        <!-- Overview -->
+        <div id="tab-overview" class="qms-tab-pane active">
+            <h5>Risk Assessment Details</h5>
+            <div class="qms-info-grid">
+                <div class="qms-info-item">
+                    <label>Risk Number</label>
+                    <div class="value">{{ risk.risk_number }}</div>
+                </div>
+                <div class="qms-info-item">
+                    <label>Status</label>
+                    <div class="value">
+                        <form method="POST" style="display: inline;">
+                            {% csrf_token %}
+                            <select name="status" class="form-control" onchange="this.form.submit()">
+                                {% for value, label in risk.STATUS_CHOICES %}
+                                <option value="{{ value }}" {% if risk.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" name="update_status" value="1">
+                        </form>
+                    </div>
+                </div>
+                <div class="qms-info-item">
+                    <label>Method</label>
+                    <div class="value">{{ risk.get_method_display }}</div>
+                </div>
+                <div class="qms-info-item">
+                    <label>Risk Level</label>
+                    <div class="value"><span class="priority-badge priority-{{ risk.risk_level }}">{{ risk.get_risk_level_display }}</span></div>
+                </div>
+                {% if risk.process_area %}
+                <div class="qms-info-item">
+                    <label>Process Area</label>
+                    <div class="value">{{ risk.process_area }}</div>
+                </div>
+                {% endif %}
+                {% if risk.product %}
+                <div class="qms-info-item">
+                    <label>Product</label>
+                    <div class="value">{{ risk.product.product_name }}</div>
+                </div>
+                {% endif %}
+                {% if risk.owner %}
+                <div class="qms-info-item">
+                    <label>Risk Owner</label>
+                    <div class="value">{{ risk.owner.username }}</div>
+                </div>
+                {% endif %}
+                {% if risk.approved_by %}
+                <div class="qms-info-item">
+                    <label>Approved By</label>
+                    <div class="value">{{ risk.approved_by.username }} on {{ risk.approved_at|date:"M d, Y" }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- FMEA Analysis -->
+        <div id="tab-fmea" class="qms-tab-pane">
+            <h5>FMEA Analysis</h5>
+            
+            <div style="margin-top: 20px;">
+                <label style="font-weight: 600; color: #555;">Failure Mode</label>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                    {{ risk.failure_mode|linebreaks|default:"Not specified" }}
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label style="font-weight: 600; color: #555;">Potential Cause</label>
+                <div style="background: #fff3e0; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                    {{ risk.cause|linebreaks|default:"Not specified" }}
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label style="font-weight: 600; color: #555;">Potential Effect</label>
+                <div style="background: #ffebee; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                    {{ risk.effect|linebreaks|default:"Not specified" }}
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label style="font-weight: 600; color: #555;">Current Controls</label>
+                <div style="background: #e3f2fd; padding: 16px; border-radius: 6px; margin-top: 8px;">
+                    {{ risk.current_controls|linebreaks|default:"No controls documented" }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Risk Scoring -->
+        <div id="tab-scoring" class="qms-tab-pane">
+            <h5>Risk Priority Number (RPN) Calculation</h5>
+            
+            <div style="margin-top: 20px;">
+                <h6>Initial Risk Assessment</h6>
+                <table class="table table-bordered" style="margin-top: 12px;">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th>Factor</th>
+                            <th>Score (1-10)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Severity</strong></td>
+                            <td>{{ risk.severity }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Occurrence</strong></td>
+                            <td>{{ risk.occurrence }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Detectability</strong></td>
+                            <td>{{ risk.detectability }}</td>
+                        </tr>
+                        <tr style="background: #fff3cd; font-weight: bold;">
+                            <td><strong>RPN (S × O × D)</strong></td>
+                            <td>{{ risk.rpn }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 32px;">
+                <h6>Residual Risk (After Mitigation)</h6>
+                <table class="table table-bordered" style="margin-top: 12px;">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th>Factor</th>
+                            <th>Score (1-10)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Residual Severity</strong></td>
+                            <td>{{ risk.residual_severity }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Residual Occurrence</strong></td>
+                            <td>{{ risk.residual_occurrence }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Residual Detectability</strong></td>
+                            <td>{{ risk.residual_detectability }}</td>
+                        </tr>
+                        <tr style="background: #e8f5e9; font-weight: bold;">
+                            <td><strong>Residual RPN</strong></td>
+                            <td>{{ risk.residual_rpn }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 24px; padding: 16px; background: #e3f2fd; border-radius: 8px;">
+                <strong>RPN Thresholds:</strong>
+                <ul style="margin-top: 8px; margin-bottom: 0;">
+                    <li><strong>Critical:</strong> RPN ≥ 200</li>
+                    <li><strong>High:</strong> RPN ≥ 80</li>
+                    <li><strong>Medium:</strong> RPN ≥ 30</li>
+                    <li><strong>Low:</strong> RPN < 30</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Mitigation -->
+        <div id="tab-mitigation" class="qms-tab-pane">
+            <h5>Risk Mitigation Plan</h5>
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-top: 16px;">
+                {% if risk.mitigation_plan %}
+                {{ risk.mitigation_plan|linebreaks }}
+                {% else %}
+                <p style="color: #666; text-align: center;">No mitigation plan documented</p>
+                {% endif %}
+            </div>
+            
+            <div style="margin-top: 24px;">
+                <div style="display: flex; gap: 24px;">
+                    <div style="flex: 1; padding: 16px; background: #fff3cd; border-radius: 8px;">
+                        <strong>Initial RPN:</strong>
+                        <div style="font-size: 32px; font-weight: bold; color: #f57c00; margin-top: 8px;">{{ risk.rpn }}</div>
+                    </div>
+                    <div style="flex: 1; padding: 16px; background: #e8f5e9; border-radius: 8px;">
+                        <strong>Residual RPN:</strong>
+                        <div style="font-size: 32px; font-weight: bold; color: #388e3c; margin-top: 8px;">{{ risk.residual_rpn }}</div>
+                    </div>
+                    <div style="flex: 1; padding: 16px; background: #e3f2fd; border-radius: 8px;">
+                        <strong>Risk Reduction:</strong>
+                        <div style="font-size: 32px; font-weight: bold; color: #1976d2; margin-top: 8px;">
+                            {{ risk_reduction_percent }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Attachments -->
+        <div id="tab-attachments" class="qms-tab-pane">
+            <h5>Risk Documentation</h5>
+            <div class="file-upload-area" id="uploadArea" style="margin-top: 16px;">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    <div style="font-size: 48px;">📁</div>
+                    <p>Upload risk assessment documents</p>
+                    <input type="file" id="fileInput" name="file" style="display: none;" onchange="uploadFile()">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Select File</button>
+                </form>
+            </div>
+            <ul class="attachment-list" style="margin-top: 24px;">
+                {% for attachment in attachments %}
+                <li class="attachment-item">
+                    <div class="attachment-icon">📄</div>
+                    <div class="attachment-info">
+                        <div class="attachment-name">{{ attachment.filename }}</div>
+                        <div class="attachment-meta">{{ attachment.file_size|filesizeformat }} • {{ attachment.uploaded_at|date:"M d, Y" }}</div>
+                    </div>
+                    <div class="attachment-actions">
+                        <a href="{% url 'dashboards:qms_attachment_download' attachment.id %}" class="btn btn-sm btn-outline-primary">Download</a>
+                    </div>
+                </li>
+                {% empty %}
+                <li style="text-align: center; padding: 32px; color: #999;">No attachments</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <!-- Comments -->
+        <div id="tab-comments" class="qms-tab-pane">
+            <h5>Risk Review Comments</h5>
+            <div class="comment-form" style="margin-top: 16px;">
+                <form method="POST" id="commentForm">
+                    {% csrf_token %}
+                    <textarea name="comment" placeholder="Add risk review comment..." required></textarea>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Post Comment</button>
+                </form>
+            </div>
+            <div class="comment-list" style="margin-top: 24px;">
+                {% for comment in comments %}
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-author">{{ comment.user.username }}</span>
+                        <span class="comment-date">{{ comment.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="comment-text">{{ comment.comment_text|linebreaks }}</div>
+                </div>
+                {% empty %}
+                <p style="text-align: center; color: #999; padding: 32px;">No comments</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Activity -->
+        <div id="tab-activity" class="qms-tab-pane">
+            <h5>Activity Log</h5>
+            <ul class="activity-list" style="margin-top: 16px;">
+                {% for activity in activity_log %}
+                <li class="activity-item">
+                    <div class="activity-icon">📝</div>
+                    <div class="activity-content">
+                        <div class="activity-description"><strong>{{ activity.user.username }}</strong> {{ activity.description }}</div>
+                        <div class="activity-meta">{{ activity.timestamp|date:"M d, Y H:i" }}</div>
+                    </div>
+                </li>
+                {% empty %}
+                <li style="text-align: center; padding: 32px; color: #999;">No activity</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    
+    <div style="margin-top: 24px;">
+        <a href="{% url 'dashboards:head_qa_dashboard' %}#hqa-risk" class="btn btn-outline-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+
+<script>
+function switchTab(tabName) {
+    document.querySelectorAll('.qms-tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.qms-tab-pane').forEach(pane => pane.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tabName).classList.add('active');
+}
+
+function uploadFile() {
+    const formData = new FormData(document.getElementById('uploadForm'));
+    fetch('{% url "dashboards:qms_risk_upload" risk.id %}', {
+        method: 'POST',
+        body: formData,
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(response => response.json()).then(data => {
+        if (data.success) location.reload();
+    });
+}
+
+document.getElementById('commentForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('{% url "dashboards:qms_risk_comment" risk.id %}', {
+        method: 'POST',
+        body: formData,
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(response => response.json()).then(data => {
+        if (data.success) location.reload();
+    });
+});
+</script>
+{% include "dashboards/qms/_record_links.html" %}
+{% endblock %}

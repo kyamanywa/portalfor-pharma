@@ -3,11 +3,15 @@ from django.core.paginator import Paginator
 from django.db.models import F, ExpressionWrapper, DateTimeField, Count
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from django.shortcuts import render, redirect
+from django.utils.dateparse import parse_date, parse_datetime
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from datetime import timedelta
 import json
+from pathlib import Path
 
 # Model imports
 from bmr.models import BMR
@@ -88,6 +92,1158 @@ def create_notification(recipient, notification_type, title, message, priority='
     except Exception as e:
         print(f"Warning: Could not create notification for {recipient.username}: {e}")
         return None
+
+
+def _render_qms_pdf(template_name, context, request, filename):
+    """Render a QMS report template as PDF with HTML fallback."""
+    html = render_to_string(template_name, context, request=request)
+    try:
+        from weasyprint import HTML, CSS
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        HTML(string=html, base_url=request.build_absolute_uri('/')).write_pdf(
+            response,
+            stylesheets=[CSS(string='''
+                @page { size: A4; margin: 12mm; }
+                body { font-family: Arial, sans-serif; font-size: 10px; color: #111827; padding-top: 0 !important; background: #fff !important; }
+                nav.navbar, .navbar, .no-print { display: none !important; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #d1d5db; padding: 6px; vertical-align: top; }
+                th { background: #f3f4f6; }
+                .no-print { display: none !important; }
+            ''')]
+        )
+        return response
+    except Exception:
+        try:
+            from xhtml2pdf import pisa
+
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            pdf = pisa.CreatePDF(html, dest=response, encoding='utf-8')
+            if not pdf.err:
+                return response
+        except Exception:
+            pass
+        response = HttpResponse(html, content_type='text/html')
+        response['Content-Disposition'] = f'attachment; filename="{filename.replace(".pdf", ".html")}"'
+        return response
+
+
+def _qms_report_models():
+    from .models import (
+        QMSAction, QMSAudit, QMSCalibrationRecord, QMSComplaintRecall,
+        QMSDeviation, QMSDocument, QMSLabInvestigation, QMSQualityQuery,
+        QMSRegulatoryPackage, QMSRiskAssessment, QMSStabilitySchedule,
+        QMSSupplierQualification, QMSTrainingRecord,
+    )
+    return {
+        'document': (QMSDocument, 'document_number', 'title', 'Document Control'),
+        'deviation': (QMSDeviation, 'deviation_number', 'title', 'Deviation'),
+        'capa': (QMSAction, 'qms_number', 'title', 'CAPA'),
+        'change_control': (QMSAction, 'qms_number', 'title', 'Change Control'),
+        'audit': (QMSAudit, 'audit_number', 'title', 'Audit'),
+        'risk': (QMSRiskAssessment, 'risk_number', 'title', 'Risk Assessment'),
+        'lab': (QMSLabInvestigation, 'investigation_number', 'test_name', 'OOS/OOT Lab Investigation'),
+        'query': (QMSQualityQuery, 'query_number', 'subject', 'Quality Query'),
+        'complaint': (QMSComplaintRecall, 'complaint_number', 'description', 'Complaint / Recall'),
+        'regulatory': (QMSRegulatoryPackage, 'package_number', 'title', 'Regulatory Package'),
+        'stability': (QMSStabilitySchedule, 'id', 'time_point', 'Stability Schedule'),
+        'supplier': (QMSSupplierQualification, 'id', 'supplier_name', 'Supplier Qualification'),
+        'calibration': (QMSCalibrationRecord, 'equipment_id', 'equipment_name', 'Calibration'),
+        'training': (QMSTrainingRecord, 'id', 'training_type', 'Training'),
+    }
+
+
+def _qms_record_status(record):
+    if hasattr(record, 'get_status_display'):
+        return record.get_status_display()
+    return getattr(record, 'status', 'Active') or 'Active'
+
+
+def _qms_record_date(record):
+    return (
+        getattr(record, 'created_at', None)
+        or getattr(record, 'opened_at', None)
+        or getattr(record, 'updated_at', None)
+        or getattr(record, 'pull_date', None)
+        or getattr(record, 'next_due_date', None)
+    )
+
+
+def _qms_report_field_value(record, field):
+    """Convert model values into readable report text instead of raw Python/JSON output."""
+    value = field.value_from_object(record)
+    if field.name == 'revision_history' and isinstance(value, list):
+        return f'{len(value)} revision change(s)' if value else 'No revision changes recorded'
+    if isinstance(value, (dict, list)):
+        return ' · '.join(f'{key.replace("_", " ").title()}: {item}' for key, item in value.items()) if isinstance(value, dict) else f'{len(value)} item(s)'
+    if value is None or value == '':
+        return '-'
+    return value
+
+
+def handle_qms_post(request, owner_role):
+    """Create/update QMS actions from QA/QC dashboard module workspaces."""
+    action = request.POST.get('action')
+    if action == 'qms_document_sign':
+        from accounts.signature_security import verify_signature_reauthentication
+        if not verify_signature_reauthentication(request):
+            messages.error(request, 'Password re-authentication is required before signing a controlled document.')
+            return True
+    if action not in (
+        'qms_create', 'qms_update', 'qms_document_create', 'qms_document_sign',
+        'qms_deviation_create', 'qms_deviation_update',
+        'qms_risk_create', 'qms_risk_update', 'qms_audit_create', 'qms_audit_update',
+    ):
+        return False
+
+    from .models import QMSAction, QMSAudit, QMSCAPA, QMSChangeControl, QMSDeviation, QMSDocument, QMSRiskAssessment
+
+    def _bounded_score(name):
+        try:
+            return max(1, min(10, int(request.POST.get(name, 1))))
+        except (TypeError, ValueError):
+            return 1
+
+    if action == 'qms_create':
+        category = request.POST.get('category', '').strip()
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        priority = request.POST.get('priority', 'medium')
+        due_date = request.POST.get('due_date') or None
+        if not category or not title or not description:
+            messages.error(request, 'QMS module action needs a title and description.')
+            return True
+        qms_action = QMSAction.objects.create(
+            category=category,
+            owner_role=owner_role,
+            title=title,
+            description=description,
+            priority=priority,
+            due_date=due_date,
+            created_by=request.user,
+            assigned_to=request.user,
+            status='open',
+            product_id=request.POST.get('product_id') or None,
+        )
+        if category == 'capa':
+            QMSCAPA.objects.create(
+                qms_action=qms_action,
+                source_type='other',
+                problem_statement=description,
+                action_owner=request.user,
+                created_by=request.user,
+                priority=priority,
+                target_completion_date=due_date,
+            )
+        elif category == 'change_control':
+            QMSChangeControl.objects.create(
+                qms_action=qms_action,
+                change_type=request.POST.get('change_type', 'process'),
+                risk_level=priority,
+                justification=description,
+                proposed_state=description,
+                owner=request.user,
+                implementation_owner=request.user,
+                planned_implementation_date=due_date,
+                created_by=request.user,
+            )
+        messages.success(request, 'QMS action created.')
+        return True
+
+    if action == 'qms_update':
+        qms_id = request.POST.get('qms_id')
+        if not qms_id:
+            messages.error(request, 'QMS action ID is required.')
+            return True
+        try:
+            qms_action = QMSAction.objects.get(pk=qms_id)
+            qms_action.status = request.POST.get('status', qms_action.status)
+            qms_action.priority = request.POST.get('priority', qms_action.priority)
+            qms_action.description = request.POST.get('description', qms_action.description).strip() or qms_action.description
+            due_date = request.POST.get('due_date')
+            if due_date:
+                qms_action.due_date = due_date
+            qms_action.save()
+            messages.success(request, 'QMS action updated.')
+        except QMSAction.DoesNotExist:
+            messages.error(request, 'QMS action not found.')
+        return True
+
+    if action == 'qms_document_create':
+        title = request.POST.get('title', '').strip()
+        document_type = request.POST.get('document_type', 'sop')
+        version = request.POST.get('version', '1.0').strip() or '1.0'
+        if not title:
+            messages.error(request, 'Controlled document needs a title.')
+            return True
+        qms_action = QMSAction.objects.create(
+            category='document_control',
+            owner_role='qa',
+            title=f'Document control: {title}',
+            description=request.POST.get('revision_reason', '').strip() or 'Controlled document workflow.',
+            priority='medium',
+            due_date=request.POST.get('next_review_date') or None,
+            created_by=request.user,
+            assigned_to=request.user,
+            status='open',
+        )
+        QMSDocument.objects.create(
+            related_qms_action=qms_action,
+            document_type=document_type,
+            title=title,
+            version=version,
+            status=request.POST.get('status', 'draft'),
+            controlled_file=request.FILES.get('controlled_file'),
+            effective_date=request.POST.get('effective_date') or None,
+            expiry_date=request.POST.get('expiry_date') or None,
+            revision_date=request.POST.get('revision_date') or None,
+            next_review_date=request.POST.get('next_review_date') or None,
+            revision_reason=request.POST.get('revision_reason', '').strip(),
+            owner=request.user,
+            prepared_by=request.user,
+        )
+        messages.success(request, 'Controlled document record created.')
+        return True
+
+    if action == 'qms_document_sign':
+        document = get_object_or_404(QMSDocument, pk=request.POST.get('document_id'))
+        document.status = request.POST.get('status', document.status)
+        document.version = request.POST.get('version', document.version).strip() or document.version
+        document.electronic_signature = request.POST.get('electronic_signature', '').strip()
+        document.revision_reason = request.POST.get('revision_reason', document.revision_reason).strip()
+        document.reviewed_by = request.user
+        if document.status in ('approved', 'effective'):
+            document.approved_by = request.user
+            document.signed_at = timezone.now()
+        document.save()
+        messages.success(request, f'{document.document_number} updated.')
+        return True
+
+    if action == 'qms_deviation_create':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        if not title or not description:
+            messages.error(request, 'Deviation needs a title and description.')
+            return True
+        qms_action = QMSAction.objects.create(
+            category='deviation',
+            owner_role='qa',
+            title=title,
+            description=description,
+            priority=request.POST.get('priority', 'medium'),
+            due_date=request.POST.get('due_date') or None,
+            created_by=request.user,
+            assigned_to=request.user,
+            status='investigation',
+        )
+        QMSDeviation.objects.create(
+            qms_action=qms_action,
+            sop_document_id=request.POST.get('sop_document') or None,
+            title=title,
+            description=description,
+            deviation_type=request.POST.get('deviation_type', '').strip(),
+            severity=request.POST.get('severity', 'major'),
+            status='impact_assessment',
+            detection_date=request.POST.get('detection_date') or None,
+            immediate_action=request.POST.get('immediate_action', '').strip(),
+            impact_assessment=request.POST.get('impact_assessment', '').strip(),
+            created_by=request.user,
+            assigned_to=request.user,
+        )
+        messages.success(request, 'Deviation lifecycle record created.')
+        return True
+
+    if action == 'qms_deviation_update':
+        deviation = get_object_or_404(QMSDeviation, pk=request.POST.get('deviation_id'))
+        deviation.status = request.POST.get('status', deviation.status)
+        deviation.impact_assessment = request.POST.get('impact_assessment', deviation.impact_assessment).strip()
+        deviation.root_cause = request.POST.get('root_cause', deviation.root_cause).strip()
+        deviation.qa_decision = request.POST.get('qa_decision', deviation.qa_decision)
+        deviation.closure_summary = request.POST.get('closure_summary', deviation.closure_summary).strip()
+        if deviation.qa_decision == 'capa_required' and not deviation.capa_action:
+            capa_action = QMSAction.objects.create(
+                category='capa',
+                owner_role='qa',
+                title=f'CAPA for {deviation.deviation_number}',
+                description=deviation.root_cause or deviation.description,
+                priority='high' if deviation.severity == 'critical' else 'medium',
+                created_by=request.user,
+                assigned_to=request.user,
+                status='action_required',
+            )
+            deviation.capa_action = capa_action
+            QMSCAPA.objects.create(
+                qms_action=capa_action,
+                source_type='deviation',
+                source_deviation=deviation,
+                source_reference=deviation.deviation_number,
+                problem_statement=deviation.description,
+                root_cause_analysis=deviation.root_cause,
+                action_owner=request.user,
+                created_by=request.user,
+                priority='high' if deviation.severity == 'critical' else 'medium',
+            )
+        if deviation.status == 'closed' and not deviation.closed_at:
+            deviation.closed_at = timezone.now()
+            deviation.closed_by = request.user
+        deviation.save()
+        if deviation.qms_action:
+            deviation.qms_action.status = 'closed' if deviation.status == 'closed' else 'investigation'
+            deviation.qms_action.root_cause = deviation.root_cause
+            deviation.qms_action.effectiveness_check = deviation.closure_summary
+            if deviation.qms_action.status == 'closed' and not deviation.qms_action.closed_at:
+                deviation.qms_action.closed_at = timezone.now()
+                deviation.qms_action.approved_by = request.user
+            deviation.qms_action.save()
+        messages.success(request, f'{deviation.deviation_number} updated.')
+        return True
+
+    if action == 'qms_risk_create':
+        title = request.POST.get('title', '').strip()
+        if not title:
+            messages.error(request, 'Risk assessment needs a title.')
+            return True
+        qms_action = QMSAction.objects.create(
+            category='risk',
+            owner_role='qa',
+            title=f'Risk assessment: {title}',
+            description=request.POST.get('hazard', '').strip() or 'Quality risk assessment.',
+            priority='medium',
+            created_by=request.user,
+            assigned_to=request.user,
+            status='open',
+        )
+        QMSRiskAssessment.objects.create(
+            qms_action=qms_action,
+            method=request.POST.get('method', 'fmea'),
+            title=title,
+            process_area=request.POST.get('process_area', '').strip(),
+            hazard=request.POST.get('hazard', '').strip(),
+            failure_mode=request.POST.get('failure_mode', '').strip(),
+            cause=request.POST.get('cause', '').strip(),
+            effect=request.POST.get('effect', '').strip(),
+            current_controls=request.POST.get('current_controls', '').strip(),
+            mitigation_plan=request.POST.get('mitigation_plan', '').strip(),
+            severity=_bounded_score('severity'),
+            occurrence=_bounded_score('occurrence'),
+            detectability=_bounded_score('detectability'),
+            owner=request.user,
+            status='draft',
+        )
+        messages.success(request, 'Risk assessment created.')
+        return True
+
+    if action == 'qms_risk_update':
+        risk = get_object_or_404(QMSRiskAssessment, pk=request.POST.get('risk_id'))
+        risk.status = request.POST.get('status', risk.status)
+        risk.current_controls = request.POST.get('current_controls', risk.current_controls).strip()
+        risk.mitigation_plan = request.POST.get('mitigation_plan', risk.mitigation_plan).strip()
+        risk.residual_severity = _bounded_score('residual_severity')
+        risk.residual_occurrence = _bounded_score('residual_occurrence')
+        risk.residual_detectability = _bounded_score('residual_detectability')
+        if risk.status in ('approved', 'closed') and not risk.approved_at:
+            risk.approved_by = request.user
+            risk.approved_at = timezone.now()
+        risk.save()
+        messages.success(request, f'{risk.risk_number} updated.')
+        return True
+
+    if action == 'qms_audit_create':
+        title = request.POST.get('title', '').strip()
+        observation = request.POST.get('observation', '').strip()
+        if not title:
+            messages.error(request, 'Audit record needs a title.')
+            return True
+        qms_action = QMSAction.objects.create(
+            category='audit',
+            owner_role='qa',
+            title=f'Audit finding: {title}',
+            description=observation or request.POST.get('scope', '').strip() or 'Audit management record.',
+            priority='high' if request.POST.get('severity') in ('high', 'critical') else 'medium',
+            due_date=request.POST.get('due_date') or None,
+            created_by=request.user,
+            assigned_to=request.user,
+            status='open',
+        )
+        QMSAudit.objects.create(
+            qms_action=qms_action,
+            audit_type=request.POST.get('audit_type', 'internal'),
+            title=title,
+            scope=request.POST.get('scope', '').strip(),
+            auditee=request.POST.get('auditee', '').strip(),
+            department=request.POST.get('department', '').strip(),
+            standard_reference=request.POST.get('standard_reference', '').strip(),
+            finding_type=request.POST.get('finding_type', 'observation'),
+            severity=request.POST.get('severity', 'medium'),
+            observation=observation,
+            corrective_action=request.POST.get('corrective_action', '').strip(),
+            due_date=request.POST.get('due_date') or None,
+            planned_date=request.POST.get('planned_date') or None,
+            conducted_date=request.POST.get('conducted_date') or None,
+            evidence_file=request.FILES.get('evidence_file'),
+            created_by=request.user,
+            responsible_person=request.user,
+            status='finding_open' if observation else 'planned',
+        )
+        messages.success(request, 'Audit management record created.')
+        return True
+
+    if action == 'qms_audit_update':
+        audit = get_object_or_404(QMSAudit, pk=request.POST.get('audit_id'))
+        audit.status = request.POST.get('status', audit.status)
+        audit.finding_type = request.POST.get('finding_type', audit.finding_type)
+        audit.severity = request.POST.get('severity', audit.severity)
+        audit.observation = request.POST.get('observation', audit.observation).strip()
+        audit.corrective_action = request.POST.get('corrective_action', audit.corrective_action).strip()
+        audit.verification_notes = request.POST.get('verification_notes', audit.verification_notes).strip()
+        audit.due_date = request.POST.get('due_date') or audit.due_date
+        if request.FILES.get('evidence_file'):
+            audit.evidence_file = request.FILES['evidence_file']
+        if audit.status == 'closed' and not audit.closed_at:
+            audit.closed_at = timezone.now()
+            audit.closed_by = request.user
+        audit.save()
+        if audit.qms_action:
+            audit.qms_action.status = 'closed' if audit.status == 'closed' else 'action_required'
+            audit.qms_action.corrective_action = audit.corrective_action
+            audit.qms_action.effectiveness_check = audit.verification_notes
+            if audit.qms_action.status == 'closed' and not audit.qms_action.closed_at:
+                audit.qms_action.closed_at = timezone.now()
+                audit.qms_action.approved_by = request.user
+            audit.qms_action.save()
+        messages.success(request, f'{audit.audit_number} updated.')
+        return True
+
+    qms_id = request.POST.get('qms_id')
+    qms_action = get_object_or_404(QMSAction, pk=qms_id, owner_role=owner_role)
+    qms_action.status = request.POST.get('status', qms_action.status)
+    qms_action.root_cause = request.POST.get('root_cause', qms_action.root_cause).strip()
+    qms_action.corrective_action = request.POST.get('corrective_action', qms_action.corrective_action).strip()
+    qms_action.preventive_action = request.POST.get('preventive_action', qms_action.preventive_action).strip()
+    qms_action.effectiveness_check = request.POST.get('effectiveness_check', qms_action.effectiveness_check).strip()
+    if qms_action.status == 'closed' and not qms_action.closed_at:
+        qms_action.closed_at = timezone.now()
+        qms_action.approved_by = request.user
+    qms_action.save()
+    messages.success(request, f'{qms_action.qms_number} updated.')
+    return True
+
+
+@login_required
+def qms_reports(request):
+    """Searchable QMS report index across QA/QC enterprise records."""
+    if getattr(request.user, 'role', None) not in ['head_qa', 'qa', 'qc', 'admin'] and not request.user.is_staff:
+        messages.error(request, 'Access denied. Head QA, QA, or QC role required.')
+        return redirect('dashboards:dashboard_home')
+
+    from django.db.models import Q
+
+    query = request.GET.get('q', '').strip()
+    selected_type = request.GET.get('type', '').strip()
+    report_models = _qms_report_models()
+    records = []
+
+    for report_type, (model, number_field, title_field, label) in report_models.items():
+        if selected_type and selected_type != report_type:
+            continue
+        queryset = model.objects.all()
+        if report_type in ('capa', 'change_control'):
+            queryset = queryset.filter(category=report_type)
+        if query:
+            search_q = Q()
+            for field in [number_field, title_field, 'status', 'description', 'observation', 'question', 'response']:
+                try:
+                    model._meta.get_field(field)
+                    search_q |= Q(**{f'{field}__icontains': query})
+                except Exception:
+                    pass
+            queryset = queryset.filter(search_q) if search_q else queryset.none()
+        for record in queryset.order_by('-pk')[:25]:
+            number = getattr(record, number_field, '') if number_field != 'id' else str(record.pk)
+            title = getattr(record, title_field, '') or str(record)
+            capa_record = getattr(record, 'capa_record', None) if report_type == 'capa' else None
+            change_record = getattr(record, 'change_control_record', None) if report_type == 'change_control' else None
+            records.append({
+                'type': report_type,
+                'label': label,
+                'number': number,
+                'title': title,
+                'status': _qms_record_status(capa_record or change_record or record),
+                'date': _qms_record_date(record),
+                'detail_url': reverse('dashboards:qms_report_detail', args=[report_type, record.pk]),
+                'pdf_url': reverse('dashboards:qms_report_detail', args=[report_type, record.pk]) + '?format=pdf',
+                'workspace_url': (
+                    reverse('dashboards:qms_document_detail', kwargs={'document_id': record.pk}) if report_type == 'document' else
+                    reverse('dashboards:qms_quality_query_detail', kwargs={'query_id': record.pk}) if report_type == 'query' else ''
+                ),
+            })
+
+    records.sort(key=lambda row: str(row['date'] or ''), reverse=True)
+    return render(request, 'dashboards/qms_reports.html', {
+        'records': records[:100],
+        'query': query,
+        'selected_type': selected_type,
+        'report_types': [(key, meta[3]) for key, meta in report_models.items()],
+        'dashboard_title': 'QMS Reports',
+    })
+
+
+@login_required
+def qms_report_detail(request, report_type, object_id):
+    """View/download a single QMS record report."""
+    if getattr(request.user, 'role', None) not in ['head_qa', 'qa', 'qc', 'admin'] and not request.user.is_staff:
+        messages.error(request, 'Access denied. Head QA, QA, or QC role required.')
+        return redirect('dashboards:dashboard_home')
+
+    report_models = _qms_report_models()
+    if report_type not in report_models:
+        messages.error(request, 'Unknown QMS report type.')
+        return redirect('dashboards:qms_reports')
+
+    model, number_field, title_field, label = report_models[report_type]
+    queryset = model.objects.all()
+    if report_type in ('capa', 'change_control'):
+        queryset = queryset.filter(category=report_type)
+    record = get_object_or_404(queryset, pk=object_id)
+    number = getattr(record, number_field, '') if number_field != 'id' else str(record.pk)
+    title = getattr(record, title_field, '') or str(record)
+    context = {
+        'record': record,
+        'report_type': report_type,
+        'report_label': label,
+        'report_number': number,
+        'report_title': title,
+        'report_fields': [
+            (field.verbose_name.title(), _qms_report_field_value(record, field))
+            for field in record._meta.fields
+        ],
+        'generated_at': timezone.now(),
+        'download_url': reverse('dashboards:qms_report_detail', args=[report_type, record.pk]) + '?format=pdf',
+        'capa_record': getattr(record, 'capa_record', None) if report_type == 'capa' else None,
+        'change_record': getattr(record, 'change_control_record', None) if report_type == 'change_control' else None,
+        'query_record': record if report_type == 'query' else None,
+        'document_record': record if report_type == 'document' else None,
+    }
+    if request.GET.get('format') == 'pdf':
+        safe_number = str(number or record.pk).replace('/', '-').replace(' ', '_')
+        # Give WeasyPrint a local asset path so PDF generation does not depend
+        # on the web server being reachable for static files.
+        try:
+            from django.contrib.staticfiles import finders
+            logo_path = finders.find('kpi_logo.png')
+            if logo_path:
+                context['qms_logo_uri'] = Path(logo_path).resolve().as_uri()
+        except Exception:
+            pass
+        return _render_qms_pdf('dashboards/qms_report_detail.html', context, request, f'qms_{report_type}_{safe_number}.pdf')
+    return render(request, 'dashboards/qms_report_detail.html', context)
+
+
+def _head_qa_qms_context():
+    from .models import (
+        QMSAction, QMSApprovalRoute, QMSAudit, QMSCAPA, QMSCalibrationRecord,
+        QMSChangeControl, QMSChangeImpactAssessment, QMSComplaintRecall, QMSDeviation,
+        QMSDocument, QMSFieldAuditTrail, QMSLabInvestigation,
+        QMSLabSpecification, QMSNotificationRule, QMSQualityQuery,
+        QMSRegulatoryPackage, QMSReportExport, QMSRiskAssessment,
+        QMSSamplingPlan, QMSStabilitySchedule, QMSSupplierQualification,
+        QMSTrainingRecord,
+    )
+
+    qa_qms_base = QMSAction.objects.filter(owner_role='qa').exclude(status__in=['closed', 'cancelled'])
+    products = Product.objects.order_by('product_name')[:200]
+    qms_users = CustomUser.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')[:200]
+    qms_documents = QMSDocument.objects.select_related('owner', 'prepared_by', 'reviewed_by', 'approved_by', 'related_qms_action').order_by('-updated_at')[:30]
+    qms_sop_documents = QMSDocument.objects.filter(document_type='sop').order_by('title')
+    qms_deviations = QMSDeviation.objects.select_related('qms_action', 'sop_document', 'bmr', 'product', 'quality_lot', 'defect', 'capa_action', 'assigned_to', 'closed_by').order_by('-created_at')[:30]
+    qms_risks = QMSRiskAssessment.objects.select_related('qms_action', 'product', 'bmr', 'owner', 'approved_by').order_by('-created_at')[:30]
+    qms_audits = QMSAudit.objects.select_related('qms_action', 'risk_assessment', 'responsible_person', 'created_by', 'closed_by').order_by('-created_at')[:30]
+    capa_queryset = QMSCAPA.objects.all()
+    change_queryset = QMSChangeControl.objects.all()
+    query_queryset = QMSQualityQuery.objects.all()
+    qms_record_stats = {
+        'capa_total': capa_queryset.count(),
+        'capa_open': capa_queryset.exclude(status__in=['closed', 'cancelled']).count(),
+        'capa_overdue': capa_queryset.filter(status='overdue').count(),
+        'capa_effectiveness_pending': capa_queryset.filter(status='effectiveness_review').exclude(effectiveness_result='effective').count(),
+        'change_total': change_queryset.count(),
+        'change_open': change_queryset.exclude(status__in=['closed', 'cancelled', 'rejected']).count(),
+        'change_overdue': change_queryset.filter(status='overdue').count(),
+        'change_impact_pending': change_queryset.filter(status='impact_assessment').count(),
+        'queries_total': query_queryset.count(),
+        'queries_open': query_queryset.exclude(status='closed').count(),
+        'queries_overdue': query_queryset.filter(due_date__isnull=False, due_date__lt=timezone.now().date()).exclude(status='closed').count(),
+        'documents': QMSDocument.objects.exclude(status__in=['obsolete', 'archived']).count(),
+        'documents_expiring': QMSDocument.objects.filter(expiry_date__isnull=False, expiry_date__lte=timezone.now().date() + timedelta(days=60)).exclude(status__in=['obsolete', 'archived']).count(),
+        'deviations': QMSDeviation.objects.exclude(status='closed').count(),
+        'risks': QMSRiskAssessment.objects.exclude(status='closed').count(),
+        'critical_risks': QMSRiskAssessment.objects.filter(risk_level='critical').exclude(status='closed').count(),
+        'audits': QMSAudit.objects.exclude(status='closed').count(),
+        'overdue_audits': QMSAudit.objects.filter(due_date__isnull=False, due_date__lt=timezone.now().date()).exclude(status='closed').count(),
+    }
+    qms_enterprise_stats = {
+        'approval_routes': QMSApprovalRoute.objects.exclude(status__in=['approved', 'cancelled']).count(),
+        'field_audit_events': QMSFieldAuditTrail.objects.count(),
+        'report_exports': QMSReportExport.objects.count(),
+        'sampling_plans': QMSSamplingPlan.objects.filter(is_active=True).count(),
+        'lab_specs': QMSLabSpecification.objects.filter(is_active=True).count(),
+        'stability_pulls': QMSStabilitySchedule.objects.exclude(status='closed').count(),
+        'suppliers': QMSSupplierQualification.objects.exclude(status='disqualified').count(),
+        'calibrations_due': QMSCalibrationRecord.objects.filter(next_due_date__isnull=False, next_due_date__lte=timezone.now().date() + timedelta(days=30)).exclude(status='out_of_service').count(),
+        'training_due': QMSTrainingRecord.objects.filter(status__in=['assigned', 'overdue']).count(),
+        'change_impacts': QMSChangeImpactAssessment.objects.count(),
+        'complaints': QMSComplaintRecall.objects.exclude(status='closed').count(),
+        'lab_investigations': QMSLabInvestigation.objects.exclude(status='closed').count(),
+        'quality_queries': QMSQualityQuery.objects.exclude(status='closed').count(),
+        'regulatory_packages': QMSRegulatoryPackage.objects.exclude(status='closed').count(),
+        'notification_rules': QMSNotificationRule.objects.filter(is_active=True).count(),
+    }
+    qms_enterprise_latest = {
+        'approval_routes': QMSApprovalRoute.objects.select_related('created_by').order_by('-created_at')[:5],
+        'stability_pulls': QMSStabilitySchedule.objects.select_related('product', 'bmr').order_by('pull_date')[:5],
+        'supplier_qualifications': QMSSupplierQualification.objects.order_by('next_audit_date', 'supplier_name')[:5],
+        'calibrations': QMSCalibrationRecord.objects.order_by('next_due_date', 'equipment_id')[:5],
+        'training': QMSTrainingRecord.objects.select_related('document', 'trainee').order_by('due_date')[:5],
+        'complaints': QMSComplaintRecall.objects.select_related('product', 'bmr').order_by('-created_at')[:5],
+        'lab_investigations': QMSLabInvestigation.objects.select_related('product', 'bmr', 'quality_lot').order_by('-opened_at')[:5],
+        'quality_queries': QMSQualityQuery.objects.select_related('product', 'bmr', 'assigned_to').order_by('-created_at')[:5],
+        'regulatory_packages': QMSRegulatoryPackage.objects.select_related('owner').order_by('-submission_date', 'title')[:5],
+    }
+    qms_enterprise_modules = {
+        'sampling_plans': QMSSamplingPlan.objects.select_related('product').order_by('name')[:50],
+        'lab_specs': QMSLabSpecification.objects.select_related('product').order_by('product__product_name', 'test_name')[:50],
+        'stability_pulls': QMSStabilitySchedule.objects.select_related('product', 'bmr', 'reviewed_by').order_by('pull_date')[:50],
+        'supplier_qualifications': QMSSupplierQualification.objects.select_related('approved_by').order_by('supplier_name')[:50],
+        'calibrations': QMSCalibrationRecord.objects.order_by('next_due_date', 'equipment_id')[:50],
+        'training': QMSTrainingRecord.objects.select_related('document', 'trainee', 'trainer').order_by('due_date')[:50],
+        'regulatory_packages': QMSRegulatoryPackage.objects.select_related('owner').prefetch_related('included_documents').order_by('-submission_date', 'title')[:50],
+        'notification_rules': QMSNotificationRule.objects.order_by('trigger_type', 'days_before')[:50],
+        'quality_queries': QMSQualityQuery.objects.select_related('product', 'bmr', 'assigned_to').order_by('-created_at')[:50],
+        'lab_investigations': QMSLabInvestigation.objects.select_related('product', 'bmr', 'quality_lot').order_by('-opened_at')[:50],
+    }
+    return {
+        'qa_qms_by_category': {
+            'deviation': qa_qms_base.filter(category='deviation').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+            'capa': qa_qms_base.filter(category='capa').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+            'change_control': qa_qms_base.filter(category='change_control').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to', 'change_control_record')[:20],
+            'complaint': qa_qms_base.filter(category='complaint').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+            'audit_risk': qa_qms_base.filter(category__in=['audit', 'risk']).select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        },
+        'qa_qms_stats': {
+            'total': qa_qms_base.count(),
+            'capa': qa_qms_base.filter(category='capa').count(),
+            'change_control': qa_qms_base.filter(category='change_control').count(),
+            'complaint': qa_qms_base.filter(category='complaint').count(),
+        },
+        'qms_documents': qms_documents,
+        'qms_sop_documents': qms_sop_documents,
+        'qms_deviations': qms_deviations,
+        'qms_risks': qms_risks,
+        'qms_audits': qms_audits,
+        'qms_record_stats': qms_record_stats,
+        'qms_enterprise_stats': qms_enterprise_stats,
+        'qms_enterprise_latest': qms_enterprise_latest,
+        'qms_enterprise_modules': qms_enterprise_modules,
+        'products': products,
+        'qms_users': qms_users,
+    }
+
+
+def handle_head_qa_enterprise_post(request):
+    action = request.POST.get('action', '')
+    if not action.startswith('hqa_'):
+        return False
+
+    if action == 'hqa_run_capa_alerts':
+        from django.core.management import call_command
+        from io import StringIO
+        output = StringIO()
+        call_command('process_capa_alerts', stdout=output)
+        messages.success(request, output.getvalue().strip() or 'CAPA alerts processed.')
+        return True
+    if action == 'hqa_run_change_control_alerts':
+        from django.core.management import call_command
+        from io import StringIO
+        output = StringIO()
+        call_command('process_change_control_alerts', stdout=output)
+        messages.success(request, output.getvalue().strip() or 'Change Control alerts processed.')
+        return True
+    if action == 'hqa_run_calibration_alerts':
+        from django.core.management import call_command
+        from io import StringIO
+        output = StringIO()
+        call_command('process_calibration_alerts', stdout=output)
+        messages.success(request, output.getvalue().strip() or 'Calibration alerts processed.')
+        return True
+
+    from .models import (
+        QMSCalibrationRecord, QMSLabSpecification, QMSNotificationRule,
+        QMSRegulatoryPackage, QMSSamplingPlan, QMSStabilitySchedule,
+        QMSSupplierQualification, QMSTrainingRecord,
+    )
+
+    def _parse_non_negative_int(field_name, default=0):
+        try:
+            value = int(request.POST.get(field_name) or default)
+            return max(default, value)
+        except (TypeError, ValueError):
+            return default
+
+    if action == 'hqa_sampling_create':
+        name = request.POST.get('name', '').strip()
+        if not name:
+            messages.error(request, 'Sampling plan name is required.')
+            return True
+
+        sample_size = _parse_non_negative_int('sample_size')
+        acceptance_number = _parse_non_negative_int('acceptance_number')
+        rejection_number = _parse_non_negative_int('rejection_number')
+
+        QMSSamplingPlan.objects.create(
+            name=name,
+            product_id=request.POST.get('product') or None,
+            inspection_type=request.POST.get('inspection_type', '').strip(),
+            aql_level=request.POST.get('aql_level', '').strip(),
+            sample_size=sample_size,
+            acceptance_number=acceptance_number,
+            rejection_number=rejection_number,
+            procedure_reference=request.POST.get('procedure_reference', '').strip(),
+        )
+        messages.success(request, 'Sampling plan created.')
+        return True
+
+    if action == 'hqa_lab_spec_create':
+        QMSLabSpecification.objects.create(
+            product_id=request.POST.get('product') or None,
+            test_name=request.POST.get('test_name', '').strip(),
+            method_reference=request.POST.get('method_reference', '').strip(),
+            specification=request.POST.get('specification', '').strip(),
+            unit=request.POST.get('unit', '').strip(),
+            effective_date=request.POST.get('effective_date') or None,
+            expiry_date=request.POST.get('expiry_date') or None,
+        )
+        messages.success(request, 'Lab specification created.')
+        return True
+
+    if action == 'hqa_stability_create':
+        QMSStabilitySchedule.objects.create(
+            product_id=request.POST.get('product') or None,
+            condition=request.POST.get('condition', 'long_term'),
+            time_point=request.POST.get('time_point', '').strip(),
+            chamber=request.POST.get('chamber', '').strip(),
+            pull_date=request.POST.get('pull_date'),
+            status=request.POST.get('status', 'scheduled'),
+        )
+        messages.success(request, 'Stability pull scheduled.')
+        return True
+
+    if action == 'hqa_supplier_create':
+        QMSSupplierQualification.objects.create(
+            supplier_name=request.POST.get('supplier_name', '').strip(),
+            material_name=request.POST.get('material_name', '').strip(),
+            status=request.POST.get('status', 'candidate'),
+            risk_level=request.POST.get('risk_level', 'medium'),
+            qualification_score=int(request.POST.get('qualification_score') or 0),
+            next_audit_date=request.POST.get('next_audit_date') or None,
+            approved_by=request.user,
+            approval_notes=request.POST.get('approval_notes', '').strip(),
+        )
+        messages.success(request, 'Supplier qualification created.')
+        return True
+
+    if action == 'hqa_calibration_create':
+        equipment_id = request.POST.get('equipment_id', '').strip()
+        equipment_name = request.POST.get('equipment_name', '').strip()
+        if not equipment_id or not equipment_name:
+            messages.error(request, 'Equipment ID and equipment name are required.')
+            return True
+        record = QMSCalibrationRecord.objects.create(
+            equipment_id=equipment_id,
+            equipment_name=equipment_name,
+            department=request.POST.get('department', '').strip(),
+            status=request.POST.get('status', 'in_service'),
+            last_calibrated=parse_date(request.POST.get('last_calibrated') or ''),
+            next_due_date=parse_date(request.POST.get('next_due_date') or ''),
+            notes=request.POST.get('notes', '').strip(),
+            owner=request.user,
+            created_by=request.user,
+        )
+        if record.status != 'out_of_service':
+            record.status = record.calculated_status
+            record.save(update_fields=['status', 'updated_at'])
+        messages.success(request, 'Calibration record created.')
+        return True
+
+    if action == 'hqa_training_create':
+        QMSTrainingRecord.objects.create(
+            document_id=request.POST.get('document') or None,
+            trainee_id=request.POST.get('trainee') or None,
+            trainer=request.user,
+            training_type=request.POST.get('training_type', 'SOP Revision').strip(),
+            status=request.POST.get('status', 'assigned'),
+            assigned_date=request.POST.get('assigned_date') or timezone.now().date(),
+            due_date=request.POST.get('due_date') or None,
+        )
+        messages.success(request, 'Training assignment created.')
+        return True
+
+    if action == 'hqa_regulatory_create':
+        package = QMSRegulatoryPackage.objects.create(
+            title=request.POST.get('title', '').strip(),
+            market=request.POST.get('market', '').strip(),
+            authority=request.POST.get('authority', '').strip(),
+            status=request.POST.get('status', 'draft'),
+            dossier_reference=request.POST.get('dossier_reference', '').strip(),
+            submission_date=request.POST.get('submission_date') or None,
+            owner=request.user,
+        )
+        if request.POST.get('document'):
+            package.included_documents.add(request.POST.get('document'))
+        messages.success(request, 'Regulatory package created.')
+        return True
+
+    if action == 'hqa_query_create':
+        QMSQualityQuery.objects.create(
+            query_type=request.POST.get('query_type', 'internal'),
+            source=request.POST.get('source', '').strip(),
+            subject=request.POST.get('subject', '').strip(),
+            question=request.POST.get('question', '').strip(),
+            priority=request.POST.get('priority', 'medium'),
+            due_date=request.POST.get('due_date') or None,
+            product_id=request.POST.get('product') or None,
+            assigned_to_id=request.POST.get('assigned_to') or None,
+            created_by=request.user,
+        )
+        messages.success(request, 'Quality query created.')
+        return True
+
+    if action == 'hqa_rule_create':
+        QMSNotificationRule.objects.create(
+            name=request.POST.get('name', '').strip(),
+            trigger_type=request.POST.get('trigger_type', 'document_expiry'),
+            days_before=int(request.POST.get('days_before') or 7),
+            role_to_notify=request.POST.get('role_to_notify', 'qa').strip(),
+            is_active=bool(request.POST.get('is_active', '1')),
+        )
+        messages.success(request, 'Escalation rule created.')
+        return True
+
+    # DELETE ACTIONS
+    if action == 'hqa_sampling_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSSamplingPlan.objects.filter(id=record_id).delete()
+            messages.success(request, 'Sampling plan deleted.')
+        return True
+
+    if action == 'hqa_lab_spec_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSLabSpecification.objects.filter(id=record_id).delete()
+            messages.success(request, 'Lab specification deleted.')
+        return True
+
+    if action == 'hqa_stability_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSStabilitySchedule.objects.filter(id=record_id).delete()
+            messages.success(request, 'Stability schedule deleted.')
+        return True
+
+    if action == 'hqa_supplier_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSSupplierQualification.objects.filter(id=record_id).delete()
+            messages.success(request, 'Supplier qualification deleted.')
+        return True
+
+    if action == 'hqa_calibration_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSCalibrationRecord.objects.filter(id=record_id).delete()
+            messages.success(request, 'Calibration record deleted.')
+        return True
+
+    if action == 'hqa_training_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSTrainingRecord.objects.filter(id=record_id).delete()
+            messages.success(request, 'Training record deleted.')
+        return True
+
+    if action == 'hqa_regulatory_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSRegulatoryPackage.objects.filter(id=record_id).delete()
+            messages.success(request, 'Regulatory package deleted.')
+        return True
+
+    if action == 'hqa_rule_delete':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            QMSNotificationRule.objects.filter(id=record_id).delete()
+            messages.success(request, 'Escalation rule deleted.')
+        return True
+
+    # UPDATE/EDIT ACTIONS
+    if action == 'hqa_sampling_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSSamplingPlan.objects.filter(id=record_id).first()
+            if record:
+                record.name = request.POST.get('name', '').strip() or record.name
+                record.product_id = request.POST.get('product') or record.product_id
+                record.inspection_type = request.POST.get('inspection_type', '').strip() or record.inspection_type
+                record.aql_level = request.POST.get('aql_level', '').strip() or record.aql_level
+                record.sample_size = _parse_non_negative_int('sample_size', record.sample_size)
+                record.acceptance_number = _parse_non_negative_int('acceptance_number', record.acceptance_number)
+                record.rejection_number = _parse_non_negative_int('rejection_number', record.rejection_number)
+                record.procedure_reference = request.POST.get('procedure_reference', '').strip() or record.procedure_reference
+                record.save()
+                messages.success(request, 'Sampling plan updated.')
+        return True
+
+    if action == 'hqa_lab_spec_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSLabSpecification.objects.filter(id=record_id).first()
+            if record:
+                record.product_id = request.POST.get('product') or record.product_id
+                record.test_name = request.POST.get('test_name', '').strip() or record.test_name
+                record.method_reference = request.POST.get('method_reference', '').strip() or record.method_reference
+                record.specification = request.POST.get('specification', '').strip() or record.specification
+                record.unit = request.POST.get('unit', '').strip() or record.unit
+                effective_date = request.POST.get('effective_date')
+                if effective_date:
+                    record.effective_date = effective_date
+                expiry_date = request.POST.get('expiry_date')
+                if expiry_date:
+                    record.expiry_date = expiry_date
+                record.save()
+                messages.success(request, 'Lab specification updated.')
+        return True
+
+    if action == 'hqa_stability_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSStabilitySchedule.objects.filter(id=record_id).first()
+            if record:
+                record.product_id = request.POST.get('product') or record.product_id
+                record.condition = request.POST.get('condition', 'long_term')
+                record.time_point = request.POST.get('time_point', '').strip() or record.time_point
+                record.chamber = request.POST.get('chamber', '').strip() or record.chamber
+                pull_date = request.POST.get('pull_date')
+                if pull_date:
+                    record.pull_date = pull_date
+                record.status = request.POST.get('status', 'scheduled')
+                record.save()
+                messages.success(request, 'Stability schedule updated.')
+        return True
+
+    if action == 'hqa_supplier_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSSupplierQualification.objects.filter(id=record_id).first()
+            if record:
+                record.supplier_name = request.POST.get('supplier_name', '').strip() or record.supplier_name
+                record.material_name = request.POST.get('material_name', '').strip() or record.material_name
+                record.status = request.POST.get('status', 'candidate')
+                record.risk_level = request.POST.get('risk_level', 'medium')
+                record.qualification_score = int(request.POST.get('qualification_score') or record.qualification_score)
+                next_audit_date = request.POST.get('next_audit_date')
+                if next_audit_date:
+                    record.next_audit_date = next_audit_date
+                record.approval_notes = request.POST.get('approval_notes', '').strip() or record.approval_notes
+                record.save()
+                messages.success(request, 'Supplier qualification updated.')
+        return True
+
+    if action == 'hqa_calibration_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSCalibrationRecord.objects.filter(id=record_id).first()
+            if record:
+                record.equipment_id = request.POST.get('equipment_id', '').strip() or record.equipment_id
+                record.equipment_name = request.POST.get('equipment_name', '').strip() or record.equipment_name
+                record.department = request.POST.get('department', '').strip() or record.department
+                record.status = request.POST.get('status', 'in_service')
+                last_calibrated = request.POST.get('last_calibrated')
+                if last_calibrated:
+                    record.last_calibrated = parse_date(last_calibrated)
+                next_due_date = request.POST.get('next_due_date')
+                if next_due_date:
+                    record.next_due_date = parse_date(next_due_date)
+                record.notes = request.POST.get('notes', '').strip() or record.notes
+                if record.status != 'out_of_service':
+                    record.status = record.calculated_status
+                record.save()
+                messages.success(request, 'Calibration record updated.')
+        return True
+
+    if action == 'hqa_training_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSTrainingRecord.objects.filter(id=record_id).first()
+            if record:
+                document_id = request.POST.get('document')
+                if document_id:
+                    record.document_id = document_id
+                trainee_id = request.POST.get('trainee')
+                if trainee_id:
+                    record.trainee_id = trainee_id
+                record.training_type = request.POST.get('training_type', 'SOP Revision').strip()
+                record.status = request.POST.get('status', 'assigned')
+                due_date = request.POST.get('due_date')
+                if due_date:
+                    record.due_date = due_date
+                record.save()
+                messages.success(request, 'Training record updated.')
+        return True
+
+    if action == 'hqa_regulatory_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSRegulatoryPackage.objects.filter(id=record_id).first()
+            if record:
+                record.title = request.POST.get('title', '').strip() or record.title
+                record.market = request.POST.get('market', '').strip() or record.market
+                record.authority = request.POST.get('authority', '').strip() or record.authority
+                record.status = request.POST.get('status', 'draft')
+                record.dossier_reference = request.POST.get('dossier_reference', '').strip() or record.dossier_reference
+                submission_date = request.POST.get('submission_date')
+                if submission_date:
+                    record.submission_date = submission_date
+                record.save()
+                messages.success(request, 'Regulatory package updated.')
+        return True
+
+    if action == 'hqa_rule_update':
+        record_id = request.POST.get('record_id')
+        if record_id:
+            record = QMSNotificationRule.objects.filter(id=record_id).first()
+            if record:
+                record.name = request.POST.get('name', '').strip() or record.name
+                record.trigger_type = request.POST.get('trigger_type', 'document_expiry')
+                record.days_before = int(request.POST.get('days_before') or record.days_before)
+                record.role_to_notify = request.POST.get('role_to_notify', 'qa').strip()
+                record.is_active = bool(request.POST.get('is_active', '1'))
+                record.save()
+                messages.success(request, 'Escalation rule updated.')
+        return True
+
+    return False
+
+
+
+@login_required
+def head_qa_dashboard(request):
+    """Head of QA dashboard for QMS and Enterprise QMS oversight."""
+    if getattr(request.user, 'role', None) not in ['head_qa', 'admin'] and not request.user.is_staff:
+        messages.error(request, 'Access denied. Head QA role required.')
+        return redirect('dashboards:dashboard_home')
+
+    if request.method == 'POST':
+        if handle_head_qa_enterprise_post(request):
+            # Map each action to its specific module for proper redirect
+            action = request.POST.get('action', '')
+            module_map = {
+                'hqa_sampling_create': 'sampling',
+                'hqa_sampling_update': 'sampling',
+                'hqa_sampling_delete': 'sampling',
+                'hqa_lab_spec_create': 'lab-specs',
+                'hqa_lab_spec_update': 'lab-specs',
+                'hqa_lab_spec_delete': 'lab-specs',
+                'hqa_stability_create': 'stability',
+                'hqa_stability_update': 'stability',
+                'hqa_stability_delete': 'stability',
+                'hqa_supplier_create': 'supplier',
+                'hqa_supplier_update': 'supplier',
+                'hqa_supplier_delete': 'supplier',
+                'hqa_calibration_create': 'calibration',
+                'hqa_calibration_update': 'calibration',
+                'hqa_calibration_delete': 'calibration',
+                'hqa_training_create': 'training',
+                'hqa_training_update': 'training',
+                'hqa_training_delete': 'training',
+                'hqa_regulatory_create': 'regulatory',
+                'hqa_regulatory_update': 'regulatory',
+                'hqa_regulatory_delete': 'regulatory',
+                'hqa_rule_create': 'rules',
+                'hqa_rule_update': 'rules',
+                'hqa_rule_delete': 'rules',
+                'hqa_query_create': 'queries',
+            }
+            
+            if action == 'hqa_query_create':
+                target_tab = '#hqa-queries'
+            elif action in module_map:
+                # Redirect to enterprise detail with module parameter
+                module_name = module_map[action]
+                return redirect(reverse('dashboards:head_qa_dashboard') + f'#hqa-enterprise-detail?module={module_name}')
+            else:
+                target_tab = '#hqa-enterprise'
+            
+            return redirect(reverse('dashboards:head_qa_dashboard') + target_tab)
+        if handle_qms_post(request, 'qa'):
+            # Map QMS actions to their correct tabs
+            action = request.POST.get('action', '')
+            qms_tab_map = {
+                'qms_create': '#hqa-change-control',  # Change Control uses qms_create with category
+                'qms_update': '#hqa-change-control',
+                'qms_document_create': '#hqa-documents',
+                'qms_document_sign': '#hqa-documents',
+                'qms_deviation_create': '#hqa-deviation',
+                'qms_deviation_update': '#hqa-deviation',
+                'qms_risk_create': '#hqa-risk',
+                'qms_risk_update': '#hqa-risk',
+                'qms_audit_create': '#hqa-audit',
+                'qms_audit_update': '#hqa-audit',
+            }
+            
+            # For qms_create, check category to determine correct tab
+            if action == 'qms_create':
+                category = request.POST.get('category', '')
+                if category == 'change_control':
+                    target_tab = '#hqa-change-control'
+                elif category == 'capa':
+                    target_tab = '#hqa-capa'
+                elif category == 'deviation':
+                    target_tab = '#hqa-deviation'
+                else:
+                    target_tab = qms_tab_map.get(action, '#hqa-enterprise')
+            elif action == 'qms_update':
+                # Look up the QMSAction to determine which tab
+                qms_id = request.POST.get('qms_id')
+                if qms_id:
+                    try:
+                        from .models import QMSAction
+                        qms_action = QMSAction.objects.get(pk=qms_id)
+                        if qms_action.category == 'change_control':
+                            target_tab = '#hqa-change-control'
+                        elif qms_action.category == 'capa':
+                            target_tab = '#hqa-capa'
+                        elif qms_action.category == 'deviation':
+                            target_tab = '#hqa-deviation'
+                        else:
+                            target_tab = '#hqa-enterprise'
+                    except:
+                        target_tab = '#hqa-enterprise'
+                else:
+                    target_tab = '#hqa-enterprise'
+            else:
+                target_tab = qms_tab_map.get(action, '#hqa-enterprise')
+            
+            return redirect(reverse('dashboards:head_qa_dashboard') + target_tab)
+
+    context = _head_qa_qms_context()
+    context.update({
+        'user': request.user,
+        'dashboard_title': 'Head of Quality Assurance Dashboard',
+    })
+    return render(request, 'dashboards/head_qa_dashboard.html', context)
 
 @login_required
 def admin_timeline_view(request):
@@ -208,6 +1364,15 @@ from .analytics import (
     get_product_type_production_totals,
     export_monthly_production_to_excel
 )
+from .quality import (
+    ensure_inspection_lot_for_phase,
+    ensure_template_characteristics,
+    mark_lot_started,
+    record_usage_decision,
+    save_characteristic_results,
+    sync_completed_phase_lot,
+    sync_lots_for_dashboard,
+)
 
 def dashboard_home(request):
     """Route users to their role-specific dashboard or redirect to login"""
@@ -218,6 +1383,7 @@ def dashboard_home(request):
     user_role = getattr(request.user, 'role', None)
     
     role_dashboard_map = {
+        'head_qa': 'dashboards:head_qa_dashboard',
         'qa': 'dashboards:qa_dashboard',
         'regulatory': 'dashboards:regulatory_dashboard',
         'store_manager': 'dashboards:store_dashboard',  # Raw material release
@@ -234,7 +1400,8 @@ def dashboard_home(request):
         'coating_operator': 'dashboards:coating_dashboard',
         'filling_operator': 'dashboards:filling_dashboard',
         'dispensing_operator': 'dashboards:operator_dashboard',  # Material dispensing uses operator dashboard
-        'equipment_operator': 'dashboards:operator_dashboard',
+        'equipment_operator': 'dashboards:maintenance_dashboard',
+        'maintenance': 'dashboards:maintenance_dashboard',
         'cleaning_operator': 'dashboards:operator_dashboard',
         'production_manager': 'dashboards:production_manager_dashboard',  # Production manager dashboard
         'quarantine': 'quarantine:dashboard',  # Quarantine users go to quarantine app dashboard
@@ -312,10 +1479,11 @@ def admin_dashboard(request):
         # Import workflow models
         from workflow.models import BatchPhaseExecution, ProductionPhase
         
-        # Active phases - simplified query
+        # Active phases. Keep this complete and deterministic so a valid phase
+        # cannot disappear merely because another ten rows sort ahead of it.
         active_phases = BatchPhaseExecution.objects.filter(
             status__in=['pending', 'in_progress']
-        ).select_related('bmr', 'phase')[:10]  # Limit to 10 for speed
+        ).select_related('bmr', 'phase').order_by('-started_date', '-id')
         
         # TIMELINE DATA - Generate timeline data for live BMR tracking section
         bmrs_for_timeline = BMR.objects.select_related('product', 'created_by', 'approved_by')[:10]  # Limit for performance
@@ -752,6 +1920,8 @@ def qa_dashboard(request):
     # Handle POST requests for Final QA workflow and rejected BMR re-submission
     if request.method == 'POST':
         action = request.POST.get('action')
+        if handle_qms_post(request, 'qa'):
+            return redirect(reverse('dashboards:qa_dashboard') + '#section-qms-workspace')
         phase_id = request.POST.get('phase_id')
         bmr_id = request.POST.get('bmr_id')
         comments = request.POST.get('comments', '')
@@ -762,6 +1932,7 @@ def qa_dashboard(request):
                 phase_execution = get_object_or_404(BatchPhaseExecution, pk=phase_id)
                 
                 if action == 'start':
+                    mark_lot_started(phase_execution, request.user, comments)
                     # Start the Final QA review process
                     phase_execution.status = PHASE_STATUSES['IN_PROGRESS']
                     phase_execution.started_by = request.user
@@ -772,6 +1943,7 @@ def qa_dashboard(request):
                     messages.success(request, f'Final QA review started for batch {phase_execution.bmr.batch_number}. You can now complete the review.')
                 
                 elif action == 'approve':
+                    record_usage_decision(phase_execution, 'accept', request.user, comments)
                     # Complete Final QA with approval
                     phase_execution.status = PHASE_STATUSES['COMPLETED']
                     phase_execution.completed_by = request.user
@@ -799,6 +1971,7 @@ def qa_dashboard(request):
                     rollback_phase = rollback_target_phase.phase_name
                     
                     # Mark the final_qa phase as failed with reason
+                    record_usage_decision(phase_execution, 'reject', request.user, comments)
                     phase_execution.status = PHASE_STATUSES['FAILED']
                     phase_execution.completed_by = request.user
                     phase_execution.completed_date = timezone.now()
@@ -883,6 +2056,10 @@ def qa_dashboard(request):
         phase__phase_name='final_qa',
         status='in_progress'
     ).select_related('bmr', 'phase')[:10]
+    quality_lots_final_qa = sync_lots_for_dashboard(
+        list(final_qa_pending) + list(final_qa_in_progress),
+        request.user,
+    )
     
     # Get rejected BMRs that need QA review and re-submission
     rejected_bmrs_for_review = BMR.objects.filter(
@@ -895,6 +2072,122 @@ def qa_dashboard(request):
     # Get approved and rejected counts
     approved_bmrs = BMR.objects.filter(status='approved').count()
     rejected_bmrs = BMR.objects.filter(status='rejected').count()
+    from .models import (
+        QMSAction, QMSApprovalRoute, QMSAudit, QMSCAPA, QMSCalibrationRecord,
+        QMSChangeControl, QMSChangeImpactAssessment, QMSComplaintRecall, QMSDeviation,
+        QMSDocument, QMSFieldAuditTrail, QMSLabSpecification,
+        QMSLabInvestigation, QMSNotificationRule, QMSQualityQuery,
+        QMSRegulatoryPackage, QMSReportExport,
+        QMSRiskAssessment, QMSSamplingPlan, QMSStabilitySchedule,
+        QMSSupplierQualification, QMSTrainingRecord, QualityDefect,
+        QualityInspectionLot,
+    )
+    quality_kpis = {
+        'open_lots': QualityInspectionLot.objects.filter(status__in=['created', 'released', 'in_inspection', 'results_recorded']).count(),
+        'accepted_lots': QualityInspectionLot.objects.filter(status='accepted').count(),
+        'rejected_lots': QualityInspectionLot.objects.filter(status='rejected').count(),
+        'open_defects': QualityDefect.objects.exclude(status='closed').count(),
+        'open_qms_actions': QMSAction.objects.filter(owner_role='qa').exclude(status__in=['closed', 'cancelled']).count(),
+    }
+    open_quality_defects = QualityDefect.objects.exclude(status='closed').select_related(
+        'lot', 'lot__bmr', 'lot__product', 'reported_by'
+    )[:10]
+    qa_qms_base = QMSAction.objects.filter(
+        owner_role='qa'
+    ).exclude(status__in=['closed', 'cancelled'])
+    qa_qms_actions = qa_qms_base.select_related(
+        'bmr', 'product', 'quality_lot', 'defect', 'assigned_to'
+    )[:12]
+    qa_qms_by_category = {
+        'deviation': qa_qms_base.filter(category='deviation').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'capa': qa_qms_base.filter(category='capa').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'change_control': qa_qms_base.filter(category='change_control').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to', 'change_control_record')[:20],
+        'complaint': qa_qms_base.filter(category='complaint').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'document_control': qa_qms_base.filter(category='document_control').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'audit_risk': qa_qms_base.filter(category__in=['audit', 'risk']).select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'supplier_quality': qa_qms_base.filter(category='supplier_quality').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+    }
+    qa_qms_stats = {
+        'total': qa_qms_base.count(),
+        'deviation': qa_qms_base.filter(category='deviation').count(),
+        'capa': qa_qms_base.filter(category='capa').count(),
+        'change_control': QMSAction.objects.filter(owner_role='qa', category='change_control').exclude(status__in=['closed', 'cancelled']).count(),
+        'complaint': QMSAction.objects.filter(owner_role='qa', category='complaint').exclude(status__in=['closed', 'cancelled']).count(),
+        'supplier_quality': QMSAction.objects.filter(owner_role='qa', category='supplier_quality').exclude(status__in=['closed', 'cancelled']).count(),
+        'document_control': QMSAction.objects.filter(owner_role='qa', category='document_control').exclude(status__in=['closed', 'cancelled']).count(),
+        'audit': QMSAction.objects.filter(owner_role='qa', category='audit').exclude(status__in=['closed', 'cancelled']).count(),
+        'risk': QMSAction.objects.filter(owner_role='qa', category='risk').exclude(status__in=['closed', 'cancelled']).count(),
+    }
+    qms_documents = QMSDocument.objects.select_related(
+        'owner', 'prepared_by', 'reviewed_by', 'approved_by', 'related_qms_action'
+    ).order_by('-updated_at')[:30]
+    qms_sop_documents = QMSDocument.objects.filter(document_type='sop').order_by('title')
+    qms_deviations = QMSDeviation.objects.select_related(
+        'qms_action', 'sop_document', 'bmr', 'product', 'quality_lot', 'defect', 'capa_action', 'assigned_to', 'closed_by'
+    ).order_by('-created_at')[:30]
+    qms_risks = QMSRiskAssessment.objects.select_related(
+        'qms_action', 'product', 'bmr', 'owner', 'approved_by'
+    ).order_by('-created_at')[:30]
+    qms_audits = QMSAudit.objects.select_related(
+        'qms_action', 'risk_assessment', 'responsible_person', 'created_by', 'closed_by'
+    ).order_by('-created_at')[:30]
+    capa_queryset = QMSCAPA.objects.all()
+    change_queryset = QMSChangeControl.objects.all()
+    query_queryset = QMSQualityQuery.objects.all()
+    qms_record_stats = {
+        'capa_total': capa_queryset.count(),
+        'capa_open': capa_queryset.exclude(status__in=['closed', 'cancelled']).count(),
+        'capa_overdue': capa_queryset.filter(status='overdue').count(),
+        'capa_effectiveness_pending': capa_queryset.filter(status='effectiveness_review').exclude(effectiveness_result='effective').count(),
+        'change_total': change_queryset.count(),
+        'change_open': change_queryset.exclude(status__in=['closed', 'cancelled', 'rejected']).count(),
+        'change_overdue': change_queryset.filter(status='overdue').count(),
+        'change_impact_pending': change_queryset.filter(status='impact_assessment').count(),
+        'queries_total': query_queryset.count(),
+        'queries_open': query_queryset.exclude(status='closed').count(),
+        'queries_overdue': query_queryset.filter(due_date__isnull=False, due_date__lt=timezone.now().date()).exclude(status='closed').count(),
+        'documents': QMSDocument.objects.exclude(status__in=['obsolete', 'archived']).count(),
+        'documents_expiring': QMSDocument.objects.filter(
+            expiry_date__isnull=False,
+            expiry_date__lte=timezone.now().date() + timedelta(days=60),
+        ).exclude(status__in=['obsolete', 'archived']).count(),
+        'deviations': QMSDeviation.objects.exclude(status='closed').count(),
+        'risks': QMSRiskAssessment.objects.exclude(status='closed').count(),
+        'critical_risks': QMSRiskAssessment.objects.filter(risk_level='critical').exclude(status='closed').count(),
+        'audits': QMSAudit.objects.exclude(status='closed').count(),
+        'overdue_audits': QMSAudit.objects.filter(
+            due_date__isnull=False,
+            due_date__lt=timezone.now().date(),
+        ).exclude(status='closed').count(),
+    }
+    qms_enterprise_stats = {
+        'approval_routes': QMSApprovalRoute.objects.exclude(status__in=['approved', 'cancelled']).count(),
+        'field_audit_events': QMSFieldAuditTrail.objects.count(),
+        'report_exports': QMSReportExport.objects.count(),
+        'sampling_plans': QMSSamplingPlan.objects.filter(is_active=True).count(),
+        'lab_specs': QMSLabSpecification.objects.filter(is_active=True).count(),
+        'stability_pulls': QMSStabilitySchedule.objects.exclude(status='closed').count(),
+        'suppliers': QMSSupplierQualification.objects.exclude(status='disqualified').count(),
+        'calibrations_due': QMSCalibrationRecord.objects.filter(next_due_date__isnull=False, next_due_date__lte=timezone.now().date() + timedelta(days=30)).exclude(status='out_of_service').count(),
+        'training_due': QMSTrainingRecord.objects.filter(status__in=['assigned', 'overdue']).count(),
+        'change_impacts': QMSChangeImpactAssessment.objects.count(),
+        'complaints': QMSComplaintRecall.objects.exclude(status='closed').count(),
+        'lab_investigations': QMSLabInvestigation.objects.exclude(status='closed').count(),
+        'quality_queries': QMSQualityQuery.objects.exclude(status='closed').count(),
+        'regulatory_packages': QMSRegulatoryPackage.objects.exclude(status='closed').count(),
+        'notification_rules': QMSNotificationRule.objects.filter(is_active=True).count(),
+    }
+    qms_enterprise_latest = {
+        'approval_routes': QMSApprovalRoute.objects.select_related('created_by').order_by('-created_at')[:5],
+        'stability_pulls': QMSStabilitySchedule.objects.select_related('product', 'bmr').order_by('pull_date')[:5],
+        'supplier_qualifications': QMSSupplierQualification.objects.order_by('next_audit_date', 'supplier_name')[:5],
+        'calibrations': QMSCalibrationRecord.objects.order_by('next_due_date', 'equipment_id')[:5],
+        'training': QMSTrainingRecord.objects.select_related('document', 'trainee').order_by('due_date')[:5],
+        'complaints': QMSComplaintRecall.objects.select_related('product', 'bmr').order_by('-created_at')[:5],
+        'lab_investigations': QMSLabInvestigation.objects.select_related('product', 'bmr', 'quality_lot').order_by('-opened_at')[:5],
+        'quality_queries': QMSQualityQuery.objects.select_related('product', 'bmr', 'assigned_to').order_by('-created_at')[:5],
+        'regulatory_packages': QMSRegulatoryPackage.objects.select_related('owner').order_by('-submission_date', 'title')[:5],
+    }
     
     # Build operator history for this user: only regulatory approval phases completed by this user
     regulatory_phases = BatchPhaseExecution.objects.filter(
@@ -912,9 +2205,12 @@ def qa_dashboard(request):
 
     # Pending Line Clearance approvals — operator submitted, awaiting QA sign-off
     from django.db.models import Q
+    from workflow.line_clearance_items import LINE_CLEARANCE_CONFIG
     pending_lc_approvals = BatchPhaseExecution.objects.filter(
-        Q(beginning_lc_status='operator_filled') | Q(ending_lc_status='operator_filled')
-    ).exclude(status='completed').select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:20]
+        Q(beginning_lc_status='operator_filled') | Q(ending_lc_status='operator_filled'),
+        status__in=('pending', 'in_progress'),
+        phase__phase_name__in=LINE_CLEARANCE_CONFIG.keys(),
+    ).select_related('bmr', 'bmr__product', 'phase').order_by('-bmr__created_date')[:50]
 
     # Pending process form QA signing — per-section items awaiting QA signatures
     # Build a list of { phase_execution, section_key, section_label } for each section pending QA
@@ -1175,6 +2471,14 @@ def qa_dashboard(request):
         lc.phase.phase_name == 'sorting' and lc.ending_lc_status == 'operator_filled'
         for lc in pending_lc_approvals
     )
+    sorting_lc_beginning_execution = next((
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'sorting' and lc.beginning_lc_status == 'operator_filled'
+    ), None)
+    sorting_lc_ending_execution = next((
+        lc for lc in pending_lc_approvals
+        if lc.phase.phase_name == 'sorting' and lc.ending_lc_status == 'operator_filled'
+    ), None)
     sorting_total_pending = len(pending_sorting_signing) + int(sorting_lc_beginning_pending) + int(sorting_lc_ending_pending)
 
     # ── Post-Coating Sorting section pending items ──────────────────────────────
@@ -1923,7 +3227,10 @@ def qa_dashboard(request):
     pending_filling_dynamic = [item for item in pending_dynamic_signing if item['phase_name'] == 'filling']
     filling_total_pending = int(filling_lc_beginning_pending) + int(filling_lc_ending_pending) + len(pending_filling_dynamic)
 
-    # ── Grand total of ALL pending QA actions (must match sidebar badge counts) ──
+    show_qms_workspace = False
+    qms_pending_total = qa_qms_stats['total'] if show_qms_workspace else 0
+
+    # ── Grand total of ALL visible pending QA actions (must match sidebar badge counts) ──
     grand_total_pending = (
         len(pending_process_signing)        # Granulation sections
         + len(pending_blending_signing)     # Blending sections
@@ -1940,6 +3247,7 @@ def qa_dashboard(request):
         + mixing_total_pending              # Mixing LCs + sections
         + tube_filling_total_pending        # Tube filling LCs + sections
         + filling_total_pending             # Filling LCs + sections
+        + qms_pending_total                 # QA-owned QMS modules, only when visible here
     )
 
     from django.utils import timezone as _tz
@@ -2011,6 +3319,21 @@ def qa_dashboard(request):
         'pending_quarantine_samples': pending_quarantine_samples,
         'final_qa_pending': final_qa_pending,
         'final_qa_in_progress': final_qa_in_progress,
+        'quality_lots_final_qa': quality_lots_final_qa,
+        'quality_kpis': quality_kpis,
+        'open_quality_defects': open_quality_defects,
+        'qa_qms_actions': qa_qms_actions,
+        'qa_qms_by_category': qa_qms_by_category,
+        'qa_qms_stats': qa_qms_stats,
+        'qms_documents': qms_documents,
+        'qms_sop_documents': qms_sop_documents,
+        'qms_deviations': qms_deviations,
+        'qms_risks': qms_risks,
+        'qms_audits': qms_audits,
+        'qms_record_stats': qms_record_stats,
+        'qms_enterprise_stats': qms_enterprise_stats,
+        'qms_enterprise_latest': qms_enterprise_latest,
+        'show_qms_workspace': show_qms_workspace,
         'rejected_bmrs_for_review': rejected_bmrs_for_review,
         'pending_lc_approvals': pending_lc_approvals,
         'pending_process_signing': pending_process_signing,
@@ -2029,6 +3352,8 @@ def qa_dashboard(request):
         'SORTING_SECTIONS': SORTING_SECTIONS,
         'sorting_lc_beginning_pending': sorting_lc_beginning_pending,
         'sorting_lc_ending_pending': sorting_lc_ending_pending,
+        'sorting_lc_beginning_execution': sorting_lc_beginning_execution,
+        'sorting_lc_ending_execution': sorting_lc_ending_execution,
         'sorting_total_pending': sorting_total_pending,
         'pending_pcs_signing': pending_pcs_signing,
         'pending_pcs_section_map': pending_pcs_section_map,
@@ -2109,6 +3434,7 @@ def qa_dashboard(request):
 @login_required
 def regulatory_dashboard(request):
     """Regulatory Dashboard"""
+    from .models import QMSRegulatoryPackage
     if getattr(request.user, 'role', None) != 'regulatory':
         messages.error(request, 'Access denied. Regulatory role required.')
         return redirect('dashboards:dashboard_home')
@@ -2122,6 +3448,11 @@ def regulatory_dashboard(request):
         if bmr_id and action in ['approve', 'reject']:
             try:
                 bmr = get_object_or_404(BMR, pk=bmr_id)
+
+                from accounts.signature_security import verify_signature_reauthentication
+                if not verify_signature_reauthentication(request):
+                    messages.error(request, 'Password re-authentication is required before signing this decision.')
+                    return redirect(reverse('dashboards:regulatory_dashboard') + '#section-approvals')
                 
                 # Find the regulatory approval phase for this BMR
                 regulatory_phase = BatchPhaseExecution.objects.filter(
@@ -2150,7 +3481,10 @@ def regulatory_dashboard(request):
                             bmr=bmr,
                             signature_type='approved',
                             signed_by=request.user,
-                            comments=comments if comments else f'BMR approved for production by {request.user.get_full_name()}'
+                            comments=comments if comments else f'BMR approved for production by {request.user.get_full_name()}',
+                            reauthenticated=True,
+                            reauthenticated_at=timezone.now(),
+                            ip_address=request.META.get('REMOTE_ADDR'),
                         )
                         
                         # Trigger next phase in workflow
@@ -2203,7 +3537,10 @@ def regulatory_dashboard(request):
                             bmr=bmr,
                             signature_type='reviewed',
                             signed_by=request.user,
-                            comments=comments if comments else f'BMR rejected by {request.user.get_full_name()}'
+                            comments=comments if comments else f'BMR rejected by {request.user.get_full_name()}',
+                            reauthenticated=True,
+                            reauthenticated_at=timezone.now(),
+                            ip_address=request.META.get('REMOTE_ADDR'),
                         )
                         
                         # Create notification for QA who created it
@@ -2290,6 +3627,7 @@ def regulatory_dashboard(request):
             fqa_regulatory_pending.append(_fp)
 
     # Statistics
+    regulatory_packages = QMSRegulatoryPackage.objects.select_related('owner', 'qa_reviewer', 'submitted_by', 'approved_by').prefetch_related('included_documents').exclude(status__in=['closed', 'withdrawn']).order_by('-updated_at')[:50]
     stats = {
         'pending_approvals': all_pending_approvals.count(),
         'pending_recon_signoffs': len(pending_reconciliation_signoffs),
@@ -2303,6 +3641,9 @@ def regulatory_dashboard(request):
             approved_date__gte=timezone.now().date() - timedelta(days=7)
         ).count(),
         'total_bmrs': BMR.objects.count(),
+        'regulatory_packages': regulatory_packages.count(),
+        'regulatory_packages_review': QMSRegulatoryPackage.objects.filter(status='qa_review').count(),
+        'regulatory_packages_submitted': QMSRegulatoryPackage.objects.filter(status='submitted').count(),
     }
     
     context = {
@@ -2313,6 +3654,7 @@ def regulatory_dashboard(request):
         'activities_paginator': activities_paginator,
         'pending_reconciliation_signoffs': pending_reconciliation_signoffs,
         'fqa_regulatory_pending': fqa_regulatory_pending,
+        'regulatory_packages': regulatory_packages,
         'stats': stats,
         'dashboard_title': 'Regulatory Dashboard'
     }
@@ -2593,7 +3935,7 @@ def production_manager_dashboard(request):
     # ACTIVE PHASES - SAME AS ADMIN
     active_phases = BatchPhaseExecution.objects.filter(
         status__in=['pending', 'in_progress']
-    ).select_related('bmr', 'phase')[:10]
+    ).select_related('bmr', 'phase').order_by('-started_date', '-id')
     
     # Get notifications for Production Manager
     from .models import NotificationAlert
@@ -3339,6 +4681,11 @@ def coating_dashboard(request):
     return operator_dashboard(request)
 
 @login_required
+def drying_dashboard(request):
+    """Drying Operator Dashboard"""
+    return operator_dashboard(request)
+
+@login_required
 def filling_dashboard(request):
     """Filling Operator Dashboard"""
     return operator_dashboard(request)
@@ -3363,14 +4710,23 @@ def qc_dashboard(request):
     # Handle POST requests for QC test results
     if request.method == 'POST':
         action = request.POST.get('action')
+        if handle_qms_post(request, 'qc'):
+            return redirect(reverse('dashboards:qc_dashboard') + '#qc-qms')
         phase_id = request.POST.get('phase_id')
         test_results = request.POST.get('test_results', '')
         
         if phase_id and action in ['start', 'pass', 'fail']:
             try:
                 phase_execution = get_object_or_404(BatchPhaseExecution, pk=phase_id)
+
+                if action in ['pass', 'fail']:
+                    from accounts.signature_security import verify_signature_reauthentication
+                    if not verify_signature_reauthentication(request):
+                        messages.error(request, 'Password re-authentication is required before signing a QC decision.')
+                        return redirect(reverse('dashboards:qc_dashboard'))
                 
                 if action == 'start':
+                    mark_lot_started(phase_execution, request.user, test_results)
                     # Start QC testing
                     phase_execution.status = 'in_progress'
                     phase_execution.started_by = request.user
@@ -3381,6 +4737,7 @@ def qc_dashboard(request):
                     messages.success(request, f'QC testing started for batch {phase_execution.bmr.batch_number}.')
                 
                 elif action == 'pass':
+                    record_usage_decision(phase_execution, 'accept', request.user, test_results)
                     phase_execution.status = 'completed'
                     phase_execution.completed_by = request.user
                     phase_execution.completed_date = timezone.now()
@@ -3393,7 +4750,10 @@ def qc_dashboard(request):
                         bmr=phase_execution.bmr,
                         signature_type='qc_approved',
                         signed_by=request.user,
-                        comments=test_results if test_results else f'QC testing passed by {request.user.get_full_name()}'
+                        comments=test_results if test_results else f'QC testing passed by {request.user.get_full_name()}',
+                        reauthenticated=True,
+                        reauthenticated_at=timezone.now(),
+                        ip_address=request.META.get('REMOTE_ADDR'),
                     )
                     
                     # Trigger next phase in workflow
@@ -3402,11 +4762,65 @@ def qc_dashboard(request):
                     messages.success(request, f'QC test passed for batch {phase_execution.bmr.batch_number}.')
                     
                 elif action == 'fail':
+                    record_usage_decision(phase_execution, 'reject', request.user, test_results)
                     phase_execution.status = 'failed'
                     phase_execution.completed_by = request.user
                     phase_execution.completed_date = timezone.now()
                     phase_execution.operator_comments = f"QC Test Failed by {request.user.get_full_name()}. Results: {test_results}"
                     phase_execution.save()
+
+                    from bmr.models import BMRSignature
+                    BMRSignature.objects.create(
+                        bmr=phase_execution.bmr,
+                        signature_type='qc_rejected',
+                        signed_by=request.user,
+                        comments=test_results or f'QC testing failed by {request.user.get_full_name()}',
+                        reauthenticated=True,
+                        reauthenticated_at=timezone.now(),
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                    )
+                    
+                    # AUTO-CREATE OOS INVESTIGATION (QMS Integration)
+                    try:
+                        qms_action = QMSAction.objects.create(
+                            category='deviation',
+                            owner_role='qa',  # QC failures escalate to QA
+                            status='open',
+                            priority='high',  # Failed QC is high priority
+                            title=f'OOS Investigation: {phase_execution.bmr.batch_number} - {phase_execution.phase.get_phase_name_display()}',
+                            description=(
+                                f'**Out of Specification (OOS) Investigation Required**\n\n'
+                                f'Batch: {phase_execution.bmr.batch_number}\n'
+                                f'Product: {phase_execution.bmr.product.product_name}\n'
+                                f'Phase: {phase_execution.phase.get_phase_name_display()}\n'
+                                f'Failed By: {request.user.get_full_name()}\n'
+                                f'Date: {timezone.now().strftime("%Y-%m-%d %H:%M")}\n\n'
+                                f'**Test Results:**\n{test_results}\n\n'
+                                f'**Required Actions:**\n'
+                                f'1. Review test data and procedures\n'
+                                f'2. Investigate root cause\n'
+                                f'3. Determine if retest is warranted\n'
+                                f'4. Assess impact on batch quality\n'
+                                f'5. Implement corrective actions if needed'
+                            ),
+                            bmr=phase_execution.bmr,
+                            product=phase_execution.bmr.product,
+                            due_date=(timezone.now() + timedelta(days=7)).date(),  # 7-day investigation deadline
+                            created_by=request.user,
+                        )
+                        investigation = QMSLabInvestigation.objects.create(
+                            event_type='oos', status='open', qms_action=qms_action,
+                            bmr=phase_execution.bmr, product=phase_execution.bmr.product,
+                            test_name=phase_execution.phase.get_phase_name_display(),
+                            result_value=test_results, opened_by=request.user,
+                        )
+                        messages.info(
+                            request,
+                            f'QMS Action {qms_action.qms_number} and OOS investigation {investigation.investigation_number} automatically created.'
+                        )
+                    except Exception as qms_error:
+                        # Log but don't fail the QC process
+                        print(f'Failed to create OOS investigation: {qms_error}')
                     
                     # Rollback to previous phase
                     WorkflowService.rollback_to_previous_phase(phase_execution.bmr, phase_execution.phase)
@@ -3424,12 +4838,22 @@ def qc_dashboard(request):
     # Get QC phases this user can work on
     my_phases = []
     for bmr in all_bmrs:
+        # Repair legacy batches where material release was completed but the
+        # product-specific packing phase was never promoted to pending.
+        if BatchPhaseExecution.objects.filter(
+            bmr=bmr,
+            phase__phase_name='packaging_material_release',
+            status='completed',
+        ).exists():
+            WorkflowService.activate_packing_phase(bmr)
         user_phases = WorkflowService.get_phases_for_user_role(bmr, getattr(request.user, 'role', None))
         my_phases.extend(user_phases)
 
     # Separate into actionable buckets
     pending_phases    = [p for p in my_phases if p.status == 'pending']
     inprogress_phases = [p for p in my_phases if p.status == 'in_progress']
+    inspection_lots_pending = sync_lots_for_dashboard(pending_phases, request.user)
+    inspection_lots_in_progress = sync_lots_for_dashboard(inprogress_phases, request.user)
 
     # Statistics
     stats = {
@@ -3456,6 +4880,8 @@ def qc_dashboard(request):
         completed_date__isnull=False,
         phase__phase_name__in=['post_compression_qc', 'post_mixing_qc', 'post_blending_qc'],
     ).select_related('bmr', 'bmr__product', 'phase', 'completed_by').order_by('-completed_date')[:20]
+    for result_phase in recent_results:
+        sync_completed_phase_lot(result_phase)
 
     # Get quarantine samples waiting for QC testing
     from quarantine.models import SampleRequest
@@ -3463,6 +4889,79 @@ def qc_dashboard(request):
         sample_date__isnull=False,  # Processed by QA
         qc_status='pending'  # Waiting for QC testing
     ).select_related('quarantine_batch__bmr__product', 'sampled_by').order_by('sample_date')
+    from .models import (
+        QMSAction, QMSApprovalRoute, QMSCalibrationRecord,
+        QMSComplaintRecall, QMSFieldAuditTrail, QMSLabSpecification,
+        QMSLabInvestigation, QMSNotificationRule, QMSQualityQuery,
+        QMSRegulatoryPackage, QMSReportExport,
+        QMSSamplingPlan, QMSStabilitySchedule, QMSSupplierQualification,
+        QMSTrainingRecord, QualityDefect, QualityInspectionLot,
+    )
+    open_quality_defects = QualityDefect.objects.exclude(status='closed').select_related(
+        'lot', 'lot__bmr', 'lot__product', 'reported_by'
+    )[:10]
+    quality_lots = QualityInspectionLot.objects.filter(
+        inspection_type__in=['in_process', 'final', 'quarantine']
+    ).select_related(
+        'bmr', 'product', 'phase_execution__phase', 'assigned_to', 'decision_by'
+    ).order_by('-created_at')[:30]
+    quality_lot_stats = {
+        'total': QualityInspectionLot.objects.count(),
+        'open': QualityInspectionLot.objects.filter(
+            status__in=['created', 'released', 'in_inspection', 'results_recorded']
+        ).count(),
+        'accepted': QualityInspectionLot.objects.filter(status='accepted').count(),
+        'rejected': QualityInspectionLot.objects.filter(status='rejected').count(),
+    }
+    qc_qms_base = QMSAction.objects.filter(owner_role='qc').exclude(status__in=['closed', 'cancelled'])
+    qc_qms_actions = qc_qms_base.select_related(
+        'bmr', 'product', 'quality_lot', 'defect', 'assigned_to'
+    )[:12]
+    qc_qms_by_category = {
+        'oos': qc_qms_base.filter(category='deviation').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'stability': qc_qms_base.filter(category='stability').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'coa': qc_qms_base.filter(category='coa').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+        'supplier_quality': qc_qms_base.filter(category='supplier_quality').select_related('bmr', 'product', 'quality_lot', 'defect', 'assigned_to')[:20],
+    }
+    qc_qms_stats = {
+        'total': qc_qms_base.count(),
+        'oos': qc_qms_base.filter(category='deviation').count(),
+        'stability': qc_qms_base.filter(category='stability').count(),
+        'coa': qc_qms_base.filter(category='coa').count(),
+        'supplier_quality': qc_qms_base.filter(category='supplier_quality').count(),
+        'open_defects': open_quality_defects.count() if hasattr(open_quality_defects, 'count') else len(open_quality_defects),
+    }
+    qc_coa_lots = QualityInspectionLot.objects.filter(status='accepted').select_related(
+        'bmr', 'product', 'decision_by'
+    ).prefetch_related('characteristics__results').order_by('-decision_at', '-updated_at')[:12]
+    qms_enterprise_stats = {
+        'approval_routes': QMSApprovalRoute.objects.exclude(status__in=['approved', 'cancelled']).count(),
+        'field_audit_events': QMSFieldAuditTrail.objects.count(),
+        'report_exports': QMSReportExport.objects.count(),
+        'sampling_plans': QMSSamplingPlan.objects.filter(is_active=True).count(),
+        'lab_specs': QMSLabSpecification.objects.filter(is_active=True).count(),
+        'stability_pulls': QMSStabilitySchedule.objects.exclude(status='closed').count(),
+        'suppliers': QMSSupplierQualification.objects.exclude(status='disqualified').count(),
+        'calibrations_due': QMSCalibrationRecord.objects.filter(next_due_date__isnull=False, next_due_date__lte=timezone.now().date() + timedelta(days=30)).exclude(status='out_of_service').count(),
+        'training_due': QMSTrainingRecord.objects.filter(status__in=['assigned', 'overdue']).count(),
+        'change_impacts': 0,
+        'complaints': QMSComplaintRecall.objects.exclude(status='closed').count(),
+        'lab_investigations': QMSLabInvestigation.objects.exclude(status='closed').count(),
+        'quality_queries': QMSQualityQuery.objects.exclude(status='closed').count(),
+        'regulatory_packages': QMSRegulatoryPackage.objects.exclude(status='closed').count(),
+        'notification_rules': QMSNotificationRule.objects.filter(is_active=True).count(),
+    }
+    qms_enterprise_latest = {
+        'approval_routes': QMSApprovalRoute.objects.select_related('created_by').order_by('-created_at')[:5],
+        'stability_pulls': QMSStabilitySchedule.objects.select_related('product', 'bmr').order_by('pull_date')[:5],
+        'supplier_qualifications': QMSSupplierQualification.objects.order_by('next_audit_date', 'supplier_name')[:5],
+        'calibrations': QMSCalibrationRecord.objects.order_by('next_due_date', 'equipment_id')[:5],
+        'training': QMSTrainingRecord.objects.select_related('document', 'trainee').order_by('due_date')[:5],
+        'complaints': QMSComplaintRecall.objects.select_related('product', 'bmr').order_by('-created_at')[:5],
+        'lab_investigations': QMSLabInvestigation.objects.select_related('product', 'bmr', 'quality_lot').order_by('-opened_at')[:5],
+        'quality_queries': QMSQualityQuery.objects.select_related('product', 'bmr', 'assigned_to').order_by('-created_at')[:5],
+        'regulatory_packages': QMSRegulatoryPackage.objects.select_related('owner').order_by('-submission_date', 'title')[:5],
+    }
 
     context = {
         'user': request.user,
@@ -3470,6 +4969,17 @@ def qc_dashboard(request):
         'qc_phases': my_phases,
         'pending_phases': pending_phases,
         'inprogress_phases': inprogress_phases,
+        'inspection_lots_pending': inspection_lots_pending,
+        'inspection_lots_in_progress': inspection_lots_in_progress,
+        'quality_lots': quality_lots,
+        'quality_lot_stats': quality_lot_stats,
+        'open_quality_defects': open_quality_defects,
+        'qc_qms_actions': qc_qms_actions,
+        'qc_qms_by_category': qc_qms_by_category,
+        'qc_qms_stats': qc_qms_stats,
+        'qc_coa_lots': qc_coa_lots,
+        'qms_enterprise_stats': qms_enterprise_stats,
+        'qms_enterprise_latest': qms_enterprise_latest,
         'quarantine_samples': quarantine_samples,
         'recent_results': recent_results,
         'stats': stats,
@@ -3478,6 +4988,88 @@ def qc_dashboard(request):
     }
 
     return render(request, 'dashboards/qc_dashboard.html', context)
+
+@login_required
+def quality_lot_detail(request, lot_id):
+    """QC/QA result-entry page for one inspection lot."""
+    from .models import QualityInspectionLot
+
+    if getattr(request.user, 'role', None) not in ['qc', 'qa', 'admin'] and not request.user.is_staff:
+        messages.error(request, 'Access denied. QA/QC role required.')
+        return redirect('dashboards:dashboard_home')
+
+    lot = get_object_or_404(
+        QualityInspectionLot.objects.select_related(
+            'bmr', 'product', 'phase_execution__phase', 'assigned_to', 'decision_by'
+        ).prefetch_related(
+            'characteristics__results',
+            'characteristics__template_section',
+            'characteristics__template_field',
+            'defects',
+        ),
+        pk=lot_id,
+    )
+    ensure_template_characteristics(lot)
+
+    phase_execution = lot.phase_execution
+    if request.method == 'POST':
+        action = request.POST.get('action', 'save_results')
+        comments = request.POST.get('decision_notes', '').strip()
+
+        save_characteristic_results(lot, request.POST, request.user)
+
+        if action == 'start' and phase_execution:
+            mark_lot_started(phase_execution, request.user, comments)
+            if phase_execution.status == 'pending':
+                phase_execution.status = 'in_progress'
+                phase_execution.started_by = request.user
+                phase_execution.started_date = timezone.now()
+                phase_execution.save()
+            messages.success(request, f'Inspection lot {lot.lot_number} started.')
+            return redirect('dashboards:quality_lot_detail', lot_id=lot.pk)
+
+        if action in ['accept', 'reject']:
+            if phase_execution:
+                decision = 'accept' if action == 'accept' else 'reject'
+                record_usage_decision(phase_execution, decision, request.user, comments)
+
+                if action == 'accept':
+                    phase_execution.status = 'completed'
+                    phase_execution.completed_by = request.user
+                    phase_execution.completed_date = timezone.now()
+                    phase_execution.operator_comments = comments or phase_execution.operator_comments
+                    phase_execution.save()
+                    WorkflowService.trigger_next_phase(phase_execution.bmr, phase_execution.phase)
+                    messages.success(request, f'Inspection lot {lot.lot_number} accepted and workflow advanced.')
+                else:
+                    phase_execution.status = 'failed'
+                    phase_execution.completed_by = request.user
+                    phase_execution.completed_date = timezone.now()
+                    phase_execution.operator_comments = comments or 'Quality inspection rejected.'
+                    phase_execution.save()
+                    WorkflowService.rollback_to_previous_phase(phase_execution.bmr, phase_execution.phase)
+                    messages.warning(request, f'Inspection lot {lot.lot_number} rejected and batch sent for rework.')
+            else:
+                lot.status = 'accepted' if action == 'accept' else 'rejected'
+                lot.usage_decision = 'unrestricted' if action == 'accept' else 'rework'
+                lot.decision_by = request.user
+                lot.decision_at = timezone.now()
+                lot.completed_at = lot.decision_at
+                lot.decision_notes = comments
+                lot.save()
+                messages.success(request, f'Inspection lot {lot.lot_number} decision saved.')
+
+            return redirect('dashboards:quality_lot_detail', lot_id=lot.pk)
+
+        messages.success(request, f'Results saved for inspection lot {lot.lot_number}.')
+        return redirect('dashboards:quality_lot_detail', lot_id=lot.pk)
+
+    characteristics = lot.characteristics.select_related('template_section', 'template_field').prefetch_related('results')
+    return render(request, 'dashboards/quality_lot_detail.html', {
+        'lot': lot,
+        'characteristics': characteristics,
+        'dashboard_title': f'Inspection Lot {lot.lot_number}',
+    })
 
 @login_required
 def packaging_dashboard(request):
@@ -3875,6 +5467,86 @@ def packing_dashboard(request):
     }
     
     return render(request, 'dashboards/packing_dashboard.html', context)
+
+@login_required
+def maintenance_dashboard(request):
+    """Maintenance dashboard for machine breakdown follow-up."""
+    if getattr(request.user, 'role', None) not in ('maintenance', 'equipment_operator'):
+        messages.error(request, 'Access denied. Maintenance role required.')
+        return redirect('dashboards:dashboard_home')
+
+    breakdowns = BatchPhaseExecution.objects.filter(
+        breakdown_occurred=True
+    ).select_related('bmr', 'bmr__product', 'phase', 'machine_used').order_by(
+        '-breakdown_start_time', '-id'
+    )[:100]
+
+    open_breakdowns = [item for item in breakdowns if not item.breakdown_end_time]
+    resolved_breakdowns = [item for item in breakdowns if item.breakdown_end_time]
+
+    from .models import NotificationAlert
+    notifications = NotificationAlert.objects.filter(
+        recipient=request.user,
+        notification_type='system_maintenance'
+    ).order_by('-created_date')[:20]
+
+    context = {
+        'dashboard_title': 'Maintenance Dashboard',
+        'breakdowns': breakdowns,
+        'open_breakdowns': open_breakdowns,
+        'resolved_breakdowns': resolved_breakdowns,
+        'open_breakdown_count': len(open_breakdowns),
+        'resolved_breakdown_count': len(resolved_breakdowns),
+        'notifications': notifications,
+    }
+    return render(request, 'dashboards/maintenance_dashboard.html', context)
+
+@login_required
+def maintenance_breakdown_detail(request, phase_execution_id):
+    """View and close one machine breakdown from the maintenance dashboard."""
+    if getattr(request.user, 'role', None) not in ('maintenance', 'equipment_operator'):
+        messages.error(request, 'Access denied. Maintenance role required.')
+        return redirect('dashboards:dashboard_home')
+
+    breakdown = get_object_or_404(
+        BatchPhaseExecution.objects.select_related(
+            'bmr', 'bmr__product', 'phase', 'machine_used'
+        ),
+        pk=phase_execution_id,
+        breakdown_occurred=True,
+    )
+
+    if request.method == 'POST':
+        if breakdown.breakdown_end_time:
+            messages.info(request, 'This breakdown is already closed.')
+            return redirect('dashboards:maintenance_breakdown_detail', phase_execution_id=breakdown.id)
+
+        end_time = parse_datetime(request.POST.get('breakdown_end_time', '').strip())
+        repair_notes = request.POST.get('repair_notes', '').strip()
+        if not end_time:
+            messages.error(request, 'Enter a valid repair completion time.')
+        elif not repair_notes:
+            messages.error(request, 'Enter repair notes before closing the breakdown.')
+        else:
+            if timezone.is_naive(end_time):
+                end_time = timezone.make_aware(end_time, timezone.get_current_timezone())
+            if breakdown.breakdown_start_time and end_time < breakdown.breakdown_start_time:
+                messages.error(request, 'Repair completion time cannot be before the breakdown start time.')
+            else:
+                existing_reason = breakdown.breakdown_reason.strip()
+                breakdown.breakdown_reason = (
+                    f'{existing_reason}\n\nRepair notes: {repair_notes}'
+                    if existing_reason else f'Repair notes: {repair_notes}'
+                )
+                breakdown.breakdown_end_time = end_time
+                breakdown.save(update_fields=['breakdown_reason', 'breakdown_end_time'])
+                messages.success(request, 'Breakdown closed and repair completion time recorded.')
+                return redirect('dashboards:maintenance_dashboard')
+
+    return render(request, 'dashboards/maintenance_breakdown_detail.html', {
+        'breakdown': breakdown,
+        'breakdown_duration': breakdown.get_breakdown_duration(),
+    })
 
 def format_phase_name(name):
     """Format phase name for display"""
@@ -5285,7 +6957,6 @@ def phase_specific_dashboard(request, phase_name):
 # ==================== NOTIFICATION API ENDPOINTS ====================
 
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
 from datetime import datetime, timedelta
@@ -5517,8 +7188,6 @@ def overrun_alerts_api(request):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
-@login_required
 def mark_notification_read(request, notification_id):
     """Mark a notification alert as read (non-API version for form POST)"""
     if request.method == 'POST':
@@ -5603,7 +7272,6 @@ def mark_notification_read_api(request, notification_id):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
 def dismiss_notification_api(request, notification_id):
     """API endpoint to dismiss/delete a notification"""
     try:
@@ -5633,7 +7301,6 @@ def dismiss_notification_api(request, notification_id):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
 def request_explanation_api(request):
     """API endpoint to request explanation for overrun"""
     try:
@@ -5651,7 +7318,6 @@ def request_explanation_api(request):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
 def request_all_explanations_api(request):
     """API endpoint to request explanations for all current overruns"""
     try:

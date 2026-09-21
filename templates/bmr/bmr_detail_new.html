@@ -9,9 +9,30 @@
     .bmr-document {
         background: white;
         padding: 20px;
-        max-width: 210mm;
+        width: 210mm;
+        max-width: calc(100vw - 32px);
+        box-sizing: border-box;
         margin: 0 auto;
         box-shadow: 0 0 12px rgba(0,0,0,0.06);
+    }
+
+    /* Keep on-screen pages aligned with the printed A4 document. */
+    @media screen {
+        .bmr-page {
+            width: 194mm;
+            max-width: 100%;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            box-sizing: border-box;
+        }
+
+        /* The document stylesheet hides .no-print controls in some screen
+           layouts. Packing actions are operational controls, not print-only
+           content, so keep them visible while editing. */
+        .bmr-document .packing-action-buttons {
+            display: flex !important;
+            visibility: visible !important;
+        }
     }
     
     .bmr-header {
@@ -80,25 +101,9 @@
         margin-bottom: 20px;
     }
 
-    .bmr-table-continue {
-        width: 100%;
-        border-collapse: collapse;
-        border: 2px solid #000;
-        border-top: none;
-        margin-top: 0;
-    }
-
-    .bmr-section-title-table td {
-        padding: 8px;
-        text-align: center;
-        font-weight: bold;
-        background: #f8f9fa;
-    }
-
     .theme-toggle,
     .theme-switcher,
-    #theme-icon,
-    #userDropdown {
+    #theme-icon {
         display: none !important;
     }
 
@@ -529,32 +534,38 @@
 {% if document_mode %}
 <style>
     body {
-        padding-top: 0 !important;
+        padding-top: 56px !important;
         background: #f1f5f9 !important;
     }
 
-    .navbar,
     .main-header,
     .sidebar,
     .content-header,
     .theme-toggle,
     .theme-switcher,
-    #theme-icon,
-    #userDropdown,
-    .dropdown-toggle {
+    #theme-icon {
         display: none !important;
     }
 
-    .no-print {
-        display: none !important;
-    }
+    /* Keep workflow controls visible while editing in the browser. They are
+       hidden only for actual print output below. */
+    @media print {
+        body {
+            padding-top: 0 !important;
+        }
 
-    .alert,
-    .badge,
-    .status-badge,
-    [class*="alert-"],
-    [class*="badge-"] {
-        display: none !important;
+        .navbar {
+            display: none !important;
+        }
+
+        .no-print,
+        .alert,
+        .badge,
+        .status-badge,
+        [class*="alert-"],
+        [class*="badge-"] {
+            display: none !important;
+        }
     }
 
     .document-actions {
@@ -663,6 +674,8 @@
 {% endblock %}
 
 {% block content %}
+<!-- Dynamic template system temporarily disabled - showing full static BMR -->
+<!-- TODO: Implement hybrid rendering that overlays dynamic sections onto static base -->
 {% if document_mode %}
 <div class="document-actions">
     <a href="{% url 'bmr:detail' bmr.id %}?print=1&document=1&download=pdf" class="btn btn-success btn-sm">
@@ -676,35 +689,7 @@
 <div class="container-fluid bmr-document">
     <!-- Navigation Controls (No Print) -->
     {% if not document_mode %}
-    <div class="no-print mb-3">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'bmr:list' %}">BMR List</a></li>
-                <li class="breadcrumb-item active">{{ bmr.bmr_number }}</li>
-            </ol>
-        </nav>
-        
-        <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="fas fa-file-medical-alt me-2"></i>Batch Manufacturing Record</h2>
-            <div class="btn-group">
-                {% if user_role == 'admin' %}<button onclick="window.print()" class="btn btn-primary">
-                    <i class="fas fa-print me-1"></i>Print BMR
-                </button>{% endif %}
-                <a href="{% url 'bmr:detail' bmr.id %}?print=1&document=1&download=pdf" class="btn btn-success">
-                    <i class="fas fa-file-pdf me-1"></i>Download PDF
-                </a>
-                {% if not is_printing %}
-                <a href="{% url 'reports:enhanced_timeline' bmr.id %}" class="btn btn-info">
-                    <i class="fas fa-chart-line me-1"></i>Timeline
-                </a>
-                <a href="{% url 'bmr:list' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-1"></i>Back
-                </a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+    {% include "bmr/partials/form_toolbar.html" %}
     {% endif %}
 
     <!-- Print Mode Indicator (Shows only when viewing print version) -->
@@ -715,6 +700,28 @@
             <strong>PRINT VIEW MODE:</strong> This is the comprehensive BMR print version. All data from completed phases is displayed in read-only format. Use Ctrl+P or the Print button to print/save as PDF.
         </div>
     </div>
+    
+    <!-- Print-specific styles to ensure clean PDF output -->
+    <style>
+        /* Additional print-specific overrides */
+        @media print {
+            .print-mode-indicator { display: none !important; }
+        }
+        
+        /* Screen view improvements for print mode */
+        @media screen {
+            body.print-mode {
+                background: #f8f9fa !important;
+            }
+            .print-mode .bmr-document {
+                background: white;
+                padding: 20px;
+                margin: 20px auto;
+                max-width: 1200px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+        }
+    </style>
     
     <!-- Add print mode class to body -->
     <script>
@@ -787,14 +794,88 @@
         </table>
         
         <!-- Product Details Table -->
-        {% include 'bmr/includes/_product_header_tablet.html' %}
+        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; margin-top: 0;">
+            <tr>
+                <td style="border: 2px solid #000; padding: 8px; font-weight: bold; width: 15%;">Generic Name:</td>
+                <td style="border: 2px solid #000; padding: 8px; width: 35%;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
+                <td colspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center;">BMR Revision No: {{ bmr.product.bmr_revision_no|default:"00" }}</td>
+                <td colspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center;">Approvals</td>
+                <td style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center; width: 10%;">Start date</td>
+            </tr>
+            <tr>
+                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; vertical-align: top;">
+                    Product Pack No:<br>(/ mark as appropriate)
+                </td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
+                    {{ bmr.product.pack_size_1_code|default:"-" }}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
+                    {{ bmr.product.pack_size_2_code|default:"-" }}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
+                    {{ bmr.product.pack_size_3_code|default:"-" }}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
+                    {{ bmr.product.pack_size_4_code|default:"-" }}
+                </td>
+                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center; vertical-align: middle;">
+                    QA Head
+                </td>
+                <td rowspan="2" style="border: 2px solid #000; padding: 8px; text-align: center; vertical-align: middle;">
+                    {% if bmr.approved_by %}{{ bmr.approved_by.get_full_name }}<br><small>{{ bmr.approved_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
+                    {{ bmr.product.pack_size_1_description|default:"-" }}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
+                    {{ bmr.product.pack_size_2_description|default:"-" }}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
+                    {{ bmr.product.pack_size_3_description|default:"-" }}
+                </td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center; font-size: 11px;">
+                    {{ bmr.product.pack_size_4_description|default:"-" }}
+                </td>
+            </tr>
+            <tr>
+                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; vertical-align: middle;">
+                    Pack Size: (/ mark as appropriate)
+                </td>
+                <td colspan="4" style="border: 2px solid #000; padding: 8px;">
+                    <div style="display: flex; justify-content: space-around;">
+                        <span>[ ] {{ bmr.product.pack_size_1_description|default:"10x10 Blisters" }}</span>
+                        <span>[ ] {{ bmr.product.pack_size_2_description|default:"100 Blisters" }}</span>
+                        <span>[ ] {{ bmr.product.pack_size_3_description|default:"500's" }}</span>
+                        <span>[ ] {{ bmr.product.pack_size_4_description|default:"1000's" }}</span>
+                    </div>
+                </td>
+                <td rowspan="2" style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center; vertical-align: middle;">
+                    Company/Prod. Pharmacist
+                </td>
+                <td rowspan="2" style="border: 2px solid #000; padding: 8px; text-align: center; vertical-align: middle;">
+                    -
+                </td>
+            </tr>
+            <tr>
+                <td colspan="4" style="border: 2px solid #000; padding: 8px; font-size: 11px;">
+                    <small class="text-muted">Select applicable pack size above before production</small>
+                </td>
+            </tr>
+            <tr>
+                <td style="border: 2px solid #000; padding: 8px; font-weight: bold;">Reference SOP Number:</td>
+                <td colspan="4" style="border: 2px solid #000; padding: 8px;">{{ bmr.product.reference_sop_number|default:"-" }}</td>
+                <td style="border: 2px solid #000; padding: 8px; font-weight: bold; text-align: center;">Production_Manager</td>
+                <td style="border: 2px solid #000; padding: 8px; text-align: center;">
+                    {% if bmr.created_by %}{{ bmr.created_by.get_full_name }}<br><small>{{ bmr.created_date|date:"d/m/Y" }}</small>{% else %}-{% endif %}
+                </td>
+            </tr>
+        </table>
     </div>
 
-    <!-- ==================== PAGE 1 BORDER CONTAINER ==================== -->
-    <div style="border: 2px solid #000; padding: 15px; margin-top: 30px; margin-bottom: 30px; page-break-after: always; page-break-inside: avoid;">
-
     <!-- RAW MATERIAL REQUISITION/DISPENSING SHEETS Section -->
-    <div style="margin-top: 0;">
+    <div style="margin-top: 30px;">
 
         {% if edit_mode == 'store' %}<div id="edit-section"></div>{% endif %}
         {% if edit_mode == 'dispensing' and phase_execution.status == 'in_progress' %}<div id="edit-section"></div>{% endif %}
@@ -826,262 +907,230 @@
         <form method="POST" action="" id="materialDispensingForm">{% csrf_token %}
         {% endif %}
 
-        <!-- ==================== DISPENSING PAGE 1: First 4 ingredients ==================== -->
-        {% include 'bmr/includes/_section_title_table.html' %}
-        <div class="table-scroll-container">
-            {% include 'dashboards/forms/material_dispensing_table.html' with disp_page=1 %}
-        </div>
+        {% if ingredient_pages %}
+            {% for ingredient_page in ingredient_pages %}
+                <div class="bmr-page" style="page-break-before:{% if not forloop.first %}always{% else %}auto{% endif %};margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
+                    <!-- Page {{ forloop.counter }} header -->
+                    <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:0;">
+                        <tr>
+                            <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
+                            <td style="border:2px solid #000;padding:15px;text-align:center;font-weight:bold;font-size:16px;">Batch Manufacturing Record and Procedure</td>
+                            <td rowspan="2" style="border:2px solid #000;padding:10px;width:25%;vertical-align:middle;text-align:center;font-weight:bold;font-size:11px;">KAMPALA PHARMACEUTICAL<br>INDUSTRIES (1996) LTD.</td>
+                            <td rowspan="2" style="border:2px solid #000;padding:10px;width:12%;vertical-align:middle;text-align:center;"><strong>Page {{ forloop.counter }} of {{ total_pages }}</strong></td>
+                        </tr>
+                        <tr><td style="border:2px solid #000;padding:8px;"><table style="width:100%;border:none;"><tr><td style="border:none;padding:4px;width:25%;font-weight:bold;">PRODUCT</td><td style="border:none;padding:4px;text-transform:uppercase;">{{ bmr.product.product_name|default:"-" }}</td></tr></table></td></tr>
+                        <tr>
+                            <td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH SIZE</td>
+                            <td style="border:2px solid #000;padding:8px;">{{ bmr.batch_size }} {{ bmr.product.batch_size_unit|title }}</td>
+                            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Mfg. Date :</td>
+                            <td style="border:2px solid #000;padding:8px;">{{ bmr.manufacturing_date|date:"d/m/Y"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH No.</td>
+                            <td style="border:2px solid #000;padding:8px;"><strong>{{ bmr.batch_number }}</strong></td>
+                            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Exp. Date :</td>
+                            <td style="border:2px solid #000;padding:8px;">{{ bmr.expiry_date|date:"d/m/Y"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border:2px solid #000;padding:8px;font-weight:bold;">Effective Date:</td>
+                            <td style="border:2px solid #000;padding:8px;">{{ bmr.approved_date|date:"d/m/Y"|default:"-" }}</td>
+                            <td colspan="2" style="border:2px solid #000;padding:8px;">MFR No.: {{ bmr.product.mfr_number|default:"-" }}</td>
+                        </tr>
+                    </table>
+                    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
+                        <tr>
+                            <td style="border:2px solid #000;padding:8px;font-weight:bold;width:15%;">Generic Name:</td>
+                            <td colspan="5" style="border:2px solid #000;padding:8px;">{{ bmr.product.generic_name|default:bmr.product.product_name }}</td>
+                            <td style="border:2px solid #000;padding:8px;">Reference SOP: {{ bmr.product.reference_sop_number|default:"QAD/022/01" }}</td>
+                        </tr>
+                    </table>
+                    <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
+                        <tr><td style="padding:8px;text-align:center;font-weight:bold;background:#f8f9fa;">RAW MATERIAL REQUISITION/DISPENSING SHEETS</td></tr>
+                    </table>
 
-        <!-- Page 1: Read-only sign-off -->
-        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:8px;">
-            <tr>
-                <td style="border:1px solid #000;padding:8px;width:33%;font-size:10px;">Store In-charge<br>(Sign &amp; Date)<br><strong>{{ store_data.store_incharge_sign|default:"" }}</strong> <small>{{ store_data.store_incharge_date|default:"" }}</small></td>
-                <td style="border:1px solid #000;padding:8px;width:33%;font-size:10px;">Dispensing SPV<br>(Sign &amp; Date)<br><strong>{{ dispensing_data.dispensing_spv_sign|default:"" }}</strong> <small>{{ dispensing_data.dispensing_spv_date|default:"" }}</small></td>
-                <td style="border:1px solid #000;padding:8px;width:34%;font-size:10px;">QA Officer<br>(Sign &amp; Date)<br><strong>{{ dispensing_data.qa_sign|default:"" }}</strong> <small>{{ dispensing_data.qa_sign_date|default:"" }}</small></td>
-            </tr>
-            <tr>
-                <td colspan="2" style="border:1px solid #000;padding:8px;font-size:10px;">Weighing Started (HH:MM) <strong>{{ dispensing_data.weighing_start_time|default:"_____" }}</strong> &nbsp; Date: <strong>{{ dispensing_data.weighing_start_date|default:"_____" }}</strong></td>
-                <td style="border:1px solid #000;padding:8px;font-size:10px;">Weighing Stopped (HH:MM) <strong>{{ dispensing_data.weighing_stop_time|default:"_____" }}</strong> &nbsp; Date: <strong>{{ dispensing_data.weighing_stop_date|default:"_____" }}</strong></td>
-            </tr>
-        </table>
-        <div style="font-size:9px;margin-top:6px;padding:4px;">
-            * Includes conversion to base drug, with overage and corrected for Potency and/or Moisture where required.<br>
-            ** Check weight, A.R. No. and verify presence of QC approved label on Raw Material container.<br>
-            *** AR No. Checked/Approved by QCM (Sign &amp; Date) ___________________
-        </div>
-        <div style="text-align:right;font-size:10px;margin-top:4px;">QAD/022/F01/01</div>
-        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:8px;">
-            <tr>
-                <td style="border:1px solid #000;padding:6px;width:25%;">PREPARED BY:<br>Sign &amp; Date:<br><br>Name:<br>Designation:</td>
-                <td style="border:1px solid #000;padding:6px;width:25%;">REVIEWED BY:<br>Sign &amp; Date:<br><br>Name:<br>Designation:</td>
-                <td style="border:1px solid #000;padding:6px;width:25%;">APPROVED BY:<br>Sign &amp; Date:<br><br>Name:<br>Designation:</td>
-                <td style="border:1px solid #000;padding:6px;width:25%;">AUTHORIZED BY:<br>Sign &amp; Date:<br><br>Name:<br>Designation:</td>
-            </tr>
-        </table>
+                    <div class="table-scroll-container">
+                        {% include 'dashboards/forms/material_dispensing_table.html' with ingredient_table=ingredient_page is_last_page=forloop.last %}
+                    </div>
 
-        </div><!-- End Page 1 content div -->
-    </div><!-- End Page 1 bordered container -->
+                    {% if forloop.last %}
+                        <!-- Page {{ forloop.counter }}: Role-based sign-off table -->
+                        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:5px;">
+                            <tr>
+                                <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
+                                    <strong>Weighing Started</strong><br>
+                                    {% if edit_mode == 'dispensing' %}
+                                    <input type="time" name="weighing_start_time" value="{{ dispensing_data.weighing_start_time|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;margin-top:4px;"><br>
+                                    <input type="date" name="weighing_start_date" value="{{ dispensing_data.weighing_start_date|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;margin-top:2px;">
+                                    {% else %}
+                                    <strong>{{ dispensing_data.weighing_start_time|default:"_____" }}</strong><br>
+                                    <small>{{ dispensing_data.weighing_start_date|default:"" }}</small>
+                                    {% endif %}
+                                </td>
+                                <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
+                                    <strong>Store In-charge</strong><br>
+                                    {% if edit_mode == 'store' %}
+                                    <input type="text" name="store_incharge_sign" value="{{ store_data.store_incharge_sign|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#fff3cd;margin-top:4px;" placeholder="Sign"><br>
+                                    <input type="date" name="store_incharge_date" value="{{ store_data.store_incharge_date|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#fff3cd;margin-top:2px;">
+                                    {% else %}
+                                    <strong style="font-size:13px;color:#333;">{{ store_data.store_incharge_sign|default:"" }}</strong><br>
+                                    <small>{{ store_data.store_incharge_date|default:"" }}</small>
+                                    {% endif %}
+                                </td>
+                                <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
+                                    <strong>Dispensing SPV</strong><br>
+                                    {% if edit_mode == 'dispensing' %}
+                                    <input type="text" name="dispensing_spv_sign" value="{{ dispensing_data.dispensing_spv_sign|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#d4edda;margin-top:4px;" placeholder="Sign"><br>
+                                    <input type="date" name="dispensing_spv_date" value="{{ dispensing_data.dispensing_spv_date|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#d4edda;margin-top:2px;">
+                                    {% else %}
+                                    <strong style="font-size:13px;color:#333;">{{ dispensing_data.dispensing_spv_sign|default:"" }}</strong><br>
+                                    <small>{{ dispensing_data.dispensing_spv_date|default:"" }}</small>
+                                    {% endif %}
+                                </td>
+                                <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
+                                    <strong>QA Officer</strong><br>
+                                    {% if edit_mode == 'qa' and phase_execution.process_signing_status == 'operator_filled' %}
+                                    <strong style="font-size:13px;color:#10b981;">{{ dispensing_data.qa_sign|default:"Pending" }}</strong><br>
+                                    <small>{{ dispensing_data.qa_sign_date|default:"" }}</small>
+                                    {% elif phase_execution.process_signing_status == 'qa_signed' or dispensing_data.qa_sign %}
+                                    <strong style="font-size:13px;color:#10b981;">{{ dispensing_data.qa_sign|default:"?" }}</strong><br>
+                                    <small>{{ dispensing_data.qa_sign_date|default:"" }}</small>
+                                    {% else %}
+                                    <span>{{ dispensing_data.qa_sign|default:"" }}</span><br>
+                                    <small>{{ dispensing_data.qa_sign_date|default:"" }}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border:1px solid #000;padding:8px;text-align:center;">
+                                    <strong>Weighing Stopped</strong><br>
+                                    {% if edit_mode == 'dispensing' %}
+                                    <input type="time" name="weighing_stop_time" value="{{ dispensing_data.weighing_stop_time|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;"><br>
+                                    <input type="date" name="weighing_stop_date" value="{{ dispensing_data.weighing_stop_date|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;margin-top:2px;">
+                                    {% else %}
+                                    <strong>{{ dispensing_data.weighing_stop_time|default:"_____" }}</strong><br>
+                                    <small>{{ dispensing_data.weighing_stop_date|default:"" }}</small>
+                                    {% endif %}
+                                </td>
+                                <td colspan="3" style="border:1px solid #000;padding:8px;font-size:10px;">
+                                    * Scale No. checked/approved by QCM (Sign &amp; Date) ___________________<br>
+                                    ** Includes conversion to base drug, with overage and corrected for Potency and/or Moisture where required.<br>
+                                    *** Check weight, A.R. No. and verify presence of QC approved label on Raw Material container.
+                                </td>
+                            </tr>
+                        </table>
 
-        <!-- ==================== DISPENSING PAGE 2: Remaining ingredients ==================== -->
-        <div class="bmr-page" style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
-            <!-- Page 2 header -->
-            <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:0;">
-                <tr>
-                    <td rowspan="2" style="border:2px solid #000;padding:10px;width:15%;vertical-align:middle;text-align:center;"><img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width:80px;"></td>
-                    <td style="border:2px solid #000;padding:15px;text-align:center;font-weight:bold;font-size:16px;">Batch Manufacturing Record and Procedure</td>
-                    <td rowspan="2" style="border:2px solid #000;padding:10px;width:25%;vertical-align:middle;text-align:center;font-weight:bold;font-size:11px;">KAMPALA PHARMACEUTICAL<br>INDUSTRIES (1996) LTD.</td>
-                    <td rowspan="2" style="border:2px solid #000;padding:10px;width:12%;vertical-align:middle;text-align:center;"><strong>Page 2 of {{ total_pages }}</strong></td>
-                </tr>
-                <tr><td style="border:2px solid #000;padding:8px;"><table style="width:100%;border:none;"><tr><td style="border:none;padding:4px;width:25%;font-weight:bold;">PRODUCT</td><td style="border:none;padding:4px;text-transform:uppercase;">{{ bmr.product.product_name|default:"-" }}</td></tr></table></td></tr>
-                <tr>
-                    <td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH SIZE</td>
-                    <td style="border:2px solid #000;padding:8px;">{{ bmr.batch_size }} {{ bmr.product.batch_size_unit|title }}</td>
-                    <td style="border:2px solid #000;padding:8px;font-weight:bold;">Mfg. Date :</td>
-                    <td style="border:2px solid #000;padding:8px;">{{ bmr.manufacturing_date|date:"d/m/Y"|default:"-" }}</td>
-                </tr>
-                <tr>
-                    <td style="border:2px solid #000;padding:8px;font-weight:bold;">BATCH No.</td>
-                    <td style="border:2px solid #000;padding:8px;"><strong>{{ bmr.batch_number }}</strong></td>
-                    <td style="border:2px solid #000;padding:8px;font-weight:bold;">Exp. Date :</td>
-                    <td style="border:2px solid #000;padding:8px;">{{ bmr.expiry_date|date:"d/m/Y"|default:"-" }}</td>
-                </tr>
-                <tr>
-                    <td style="border:2px solid #000;padding:8px;font-weight:bold;">Effective Date:</td>
-                    <td style="border:2px solid #000;padding:8px;">{{ bmr.approved_date|date:"d/m/Y"|default:"-" }}</td>
-                    <td colspan="2" style="border:2px solid #000;padding:8px;">MFR No.: {{ bmr.product.mfr_number|default:"-" }}</td>
-                </tr>
-            </table>
-            {% include 'bmr/includes/_product_header_tablet.html' with variant='compact' %}
-            {% include 'bmr/includes/_section_title_table.html' %}
-
-            <div class="table-scroll-container">
-                {% include 'dashboards/forms/material_dispensing_table.html' with disp_page=2 %}
+                        <!-- PREPARED BY / REVIEWED BY / APPROVED BY / AUTHORIZED BY -->
+                        {% if edit_mode == 'dispensing' %}
+                        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:8px;">
+                            <tr>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    <strong>PREPARED BY:</strong><br>Sign &amp; Date:<br>
+                                    <input type="text" name="prepared_by_sign" value="{{ dispensing_data.prepared_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
+                                    <input type="date" name="prepared_by_date" value="{{ dispensing_data.prepared_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
+                                    Name:<br><input type="text" name="prepared_by_name" value="{{ dispensing_data.prepared_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
+                                    Designation:<br><input type="text" name="prepared_by_designation" value="{{ dispensing_data.prepared_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
+                                </td>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    <strong>REVIEWED BY:</strong><br>Sign &amp; Date:<br>
+                                    <input type="text" name="reviewed_by_sign" value="{{ dispensing_data.reviewed_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
+                                    <input type="date" name="reviewed_by_date" value="{{ dispensing_data.reviewed_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
+                                    Name:<br><input type="text" name="reviewed_by_name" value="{{ dispensing_data.reviewed_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
+                                    Designation:<br><input type="text" name="reviewed_by_designation" value="{{ dispensing_data.reviewed_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
+                                </td>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    <strong>APPROVED BY:</strong><br>Sign &amp; Date:<br>
+                                    <input type="text" name="approved_by_sign" value="{{ dispensing_data.approved_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
+                                    <input type="date" name="approved_by_date" value="{{ dispensing_data.approved_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
+                                    Name:<br><input type="text" name="approved_by_name" value="{{ dispensing_data.approved_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
+                                    Designation:<br><input type="text" name="approved_by_designation" value="{{ dispensing_data.approved_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
+                                </td>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    <strong>AUTHORIZED BY:</strong><br>Sign &amp; Date:<br>
+                                    <input type="text" name="authorized_by_sign" value="{{ dispensing_data.authorized_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
+                                    <input type="date" name="authorized_by_date" value="{{ dispensing_data.authorized_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
+                                    Name:<br><input type="text" name="authorized_by_name" value="{{ dispensing_data.authorized_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
+                                    Designation:<br><input type="text" name="authorized_by_designation" value="{{ dispensing_data.authorized_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
+                                </td>
+                            </tr>
+                        </table>
+                        {% else %}
+                        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:8px;">
+                            <tr>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    PREPARED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.prepared_by_sign|default:"" }}</strong> {{ dispensing_data.prepared_by_date|default:"" }}<br>
+                                    Name: {{ dispensing_data.prepared_by_name|default:"" }}<br>
+                                    Designation: {{ dispensing_data.prepared_by_designation|default:"" }}
+                                </td>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    REVIEWED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.reviewed_by_sign|default:"" }}</strong> {{ dispensing_data.reviewed_by_date|default:"" }}<br>
+                                    Name: {{ dispensing_data.reviewed_by_name|default:"" }}<br>
+                                    Designation: {{ dispensing_data.reviewed_by_designation|default:"" }}
+                                </td>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    APPROVED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.approved_by_sign|default:"" }}</strong> {{ dispensing_data.approved_by_date|default:"" }}<br>
+                                    Name: {{ dispensing_data.approved_by_name|default:"" }}<br>
+                                    Designation: {{ dispensing_data.approved_by_designation|default:"" }}
+                                </td>
+                                <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
+                                    AUTHORIZED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.authorized_by_sign|default:"" }}</strong> {{ dispensing_data.authorized_by_date|default:"" }}<br>
+                                    Name: {{ dispensing_data.authorized_by_name|default:"" }}<br>
+                                    Designation: {{ dispensing_data.authorized_by_designation|default:"" }}
+                                </td>
+                            </tr>
+                        </table>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-warning no-print" style="margin-top:15px;margin-bottom:15px;">
+                <strong>No raw material dispensing pages are available for this BMR.</strong>
             </div>
+        {% endif %}
 
-            <!-- Page 2: Role-based sign-off table -->
-            <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:5px;">
-                <tr>
-                    <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
-                        <strong>Weighing Started</strong><br>
-                        {% if edit_mode == 'dispensing' %}
-                        <input type="time" name="weighing_start_time" value="{{ dispensing_data.weighing_start_time|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;margin-top:4px;"><br>
-                        <input type="date" name="weighing_start_date" value="{{ dispensing_data.weighing_start_date|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;margin-top:2px;">
-                        {% else %}
-                        <strong>{{ dispensing_data.weighing_start_time|default:"_____" }}</strong><br>
-                        <small>{{ dispensing_data.weighing_start_date|default:"" }}</small>
-                        {% endif %}
-                    </td>
-                    <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
-                        <strong>Store In-charge</strong><br>
-                        {% if edit_mode == 'store' %}
-                        <input type="text" name="store_incharge_sign" value="{{ store_data.store_incharge_sign|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#fff3cd;margin-top:4px;" placeholder="Sign"><br>
-                        <input type="date" name="store_incharge_date" value="{{ store_data.store_incharge_date|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#fff3cd;margin-top:2px;">
-                        {% else %}
-                        <strong style="font-size:13px;color:#333;">{{ store_data.store_incharge_sign|default:"" }}</strong><br>
-                        <small>{{ store_data.store_incharge_date|default:"" }}</small>
-                        {% endif %}
-                    </td>
-                    <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
-                        <strong>Dispensing SPV</strong><br>
-                        {% if edit_mode == 'dispensing' %}
-                        <input type="text" name="dispensing_spv_sign" value="{{ dispensing_data.dispensing_spv_sign|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#d4edda;margin-top:4px;" placeholder="Sign"><br>
-                        <input type="date" name="dispensing_spv_date" value="{{ dispensing_data.dispensing_spv_date|default:'' }}" style="width:90%;border:1px solid #999;padding:2px;background:#d4edda;margin-top:2px;">
-                        {% else %}
-                        <strong style="font-size:13px;color:#333;">{{ dispensing_data.dispensing_spv_sign|default:"" }}</strong><br>
-                        <small>{{ dispensing_data.dispensing_spv_date|default:"" }}</small>
-                        {% endif %}
-                    </td>
-                    <td style="border:1px solid #000;padding:8px;text-align:center;width:25%;">
-                        <strong>QA Officer</strong><br>
-                        {% if edit_mode == 'qa' and phase_execution.process_signing_status == 'operator_filled' %}
-                        <strong style="font-size:13px;color:#10b981;">{{ dispensing_data.qa_sign|default:"Pending" }}</strong><br>
-                        <small>{{ dispensing_data.qa_sign_date|default:"" }}</small>
-                        {% elif phase_execution.process_signing_status == 'qa_signed' %}
-                        <strong style="font-size:13px;color:#10b981;">{{ dispensing_data.qa_sign|default:"?" }}</strong><br>
-                        <small>{{ dispensing_data.qa_sign_date|default:"" }}</small>
-                        {% else %}
-                        <span>{{ dispensing_data.qa_sign|default:"" }}</span><br>
-                        <small>{{ dispensing_data.qa_sign_date|default:"" }}</small>
-                        {% endif %}
-                    </td>
-                </tr>
-                <tr>
-                    <td style="border:1px solid #000;padding:8px;text-align:center;">
-                        <strong>Weighing Stopped</strong><br>
-                        {% if edit_mode == 'dispensing' %}
-                        <input type="time" name="weighing_stop_time" value="{{ dispensing_data.weighing_stop_time|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;"><br>
-                        <input type="date" name="weighing_stop_date" value="{{ dispensing_data.weighing_stop_date|default:'' }}" style="width:90%;border:1px solid #ccc;padding:2px;background:#d4edda;margin-top:2px;">
-                        {% else %}
-                        <strong>{{ dispensing_data.weighing_stop_time|default:"_____" }}</strong><br>
-                        <small>{{ dispensing_data.weighing_stop_date|default:"" }}</small>
-                        {% endif %}
-                    </td>
-                    <td colspan="3" style="border:1px solid #000;padding:8px;font-size:10px;">
-                        * Scale No. checked/approved by QCM (Sign &amp; Date) ___________________<br>
-                        ** Includes conversion to base drug, with overage and corrected for Potency and/or Moisture where required.<br>
-                        *** Check weight, A.R. No. and verify presence of QC approved label on Raw Material container.
-                    </td>
-                </tr>
-            </table>
-
-            <!-- PREPARED BY / REVIEWED BY / APPROVED BY / AUTHORIZED BY -->
-            {% if edit_mode == 'dispensing' %}
-            <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:8px;">
-                <tr>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        <strong>PREPARED BY:</strong><br>Sign &amp; Date:<br>
-                        <input type="text" name="prepared_by_sign" value="{{ dispensing_data.prepared_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
-                        <input type="date" name="prepared_by_date" value="{{ dispensing_data.prepared_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
-                        Name:<br><input type="text" name="prepared_by_name" value="{{ dispensing_data.prepared_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
-                        Designation:<br><input type="text" name="prepared_by_designation" value="{{ dispensing_data.prepared_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
-                    </td>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        <strong>REVIEWED BY:</strong><br>Sign &amp; Date:<br>
-                        <input type="text" name="reviewed_by_sign" value="{{ dispensing_data.reviewed_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
-                        <input type="date" name="reviewed_by_date" value="{{ dispensing_data.reviewed_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
-                        Name:<br><input type="text" name="reviewed_by_name" value="{{ dispensing_data.reviewed_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
-                        Designation:<br><input type="text" name="reviewed_by_designation" value="{{ dispensing_data.reviewed_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
-                    </td>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        <strong>APPROVED BY:</strong><br>Sign &amp; Date:<br>
-                        <input type="text" name="approved_by_sign" value="{{ dispensing_data.approved_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
-                        <input type="date" name="approved_by_date" value="{{ dispensing_data.approved_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
-                        Name:<br><input type="text" name="approved_by_name" value="{{ dispensing_data.approved_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
-                        Designation:<br><input type="text" name="approved_by_designation" value="{{ dispensing_data.approved_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
-                    </td>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        <strong>AUTHORIZED BY:</strong><br>Sign &amp; Date:<br>
-                        <input type="text" name="authorized_by_sign" value="{{ dispensing_data.authorized_by_sign|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Sign">
-                        <input type="date" name="authorized_by_date" value="{{ dispensing_data.authorized_by_date|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;">
-                        Name:<br><input type="text" name="authorized_by_name" value="{{ dispensing_data.authorized_by_name|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Name">
-                        Designation:<br><input type="text" name="authorized_by_designation" value="{{ dispensing_data.authorized_by_designation|default:'' }}" style="width:95%;border:1px solid #999;padding:2px;background:#d4edda;margin:2px 0;" placeholder="Designation">
-                    </td>
-                </tr>
-            </table>
+        {% if edit_mode == 'store' %}
+        <div class="no-print" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            {% if phase_execution.template_section_completed and not store_data.is_draft %}
+            <div class="alert alert-success py-2 mb-0" style="font-size:13px;">
+                <i class="fas fa-check-circle me-1"></i> Store section completed &amp; submitted to Dispensing.
+            </div>
+            <button type="submit" name="action" value="recall_store" class="btn btn-outline-warning btn-sm"
+                    onclick="return confirm('Recall this submission for editing? Dispensing will not be able to proceed until you re-submit.')">
+                <i class="fas fa-undo me-1"></i>Recall for Editing
+            </button>
             {% else %}
-            <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-top:8px;">
-                <tr>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        PREPARED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.prepared_by_sign|default:"" }}</strong> {{ dispensing_data.prepared_by_date|default:"" }}<br>
-                        Name: {{ dispensing_data.prepared_by_name|default:"" }}<br>
-                        Designation: {{ dispensing_data.prepared_by_designation|default:"" }}
-                    </td>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        REVIEWED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.reviewed_by_sign|default:"" }}</strong> {{ dispensing_data.reviewed_by_date|default:"" }}<br>
-                        Name: {{ dispensing_data.reviewed_by_name|default:"" }}<br>
-                        Designation: {{ dispensing_data.reviewed_by_designation|default:"" }}
-                    </td>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        APPROVED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.approved_by_sign|default:"" }}</strong> {{ dispensing_data.approved_by_date|default:"" }}<br>
-                        Name: {{ dispensing_data.approved_by_name|default:"" }}<br>
-                        Designation: {{ dispensing_data.approved_by_designation|default:"" }}
-                    </td>
-                    <td style="border:1px solid #000;padding:6px;width:25%;vertical-align:top;">
-                        AUTHORIZED BY:<br>Sign &amp; Date: <strong>{{ dispensing_data.authorized_by_sign|default:"" }}</strong> {{ dispensing_data.authorized_by_date|default:"" }}<br>
-                        Name: {{ dispensing_data.authorized_by_name|default:"" }}<br>
-                        Designation: {{ dispensing_data.authorized_by_designation|default:"" }}
-                    </td>
-                </tr>
-            </table>
+            <button type="submit" name="action" value="save_draft" class="btn btn-warning btn-sm">
+                <i class="fas fa-save me-1"></i>Save Draft
+            </button>
+            <button type="submit" name="action" value="complete" id="completeStoreBtn" class="btn btn-success btn-sm">
+                <i class="fas fa-check-circle me-1"></i>Complete &amp; Submit to Dispensing
+            </button>
             {% endif %}
-
-        </div><!-- End Page 1 container -->
-    </div><!-- End Page 1 bordered div -->
-
-        <!-- ==================== DISPENSING PAGE 2: Remaining ingredients ==================== -->
-        <div class="bmr-page" style="page-break-before:always;margin-bottom:30px;border:2px solid #000;padding:10px;position:relative;">
-            <div class="no-print" style="margin-top:10px;">
-                {% if phase_execution.template_section_completed %}
-                <div class="alert alert-success py-2 mb-2" style="font-size:13px;">
-                    <i class="fas fa-check-circle me-1"></i> AR numbers submitted to Dispensing.
-                </div>
-                <button type="submit" name="action" value="recall_store" class="btn btn-outline-warning btn-sm"
-                        onclick="return confirm('Recall this submission for editing?')">
-                    <i class="fas fa-undo me-1"></i>Recall for Editing
-                </button>
-                {% else %}
-                <a href="{% url 'dashboards:store_dashboard' %}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-times me-1"></i>Cancel
-                </a>
-                <button type="submit" name="action" value="save_draft" class="btn btn-warning btn-sm ms-2">
-                    <i class="fas fa-save me-1"></i>Save Draft
-                </button>
-                <button type="submit" name="action" value="complete" class="btn btn-success btn-sm ms-2" id="completeStoreBtn">
-                    <i class="fas fa-check-circle me-1"></i>Complete &amp; Submit to Dispensing
-                </button>
-                {% endif %}
+        </div>
+        {% elif edit_mode == 'dispensing' %}
+        <div class="no-print" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            {% if phase_execution.template_section_completed %}
+            <div class="alert alert-success py-2 mb-0" style="font-size:13px;">
+                <i class="fas fa-check-circle me-1"></i> Dispensing data submitted to QA for approval.
             </div>
-            {% if edit_mode == 'dispensing' %}
-            <div class="no-print" style="margin-top:10px;">
-                {% if phase_execution.process_signing_status == 'operator_filled' %}
-                <div class="alert alert-success py-2 mb-2" style="font-size:13px;">
-                    <i class="fas fa-check-circle me-1"></i> Dispensing data submitted to QA for approval.
-                </div>
-                <button type="submit" name="action" value="recall_dispensing" class="btn btn-outline-warning btn-sm"
-                        onclick="return confirm('Recall this submission for editing? QA approval will be reset.')">
-                    <i class="fas fa-undo me-1"></i>Recall for Editing
-                </button>
-                {% elif phase_execution.process_signing_status == 'qa_signed' %}
-                <div class="alert alert-success py-2 mb-2" style="font-size:13px;">
-                    <i class="fas fa-check-double me-1"></i> <strong>QA APPROVED</strong> &mdash; Dispensing data approved by QA.
-                </div>
-                {% else %}
-                <a href="{% url 'dashboards:operator_dashboard' %}" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-times me-1"></i>Cancel
-                </a>
-                <button type="submit" name="action" value="save_draft" class="btn btn-warning btn-sm ms-2">
-                    <i class="fas fa-save me-1"></i>Save Draft
-                </button>
-                <button type="submit" name="action" value="complete" class="btn btn-primary btn-sm ms-2">
-                    <i class="fas fa-paper-plane me-1"></i>Submit to QA
-                </button>
-                {% endif %}
-            </div>
+            <button type="submit" name="action" value="recall_dispensing" class="btn btn-outline-warning btn-sm"
+                    onclick="return confirm('Recall this submission for editing? QA approval will be reset.')">
+                <i class="fas fa-undo me-1"></i>Recall for Editing
+            </button>
+            {% else %}
+            <button type="submit" name="action" value="save_draft" class="btn btn-warning btn-sm">
+                <i class="fas fa-save me-1"></i>Save Draft
+            </button>
+            <button type="submit" name="action" value="complete" class="btn btn-primary btn-sm">
+                <i class="fas fa-paper-plane me-1"></i>Submit to QA
+            </button>
             {% endif %}
+        </div>
+        {% endif %}
 
-            {% if edit_mode == 'store' or edit_mode == 'dispensing' %}
-            </form>
-            {% endif %}
+        {% if edit_mode == 'store' or edit_mode == 'dispensing' %}
+        </form>
+        {% endif %}
 
             <!-- QA approval section -->
             {% if edit_mode == 'qa' %}
@@ -1140,12 +1189,8 @@
             {% endif %}
             {% endif %}{# end qa #}
 
-    </div><!-- End Page 1 bordered container -->
-
-    <!-- ==================== PAGE 2: Remaining ingredients ==================== -->
-    <div class="bmr-page" style="page-break-before:always;margin-bottom:30px;margin-top:0;border:2px solid #000;padding:10px;position:relative;">
-        <!-- Page 2 header -->
-        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:0;margin-top:0;">
+        </div>{# end page 2 div #}
+    </div>
 
 {% if bmr.product.coating_type == 'coated' and coating_ingredient_table %}
     <!-- COATING MATERIAL DISPENSING PAGE 1 (Items 7-8) -->
@@ -1542,7 +1587,7 @@
 {% endif %}{# end coating dispensing pages #}
 
     <!-- PRODUCT DETAILS PAGE -->
-    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px; padding: 10px; position: relative;">
+    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px;">
         <!-- Header for Page 3 -->
         <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 0;">
             <tr>
@@ -1676,9 +1721,9 @@
     </div>
 
     <!-- INDEX PAGE -->
-    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px; padding: 10px; position: relative;">
+    <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-before: always; margin-top: 30px;">
         <!-- Header for Page 4 -->
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 12px;">
+        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 0;">
             <tr>
                 <td rowspan="2" style="border: 2px solid #000; padding: 8px; width: 15%; vertical-align: middle; text-align: center;">
                     <img src="{% static 'Main1.png' %}" alt="KPI Logo" style="max-width: 80px;">
@@ -1734,7 +1779,7 @@
         </table>
         
         <!-- Index Title -->
-        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000;">
+        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none;">
             <tr>
                 <td style="padding: 10px; text-align: center; font-weight: bold; background-color: #f8f9fa;">INDEX</td>
             </tr>
@@ -2305,7 +2350,7 @@
         </div>
 
         <!-- Signature Block -->
-        <table class="bmr-table-continue">
+        <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; margin-top: 0;">
             <tr>
                 <td style="border: 1px solid #000; padding: 20px 10px; width: 50%; vertical-align: bottom;">
                     <strong>List of Equipment Verified By (Production Officer):</strong>
@@ -2456,24 +2501,15 @@
 
     <!-- PAGE 8: DISPENSING LINE CLEARANCE -->
     {% if edit_mode == 'dispensing' and phase_execution.status != 'in_progress' %}<div id="edit-section"></div>{% endif %}
-    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
+    {% if phase_execution.process_signing_status == 'qa_signed' or dispensing_data.qa_sign %}
+    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
     <form method="POST" action="" id="dispensingLCForm">
         {% csrf_token %}
     {% endif %}
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
 
-        {% if phase_execution.process_signing_status != 'qa_signed' and not dispensing_data.qa_sign %}
-        <div class="alert alert-secondary no-print" style="margin-bottom: 10px; text-align:center;">
-            <i class="fas fa-lock me-2"></i>
-            <strong>DISPENSING LINE CLEARANCE IS LOCKED</strong><br>
-            Raw material / dispensing sheets must be QA-approved before edits are allowed.
-            Sections below are shown in read-only mode.
-        </div>
-        <fieldset disabled style="opacity: 0.9;">
-        {% endif %}
-
         <!-- Edit mode alert banners (no-print) -->
-        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
+        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
             {% if user_role != 'qa' %}
                 {% if phase_execution.beginning_lc_status == 'not_started' %}
                 <div class="alert alert-warning no-print" style="margin-bottom: 10px;">
@@ -2654,8 +2690,8 @@
                         </td>
                         
                         <!-- QA COLUMN - only editable when QA is reviewing -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <input type="text" name="dispensing_beginning_item{{ forloop.counter }}_qa" 
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'dispensing' 'beginning' forloop.counter 'qa' %}">
@@ -2670,8 +2706,8 @@
                         </td>
                         
                         <!-- STATUS COLUMN (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <select name="dispensing_beginning_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'dispensing' 'beginning' forloop.counter 'status' as st %}{% if st == 'ok' %}selected{% endif %}>OK</option>
@@ -2713,7 +2749,7 @@
         </table>
 
         <!-- LC Submit / QA Approve buttons (inline, no-print) -->
-        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
+        {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
         <div class="no-print" style="margin-top: 10px; margin-bottom: 15px;">
             {% if user_role != 'qa' and phase_execution.beginning_lc_status == 'not_started' %}
             <div class="d-flex gap-2 justify-content-end">
@@ -2796,8 +2832,8 @@
                         </td>
                         
                         <!-- QA COLUMN -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <input type="text" name="dispensing_ending_item{{ forloop.counter }}_qa" 
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'dispensing' 'ending' forloop.counter 'qa' %}">
@@ -2812,8 +2848,8 @@
                         </td>
                         
                         <!-- STATUS (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status or edit_mode == 'qa' and phase_name == 'material_dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'dispensing' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <select name="dispensing_ending_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'dispensing' 'ending' forloop.counter 'status' as est %}{% if est == 'ok' %}selected{% endif %}>OK</option>
@@ -2849,7 +2885,7 @@
         </table>
 
         <!-- Ending LC Submit / QA Approve buttons -->
-        {% if edit_mode == 'dispensing' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed %}
+        {% if edit_mode == 'dispensing' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed or edit_mode == 'qa' and has_line_clearance and phase_execution.status == 'in_progress' and phase_execution.template_section_completed %}
         <div class="no-print" style="margin-top: 10px;">
             {% if user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' %}
             <div class="d-flex gap-2 justify-content-end">
@@ -2874,15 +2910,11 @@
         </div>
         {% endif %}
 
-        {% if phase_execution.process_signing_status != 'qa_signed' and not dispensing_data.qa_sign %}
-        </fieldset>
-        {% endif %}
-
     </div>
-    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and phase_name == 'material_dispensing' and has_line_clearance %}
+    {% if edit_mode == 'dispensing' and has_line_clearance or edit_mode == 'qa' and has_line_clearance %}
     </form>
     {% endif %}
-    {% if phase_execution.process_signing_status != 'qa_signed' and not dispensing_data.qa_sign %}{# LC locked panel #}
+    {% else %}{# process_signing_status != qa_signed - LC locked #}
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
         {% if edit_mode == 'dispensing' or edit_mode == 'qa' and phase_name == 'material_dispensing' %}
         <div class="alert alert-secondary no-print" style="margin:40px 20px;text-align:center;">
@@ -2892,7 +2924,7 @@
         </div>
         {% endif %}
     </div>
-    {% endif %}{# end LC locked panel #}
+    {% endif %}{# end process_signing_status gate #}
 
     <!-- PAGE 9: GRANULATION / MIXING -->
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
@@ -4927,6 +4959,7 @@
             btn.addEventListener('click', function() {
                 if (confirm(confirmMsg)) {
                     hiddenAction.value = actionVal;
+                    if (window.syncBmrPageHeaders) window.syncBmrPageHeaders(form);
                     form.submit();
                 }
             });
@@ -6345,12 +6378,8 @@
 
             <div style="margin-bottom:20px;font-size:12px;">
                 QA Officer (sign &amp; date):&nbsp;
-                {% if edit_mode == 'blending' and user_role == 'qa' and blending_section_statuses.qa_sampling == 'not_started' and blending_section_statuses.mixing == 'qa_signed' %}
-                <input type="text" name="qa_sign_sampling" class="form-control form-control-sm d-inline-block" style="width:280px;background:#d4edda;border:1px solid #28a745;" placeholder="QA name">
-                <input type="date" name="qa_sign_sampling_date" class="form-control form-control-sm d-inline-block ms-2" style="width:170px;background:#d4edda;border:1px solid #28a745;" value="{{ blending_data.qa_sampling.qa_sign_date|default:'' }}">
-                {% else %}
-                {{ blending_data.qa_sampling.qa_sign|default:"" }}{% if blending_data.qa_sampling.qa_sign_date %}<br><small>{{ blending_data.qa_sampling.qa_sign_date }}</small>{% endif %}
-                {% endif %}
+                {% if edit_mode == 'blending' and user_role == 'qa' and blending_section_statuses.qa_sampling == 'not_started' and blending_section_statuses.mixing == 'qa_signed' %}<input type="text" name="qa_sign_sampling" class="form-control form-control-sm d-inline-block" style="width:180px;background:#d4edda;border:1px solid #28a745;" placeholder="QA name" value="{{ blending_data.qa_sampling.qa_sign|default:'' }}"> <input type="date" name="qa_sign_sampling_date" class="form-control form-control-sm d-inline-block" style="width:150px;background:#d4edda;border:1px solid #28a745;" value="{{ blending_data.qa_sampling.qa_sign_date|default:'' }}">
+                {% else %}{{ blending_data.qa_sampling.qa_sign|default:"" }}{% if blending_data.qa_sampling.qa_sign_date %} <small>{{ blending_data.qa_sampling.qa_sign_date }}</small>{% endif %}{% endif %}
             </div>
 
             <!-- Release/Reject decision -->
@@ -7096,8 +7125,8 @@
                             {% if sp_date %}<br><small>{{ sp_date }}</small>{% endif %}
                             {% endif %}
                         </td>
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <input type="text" name="compression_beginning_item{{ forloop.counter }}_qa"
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'compression' 'beginning' forloop.counter 'qa' %}">
@@ -7111,8 +7140,8 @@
                             {% endif %}
                         </td>
                         <!-- STATUS (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.beginning_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.beginning_lc_status == 'operator_filled' %}
                             <select name="compression_beginning_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'compression' 'beginning' forloop.counter 'status' as st %}{% if st == 'ok' %}selected{% endif %}>OK</option>
@@ -7275,8 +7304,8 @@
                             {% if esp_date %}<br><small>{{ esp_date }}</small>{% endif %}
                             {% endif %}
                         </td>
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <input type="text" name="compression_ending_item{{ forloop.counter }}_qa"
                                    style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;"
                                    placeholder="QA sign" value="{% lc_value lc_data 'compression' 'ending' forloop.counter 'qa' %}">
@@ -7290,8 +7319,8 @@
                             {% endif %}
                         </td>
                         <!-- STATUS (filled by QA) -->
-                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
-                            {% if user_role == 'qa' and phase_name == 'compression' and phase_execution.ending_lc_status == 'operator_filled' %}
+                        <td style="border: 1px solid #000; padding: 4px; vertical-align: top;{% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %} background: #d4edda;{% endif %}">
+                            {% if edit_mode == 'compression' and user_role == 'qa' and phase_execution.ending_lc_status == 'operator_filled' %}
                             <select name="compression_ending_item{{ forloop.counter }}_status" style="width:100%; border:1px solid #28a745; padding:2px; font-size:11px; background:#d4edda;">
                                 <option value="">--</option>
                                 <option value="ok" {% lc_value lc_data 'compression' 'ending' forloop.counter 'status' as est %}{% if est == 'ok' %}selected{% endif %}>OK</option>
@@ -10425,7 +10454,7 @@
             <tr>
                 <td style="border: 2px solid #000; padding: 6px; font-weight: bold;">PRODUCT</td>
                 <td style="border: 2px solid #000; padding: 6px; text-align: center; text-transform: uppercase; font-weight: bold;">{{ bmr.product.product_name }}</td>
-                <td style="border: 2px solid #000; padding: 6px; text-align: center;"><strong>Page 40 of {{ total_pages }}</strong></td>
+                    <td style="border: 2px solid #000; padding: 6px; text-align: center;"><strong>Page {{ sorting_ipc_page_number|default:'40' }} of {{ total_pages }}</strong></td>
             </tr>
             <tr>
                 <td style="border: 2px solid #000; padding: 6px; font-weight: bold; width: 15%;">BATCH SIZE</td>
@@ -11217,6 +11246,7 @@
     {% endwith %}
 
     <!-- PAGE 38: TABLET INSPECTION & SORTING - LINE CLEARANCE -->
+    <span id="sorting-beginning-lc" style="display:block; scroll-margin-top:80px;"></span>
     {% if edit_mode == 'sorting' and phase_execution.status != 'in_progress' %}<div id="edit-section"></div>{% endif %}
     {% if edit_mode == 'sorting' and has_line_clearance %}
     <form method="POST" action="" id="sortingLCForm">
@@ -11842,7 +11872,7 @@
     {% endif %}
     </div>
 
-    <!-- PAGE 40: QA IN-PROCESS QUALITY CONTROL REPORT FOR INSPECTION & SORTING -->
+    <!-- PAGE {{ sorting_ipc_page_number|default:'40' }}: QA IN-PROCESS QUALITY CONTROL REPORT FOR INSPECTION & SORTING -->
     {% if edit_mode != 'sorting' %}
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
         <!-- Header -->
@@ -12090,7 +12120,7 @@
         {% endwith %}
 
     </div>
-    {% endif %}{# end if edit_mode != 'sorting' - Page 40 handled by sorting_table.html in edit mode #}
+    {% endif %}{# end if edit_mode != 'sorting' - Page {{ sorting_ipc_page_number|default:'40' }} handled by sorting_table.html in edit mode #}
 
 {% if bmr.product.coating_type == 'coated' %}
     {% if edit_mode == 'coating' and phase_execution.status != 'in_progress' %}<div id="edit-section"></div>{% endif %}
@@ -12449,7 +12479,7 @@
             </div>
             {% elif coating_pe.ending_lc_status == 'qa_approved' %}
             <div class="alert alert-success py-1 px-2 mb-0 no-print" style="font-size:12px;">
-                <i class="fas fa-check-circle me-1"></i> Ending LC completed
+                <i class="fas fa-check-circle me-1"></i> Ending LC approved by QA
                 {% if coating_pe.ending_lc_approved_date %} on {{ coating_pe.ending_lc_approved_date|date:"d/m/Y H:i" }}{% endif %}
             </div>
             {% endif %}
@@ -13715,7 +13745,7 @@
                 {% elif phase_execution.ending_lc_status == 'qa_approved' %}
                 <div class="alert alert-success" style="margin-bottom: 10px;">
                     <i class="fas fa-check-circle me-2"></i>
-                    <strong>COMPLETED:</strong> Ending LC is complete. Phase can be completed.
+                    <strong>APPROVED:</strong> Ending LC approved by QA. Phase can be completed.
                 </div>
                 {% elif phase_execution.ending_lc_status == 'qa_rejected' %}
                 <div class="alert alert-danger" style="margin-bottom: 10px;">
@@ -14581,6 +14611,9 @@
             PACKAGING MATERIALS REQUISITION SHEET
         </div>
 
+        {# Anchor for auto-scroll - must be before edit_mode check #}
+        <div id="packaging-materials-requisition" style="scroll-margin-top: 80px;"></div>
+
         {% if edit_mode == 'packaging_material_release' %}
         <div id="edit-section"></div>
         {% include 'dashboards/forms/packaging_req_table.html' %}
@@ -15373,8 +15406,20 @@
     </script>
     {% endif %}
 
-     <!-- PAGE 44: BLISTER MACHINE SETTING & YIELD -->
+    <!-- PAGE 44: BLISTER MACHINE SETTING & YIELD -->
     <div class="bmr-page" style="margin-bottom: 30px; border: 2px solid #000; page-break-after: always; padding: 20px; position: relative;">
+
+    {% if phase_name != 'blister_packing' and phase_name != 'bulk_packing' %}
+    <div class="no-print alert alert-info py-2 mb-3" style="font-size:12px;">
+        <i class="fas fa-info-circle me-1"></i>
+        This document is currently open for <strong>{{ phase_name|title }}</strong>.
+        Packing fields and their Save/Submit actions are available only when the active
+        phase is <strong>Blister Packing</strong> or <strong>Bulk Packing</strong>.
+        {% if user_role == 'packing_operator' %}
+        <a class="btn btn-sm btn-primary ms-2" href="{% url 'dashboards:packing_dashboard' %}">Open Packing Dashboard</a>
+        {% endif %}
+    </div>
+    {% endif %}
 
     {% with ms_ss=packing_section_statuses.machine_setup pe_ss=packing_section_statuses.packing_execution yr_ss=packing_section_statuses.yield_reconciliation ms_d=packing_sections_data.machine_setup pe_d=packing_sections_data.packing_execution yr_d=packing_sections_data.yield_reconciliation ms_qa=packing_sections_data.machine_setup_qa_sigs yr_qa=packing_sections_data.yield_reconciliation_qa_sigs %}
 
@@ -15503,7 +15548,7 @@
         {# Buttons for Section A #}
         {% if edit_mode == 'blister_packing' or edit_mode == 'bulk_packing' %}
             {% if ms_ss == 'not_started' and user_role != 'qa' and phase_execution.beginning_lc_status == 'qa_approved' %}
-            <div class="no-print d-flex justify-content-end gap-2 mb-3">
+            <div class="no-print packing-action-buttons d-flex justify-content-end gap-2 mb-3">
                 <button type="submit" name="action" value="save_draft_section_packing_machine_setup" class="btn btn-sm btn-outline-warning"><i class="fas fa-save me-1"></i>Save Draft A</button>
                 <button type="submit" name="action" value="submit_section_packing_machine_setup" class="btn btn-sm btn-primary" onclick="return confirm('Submit machine setup for QA verification?')"><i class="fas fa-paper-plane me-1"></i>Submit Section A</button>
             </div>
@@ -15557,7 +15602,7 @@
         {# Buttons for Section B #}
         {% if edit_mode == 'blister_packing' or edit_mode == 'bulk_packing' %}
             {% if pe_ss == 'not_started' and ms_ss == 'qa_signed' and user_role != 'qa' %}
-            <div class="no-print d-flex justify-content-end gap-2 mb-3">
+            <div class="no-print packing-action-buttons d-flex justify-content-end gap-2 mb-3">
                 <button type="submit" name="action" value="save_draft_section_packing_packing_execution" class="btn btn-sm btn-outline-warning"><i class="fas fa-save me-1"></i>Save Draft B</button>
                 <button type="submit" name="action" value="submit_section_packing_packing_execution" class="btn btn-sm btn-primary" onclick="return confirm('Submit packing times?')"><i class="fas fa-paper-plane me-1"></i>Submit Section B</button>
             </div>
@@ -15736,7 +15781,7 @@
         {# Buttons for Section C #}
         {% if edit_mode == 'blister_packing' or edit_mode == 'bulk_packing' %}
             {% if yr_ss == 'not_started' and pe_ss == 'completed' and user_role != 'qa' %}
-            <div class="no-print d-flex justify-content-end gap-2 mb-3">
+            <div class="no-print packing-action-buttons d-flex justify-content-end gap-2 mb-3">
                 <button type="submit" name="action" value="save_draft_section_packing_yield_reconciliation" class="btn btn-sm btn-outline-warning"><i class="fas fa-save me-1"></i>Save Draft C</button>
                 <button type="submit" name="action" value="submit_section_packing_yield_reconciliation" class="btn btn-sm btn-primary" onclick="return confirm('Submit yield reconciliation for QA review?')"><i class="fas fa-paper-plane me-1"></i>Submit for QA Review</button>
             </div>
@@ -16855,54 +16900,50 @@
         <span style="font-weight:700;font-size:12px;margin-right:6px;">Secondary Packing:</span>
         {# Step 1: Beginning LC #}
         {% if ssblc == 'qa_approved' %}<a href="#sec-sec-beginning_lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK Begin LC</a>
-        {% elif ssblc == 'operator_filled' %}<a href="#sec-sec-beginning_lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">&#9998; Begin LC</a>
-        {% else %}<a href="#sec-sec-beginning_lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; Begin LC</a>{% endif %}
-        <span style="color:#aaa;">|</span>
+        {% elif ssblc == 'operator_filled' %}<a href="#sec-sec-beginning_lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">Begin LC</a>
+        {% else %}<a href="#sec-sec-beginning_lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Begin LC</a>{% endif %}
         {# Step 2: Inspection & Sorting #}
         {% if ssinsp == 'qa_signed' %}<a href="#sec-sec-inspection_sorting" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK Inspection</a>
-        {% elif ssinsp == 'operator_filled' %}<a href="#sec-sec-inspection_sorting" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">&#9998; Inspection</a>
-        {% elif ssblc == 'qa_approved' %}<a href="#sec-sec-inspection_sorting" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; Inspection</a>
+        {% elif ssinsp == 'operator_filled' %}<a href="#sec-sec-inspection_sorting" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">Inspection</a>
+        {% elif ssblc == 'qa_approved' %}<a href="#sec-sec-inspection_sorting" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Inspection</a>
         {% else %}<a href="#sec-sec-inspection_sorting" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Inspection</a>{% endif %}
-        <span style="color:#aaa;">|</span>
         {# Step 3: Visual Inspection Log #}
         {% if ssvis == 'completed' %}<a href="#sec-sec-visual_inspection" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK Visual Log</a>
-        {% elif ssinsp == 'qa_signed' %}<a href="#sec-sec-visual_inspection" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; Visual Log</a>
+        {% elif ssinsp == 'qa_signed' %}<a href="#sec-sec-visual_inspection" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Visual Log</a>
         {% else %}<a href="#sec-sec-visual_inspection" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Visual Log</a>{% endif %}
-        <span style="color:#aaa;">|</span>
         {# Step 4: Packing Procedure #}
         {% if ssproc == 'qa_signed' %}<a href="#sec-sec-packing_procedure" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK Procedure</a>
-        {% elif ssproc == 'operator_filled' %}<a href="#sec-sec-packing_procedure" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">&#9998; Procedure</a>
-        {% elif ssvis == 'completed' %}<a href="#sec-sec-packing_procedure" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; Procedure</a>
+        {% elif ssproc == 'operator_filled' %}<a href="#sec-sec-packing_procedure" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>
+        {% elif ssvis == 'completed' %}<a href="#sec-sec-packing_procedure" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>
         {% else %}<a href="#sec-sec-packing_procedure" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Procedure</a>{% endif %}
-        <span style="color:#aaa;">|</span>
         {# Step 5: Shipper Weight #}
         {% if ssshpr == 'qa_signed' %}<a href="#sec-sec-shipper_weight" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK Shipper Wt</a>
-        {% elif ssshpr == 'operator_filled' %}<a href="#sec-sec-shipper_weight" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">&#9998; Shipper Wt</a>
-        {% elif ssproc == 'qa_signed' %}<a href="#sec-sec-shipper_weight" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; Shipper Wt</a>
+        {% elif ssshpr == 'operator_filled' %}<a href="#sec-sec-shipper_weight" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">Shipper Wt</a>
+        {% elif ssproc == 'qa_signed' %}<a href="#sec-sec-shipper_weight" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">Shipper Wt</a>
         {% else %}<a href="#sec-sec-shipper_weight" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">Shipper Wt</a>{% endif %}
-        <span style="color:#aaa;">|</span>
         {# Step 6: IPC Section 1 - Coding (Page 54) #}
         {% if ssipc_p54 == 'completed' %}<a href="#sec-sec-ipc_p54" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK IPC-54</a>
-        {% elif ssipc_p54 == 'in_progress' %}<a href="#sec-sec-ipc_p54" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">&#9998; IPC-54</a>
-        {% elif ssshpr == 'qa_signed' %}<a href="#sec-sec-ipc_p54" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; IPC-54</a>
+        {% elif ssipc_p54 == 'in_progress' %}<a href="#sec-sec-ipc_p54" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">IPC-54</a>
+        {% elif ssshpr == 'qa_signed' %}<a href="#sec-sec-ipc_p54" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">IPC-54</a>
         {% else %}<a href="#sec-sec-ipc_p54" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">IPC-54</a>{% endif %}
-        <span style="color:#aaa;">|</span>
         {# Step 7: IPC Section 2 - Unit Packing (Page 55) #}
         {% if ssipc_p55 == 'completed' %}<a href="#sec-sec-ipc_p55" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK IPC-55</a>
-        {% elif ssipc_p55 == 'in_progress' %}<a href="#sec-sec-ipc_p55" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">&#9998; IPC-55</a>
-        {% elif ssipc_p54 == 'completed' %}<a href="#sec-sec-ipc_p55" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; IPC-55</a>
+        {% elif ssipc_p55 == 'in_progress' %}<a href="#sec-sec-ipc_p55" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">IPC-55</a>
+        {% elif ssipc_p54 == 'completed' %}<a href="#sec-sec-ipc_p55" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">IPC-55</a>
         {% else %}<a href="#sec-sec-ipc_p55" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">IPC-55</a>{% endif %}
-        <span style="color:#aaa;">|</span>
         {# Step 8: IPC Section 3 - Shipper Carton (Page 56) #}
         {% if ssipc_p56 == 'completed' %}<a href="#sec-sec-ipc_p56" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK IPC-56</a>
-        {% elif ssipc_p56 == 'in_progress' %}<a href="#sec-sec-ipc_p56" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">&#9998; IPC-56</a>
-        {% elif ssipc_p55 == 'completed' %}<a href="#sec-sec-ipc_p56" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; IPC-56</a>
+        {% elif ssipc_p56 == 'in_progress' %}<a href="#sec-sec-ipc_p56" class="btn btn-info btn-sm px-2 py-1" style="font-size:10px;">IPC-56</a>
+        {% elif ssipc_p55 == 'completed' %}<a href="#sec-sec-ipc_p56" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">IPC-56</a>
         {% else %}<a href="#sec-sec-ipc_p56" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">IPC-56</a>{% endif %}
-        <span style="color:#aaa;">|</span>
-        {# Step 9: Ending LC #}
+        {# Step 9: Finished Product Reconciliation #}
+        {% if secondary_section_statuses.sec_fp_recon == 'completed' %}<a href="#tab-fp-recon-page" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK FP Recon</a>
+        {% elif ssipc_p56 == 'completed' %}<a href="#tab-fp-recon-page" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">FP Recon</a>
+        {% else %}<a href="#tab-fp-recon-page" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">FP Recon</a>{% endif %}
+        {# Step 10: Ending LC #}
         {% if sselc == 'qa_approved' %}<a href="#sec-sec-ending_lc" class="btn btn-success btn-sm px-2 py-1" style="font-size:10px;">OK End LC</a>
-        {% elif sselc == 'operator_filled' %}<a href="#sec-sec-ending_lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">&#9998; End LC</a>
-        {% elif all_secondary_sections_complete %}<a href="#sec-sec-ending_lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">&#9654; End LC</a>
+        {% elif sselc == 'operator_filled' %}<a href="#sec-sec-ending_lc" class="btn btn-warning btn-sm px-2 py-1" style="font-size:10px;">End LC</a>
+        {% elif sec_fp_recon_unlocked %}<a href="#sec-sec-ending_lc" class="btn btn-primary btn-sm px-2 py-1" style="font-size:10px;">End LC</a>
         {% else %}<a href="#sec-sec-ending_lc" class="btn btn-secondary btn-sm px-2 py-1" style="font-size:10px;">End LC</a>{% endif %}
         {# Auto-scroll target #}
         {% if user_role == 'qa' %}
@@ -16913,7 +16954,9 @@
           {% elif ssipc_p54 == 'in_progress' and secondary_sections_data.sec_ipc_p54.next_turn == 'qa' %}<meta name="sec-scroll-target" content="sec-sec-ipc_p54">
           {% elif ssipc_p55 == 'in_progress' and secondary_sections_data.sec_ipc_p55.next_turn == 'qa' %}<meta name="sec-scroll-target" content="sec-sec-ipc_p55">
           {% elif ssipc_p56 == 'in_progress' and secondary_sections_data.sec_ipc_p56.next_turn == 'qa' %}<meta name="sec-scroll-target" content="sec-sec-ipc_p56">
+          {% elif secondary_sections_data.sec_fp_recon.recon_stage == 'spv_submitted' %}<meta name="sec-scroll-target" content="tab-fp-recon-page">
           {% elif sselc == 'operator_filled' %}<meta name="sec-scroll-target" content="sec-sec-ending_lc">
+          {% elif sselc == 'qa_approved' and secondary_section_statuses.sec_fp_recon != 'completed' %}<meta name="sec-scroll-target" content="tab-fp-recon-page">
           {% elif ssblc == 'qa_approved' and not ssinsp or ssblc == 'qa_approved' and ssinsp == 'not_started' %}<meta name="sec-scroll-target" content="sec-sec-inspection_sorting">
           {% endif %}
         {% else %}
@@ -16928,7 +16971,9 @@
           {% elif ssipc_p55 == 'in_progress' %}<meta name="sec-scroll-target" content="sec-sec-ipc_p55">
           {% elif ssipc_p55 == 'completed' and ssipc_p56 == 'not_started' %}<meta name="sec-scroll-target" content="sec-sec-ipc_p56">
           {% elif ssipc_p56 == 'in_progress' %}<meta name="sec-scroll-target" content="sec-sec-ipc_p56">
-          {% elif all_secondary_sections_complete and not sselc or all_secondary_sections_complete and sselc == 'not_started' %}<meta name="sec-scroll-target" content="sec-sec-ending_lc">
+          {% elif ssipc_p56 == 'completed' and not sec_fp_recon_unlocked %}<meta name="sec-scroll-target" content="sec-sec-ending_lc">
+          {% elif sec_fp_recon_unlocked and not sselc or sec_fp_recon_unlocked and sselc == 'not_started' %}<meta name="sec-scroll-target" content="sec-sec-ending_lc">
+          {% elif sselc == 'qa_approved' and secondary_section_statuses.sec_fp_recon != 'completed' %}<meta name="sec-scroll-target" content="tab-fp-recon-page">
           {% endif %}
         {% endif %}
         {% if all_secondary_sections_complete and sselc == 'qa_approved' %}&nbsp;<span class="badge bg-success ms-2">Secondary packing complete!</span>{% endif %}
@@ -17189,7 +17234,7 @@
 
         {# Lock banner when prerequisites not met #}
         {% if edit_mode == 'secondary_packaging' %}
-            {% if not all_secondary_sections_complete or phase_execution.beginning_lc_status != 'qa_approved' %}
+            {% if not sec_fp_recon_unlocked or phase_execution.beginning_lc_status != 'qa_approved' %}
             <div class="no-print alert alert-secondary py-2 mb-2" style="font-size:11px;">
                 <i class="fas fa-lock me-1"></i><strong>Ending Activities locked</strong> - complete all secondary packing sections and get Beginning LC approved first.
             </div>
@@ -17225,8 +17270,8 @@
                     <td style="border:1px solid #000; padding:6px;">{{ forloop.counter|add:6 }}. {{ item|linebreaksbr }}</td>
 
                     {# Operator - editable only when ending unlocked #}
-                    <td style="border:1px solid #000; padding:4px; vertical-align:top;{% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and all_secondary_sections_complete and phase_execution.beginning_lc_status == 'qa_approved' %} background:#ffffdd;{% endif %}">
-                        {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and all_secondary_sections_complete and phase_execution.beginning_lc_status == 'qa_approved' %}
+                    <td style="border:1px solid #000; padding:4px; vertical-align:top;{% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and sec_fp_recon_unlocked and phase_execution.beginning_lc_status == 'qa_approved' %} background:#ffffdd;{% endif %}">
+                        {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and sec_fp_recon_unlocked and phase_execution.beginning_lc_status == 'qa_approved' %}
                         <input type="text" name="secondary_packaging_ending_item{{ forloop.counter }}_operator"
                                style="width:100%; border:1px solid #999; padding:2px; font-size:11px; background:#ffffdd;"
                                placeholder="Operator sign" value="{% lc_value lc_data 'secondary_packaging' 'ending' forloop.counter 'operator' %}">
@@ -17241,8 +17286,8 @@
                     </td>
 
                     {# Supervisor #}
-                    <td style="border:1px solid #000; padding:4px; vertical-align:top;{% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and all_secondary_sections_complete and phase_execution.beginning_lc_status == 'qa_approved' %} background:#ffffdd;{% endif %}">
-                        {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and all_secondary_sections_complete and phase_execution.beginning_lc_status == 'qa_approved' %}
+                    <td style="border:1px solid #000; padding:4px; vertical-align:top;{% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and sec_fp_recon_unlocked and phase_execution.beginning_lc_status == 'qa_approved' %} background:#ffffdd;{% endif %}">
+                        {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and sec_fp_recon_unlocked and phase_execution.beginning_lc_status == 'qa_approved' %}
                         <input type="text" name="secondary_packaging_ending_item{{ forloop.counter }}_supervisor"
                                style="width:100%; border:1px solid #999; padding:2px; font-size:11px; background:#ffffdd;"
                                placeholder="Supervisor sign" value="{% lc_value lc_data 'secondary_packaging' 'ending' forloop.counter 'supervisor' %}">
@@ -17291,7 +17336,7 @@
                 <tr>
                     <td colspan="5" style="border:1px solid #000; padding:6px;">
                         <strong>Remarks:</strong>
-                        {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and all_secondary_sections_complete and phase_execution.beginning_lc_status == 'qa_approved' %}
+                        {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and sec_fp_recon_unlocked and phase_execution.beginning_lc_status == 'qa_approved' %}
                         <textarea name="secondary_packaging_ending_remarks" style="width:100%; min-height:35px; border:1px solid #999; padding:4px; font-size:11px; background:#ffffdd;" placeholder="Enter any remarks...">{{ lc_data.secondary_packaging_ending_remarks|default:'' }}</textarea>
                         {% else %}
                         {{ lc_data.secondary_packaging_ending_remarks|default:"" }}
@@ -17304,7 +17349,7 @@
         {# Ending LC buttons #}
         {% if edit_mode == 'secondary_packaging' and has_line_clearance %}
         <div class="no-print" style="margin-top:10px; margin-bottom:10px;">
-            {% if user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and all_secondary_sections_complete and phase_execution.beginning_lc_status == 'qa_approved' %}
+            {% if user_role != 'qa' and phase_execution.ending_lc_status == 'not_started' and sec_fp_recon_unlocked and phase_execution.beginning_lc_status == 'qa_approved' %}
             <div class="d-flex gap-2 justify-content-end">
                 <button type="submit" name="lc_action" value="save_ending_lc" class="btn btn-warning btn-sm">
                     {% if lc_data.ending_last_saved or lc_data.last_updated %}<i class="fas fa-edit me-1"></i> Continue Ending LC{% else %}<i class="fas fa-save me-1"></i> Save Ending LC Draft{% endif %}
@@ -17457,7 +17502,7 @@
         {% else %}
         <div class="no-print alert alert-warning py-1 mb-2" style="font-size:11px;"><i class="fas fa-clock me-1"></i>Submitted - awaiting QA approval.</div>
         <form method="post" action="">{% csrf_token %}
-        <button type="submit" name="action" value="recall_section_secondary_sec_inspection_sorting" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Î“Ã¥âŒ Recall for Editing</button>
+        <button type="submit" name="action" value="recall_section_secondary_sec_inspection_sorting" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Γå⌐ Recall for Editing</button>
         </form>
         {% endif %}
         {% elif ssinsp == 'qa_signed' %}
@@ -17726,7 +17771,7 @@
         {% else %}
         <div class="no-print alert alert-warning py-1 mb-2" style="font-size:11px;"><i class="fas fa-clock me-1"></i>Signatures submitted - awaiting QA verification.</div>
         <form method="post" action="">{% csrf_token %}
-        <button type="submit" name="action" value="recall_section_secondary_sec_packing_procedure" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Î“Ã¥âŒ Recall for Editing</button>
+        <button type="submit" name="action" value="recall_section_secondary_sec_packing_procedure" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Γå⌐ Recall for Editing</button>
         </form>
         {% endif %}
 
@@ -17832,7 +17877,7 @@
         {% else %}
         <div class="no-print alert alert-warning py-1 mb-2" style="font-size:11px;"><i class="fas fa-clock me-1"></i>Reconciliation submitted - awaiting QA verification.</div>
         <form method="post" action="">{% csrf_token %}
-        <button type="submit" name="action" value="recall_section_secondary_sec_packing_procedure" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Î“Ã¥âŒ Recall for Editing</button>
+        <button type="submit" name="action" value="recall_section_secondary_sec_packing_procedure" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Γå⌐ Recall for Editing</button>
         </form>
         {% endif %}
 
@@ -18198,7 +18243,7 @@
         {% else %}
         <div class="no-print alert alert-warning py-1 mb-2" style="font-size:11px;"><i class="fas fa-clock me-1"></i>Submitted - awaiting QA approval.</div>
         <form method="post" action="">{% csrf_token %}
-        <button type="submit" name="action" value="recall_section_secondary_sec_shipper_weight" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Î“Ã¥âŒ Recall for Editing</button>
+        <button type="submit" name="action" value="recall_section_secondary_sec_shipper_weight" class="btn btn-outline-secondary btn-sm no-print"><i class="fas fa-undo me-1"></i>Γå⌐ Recall for Editing</button>
         </form>
         {% endif %}
         {% elif ssshpr == 'qa_signed' %}
@@ -18903,7 +18948,7 @@
             </tr>
         </table>
 
-    {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
+    {% if edit_mode == 'final_qa' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
     <form method="POST" action="{% url 'dashboards:phase_form' phase_execution.id %}" id="tabFpReconForm">{% csrf_token %}
     {% endif %}
 
@@ -18918,11 +18963,11 @@
                     <th style="border: 1px solid #000; padding: 5px; width: 16.6%;">Quantity Delivered to FGS</th>
                     <th style="border: 1px solid #000; padding: 5px; width: 16.6%;">Delivery Note Number</th>
                     <th style="border: 1px solid #000; padding: 5px; width: 16.6%;">Delivery Date</th>
-                    {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}<th style="border:none;width:22px;"></th>{% endif %}
+                    {% if edit_mode == 'final_qa' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}<th style="border:none;width:22px;"></th>{% endif %}
                 </tr>
             </thead>
             <tbody>
-            {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
+            {% if edit_mode == 'final_qa' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
                 {% for row in "1,2,3,4,5,6,7,8,9,10"|split:"," %}
                 {% with kqp="tab_fp_qty_packed_"|concat:row krs="tab_fp_retention_sample_"|concat:row kaq="tab_fp_actual_qty_"|concat:row kqd="tab_fp_qty_delivered_"|concat:row kdn="tab_fp_delivery_note_"|concat:row kdd="tab_fp_delivery_date_"|concat:row %}
                 {% with has_data=tfp|dk:kqp %}
@@ -18963,14 +19008,14 @@
             {% endif %}
             </tbody>
         </table>
-    {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
+    {% if edit_mode == 'final_qa' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
     <div style="margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
         <button type="button" onclick="tabFpReconAddRow()" style="background:#17a2b8;color:#fff;border:none;padding:5px 12px;cursor:pointer;font-size:11px;border-radius:3px;">+ Add Row</button>
         <button type="submit" name="action" value="tab_fp_recon_save_draft" style="background:#6c757d;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-size:11px;border-radius:3px;">Save Draft</button>
     </div>
     {% endif %}
 
-        <div id="sec_fp_recon" style="border: 1px solid #000; text-align: center; font-weight: bold; margin-bottom: 10px; margin-top: 10px; scroll-margin-top: 80px;">FINAL BATCH RECONCILIATION</div>
+        <div style="border: 1px solid #000; text-align: center; font-weight: bold; margin-bottom: 10px; margin-top: 10px;">FINAL BATCH RECONCILIATION</div>
 
         <table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px;">
             <thead>
@@ -18982,7 +19027,7 @@
                 </tr>
             </thead>
             <tbody>
-            {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
+            {% if edit_mode == 'final_qa' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
                 <tr><td style="border:1px solid #000;padding:5px;font-weight:bold;">(A) Theoretical Yield =(Batch Size):</td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_theo_yield_qty" id="tfp_theo_yield_qty" value="{{ tfp|dk:'tab_fp_theo_yield_qty' }}" style="width:95%;background:#ffffdd;border:1px solid #ccc;padding:2px;" class="tfp-calc-input"></td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_theo_yield_units" id="tfp_theo_yield_units" value="{{ tfp|dk:'tab_fp_theo_yield_units' }}" style="width:95%;background:#ffffdd;border:1px solid #ccc;padding:2px;" class="tfp-calc-input"></td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_theo_yield_pct" value="{{ tfp|dk:'tab_fp_theo_yield_pct' }}" style="width:95%;background:#e8f4fd;border:1px solid #ccc;padding:2px;" readonly></td></tr>
                 <tr><td style="border:1px solid #000;padding:5px;font-weight:bold;">(B) Yield - 1st Crop (Quantity Packed):</td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_yield_1st_qty" id="tfp_yield_1st_qty" value="{{ tfp|dk:'tab_fp_yield_1st_qty' }}" style="width:95%;background:#ffffdd;border:1px solid #ccc;padding:2px;" class="tfp-calc-input"></td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_yield_1st_units" id="tfp_yield_1st_units" value="{{ tfp|dk:'tab_fp_yield_1st_units' }}" style="width:95%;background:#ffffdd;border:1px solid #ccc;padding:2px;" class="tfp-calc-input"></td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_yield_1st_pct" id="tfp_yield_1st_pct" value="{{ tfp|dk:'tab_fp_yield_1st_pct' }}" style="width:95%;background:#e8f4fd;border:1px solid #ccc;padding:2px;" readonly></td></tr>
                 <tr><td style="border:1px solid #000;padding:5px;font-weight:bold;">(C) In-Process/QC Samples:</td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_qc_samples_qty" id="tfp_qc_samples_qty" value="{{ tfp|dk:'tab_fp_qc_samples_qty' }}" style="width:95%;background:#ffffdd;border:1px solid #ccc;padding:2px;" class="tfp-calc-input"></td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_qc_samples_units" id="tfp_qc_samples_units" value="{{ tfp|dk:'tab_fp_qc_samples_units' }}" style="width:95%;background:#ffffdd;border:1px solid #ccc;padding:2px;" class="tfp-calc-input"></td><td style="border:1px solid #000;padding:2px;"><input type="text" name="tab_fp_qc_samples_pct" id="tfp_qc_samples_pct" value="{{ tfp|dk:'tab_fp_qc_samples_pct' }}" style="width:95%;background:#e8f4fd;border:1px solid #ccc;padding:2px;" readonly></td></tr>
@@ -19012,7 +19057,7 @@
         <table style="width:100%;border-collapse:collapse;border:2px solid #000;border-top:none;">
             <tr>
                 <td style="border:1px solid #000;padding:6px;width:50%;font-weight:bold;">Done by Supervisor (Sign &amp; Date):
-                    {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
+                    {% if edit_mode == 'final_qa' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
                     <br><input type="text" name="tab_fp_spv_sign" value="{{ tfp|dk:'tab_fp_spv_sign' }}" style="width:60%;background:#ffffdd;border:1px solid #ccc;padding:2px;" placeholder="Sign">
                     <input type="date" name="tab_fp_spv_date" value="{{ tfp|dk:'tab_fp_spv_date' }}" style="background:#ffffdd;border:1px solid #ccc;padding:2px;">
                     {% else %}
@@ -19037,7 +19082,7 @@
             </tr>
         </table>
 
-    {% if edit_mode == 'secondary_packaging' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
+    {% if edit_mode == 'final_qa' and user_role != 'qa' and user_role != 'regulatory' and tfp_stage == 'not_started' %}
     <div style="margin-top:6px;display:flex;justify-content:flex-end;">
         <button type="submit" name="action" value="tab_fp_recon_save_draft" style="background:#6c757d;color:#fff;border:none;padding:8px 16px;cursor:pointer;margin-right:8px;">Save Draft</button>
         <button type="submit" name="action" value="tab_fp_recon_submit" style="background:#007bff;color:#fff;border:none;padding:8px 16px;cursor:pointer;">Submit for QA Verification</button>
@@ -20081,6 +20126,24 @@
 
     // Auto-scroll to the editable section when a phase is opened for editing
     document.addEventListener('DOMContentLoaded', function() {
+        // First priority: If URL has a hash anchor (e.g., #packaging-materials-requisition), scroll to it
+        var hash = (window.location.hash || '').replace('#','').trim();
+        if (hash) {
+            var target = document.getElementById(hash);
+            if (target) {
+                setTimeout(function() {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Add highlight effect so user spots the section
+                    target.style.transition = 'background-color 0.3s ease';
+                    target.style.backgroundColor = '#fff3cd';
+                    setTimeout(function() {
+                        target.style.backgroundColor = '';
+                    }, 2000);
+                }, 300);
+                return; // Exit early - hash anchor takes priority
+            }
+        }
+
         {% if edit_mode == 'qa' %}
         // QA mode: scroll to the first pending QA action element on the page.
         // QA actions appear in two forms:
@@ -20139,6 +20202,18 @@
         }
         {% endif %}
     });
+
+    // Regulatory users should land directly on the Batch Release Sheet.
+    {% if user_role == 'regulatory' and edit_mode == 'final_qa' and final_qa_data.fqa_stage == 'regulatory_pending' %}
+    setTimeout(function() {
+        var batchReleaseSection = document.getElementById('tab-fqa-batch-release');
+        if (batchReleaseSection) {
+            batchReleaseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            batchReleaseSection.style.outline = '3px solid #ffc107';
+            setTimeout(function() { batchReleaseSection.style.outline = ''; }, 3000);
+        }
+    }, 500);
+    {% endif %}
 
     // Counts all rendered .bmr-page divs and updates every "Page X of Y" label.
     // Handles coated tablets (extra FC pages) vs uncoated automatically.
@@ -20210,25 +20285,30 @@
                 }, 500);
             }
         }
-
-        // Auto-scroll for Regulatory users to Batch Release Sheet
-        {% if user_role == 'regulatory' and edit_mode == 'final_qa' %}
-        {% if final_qa_data.fqa_stage == 'regulatory_pending' %}
-        setTimeout(function() {
-            var batchReleaseSection = document.getElementById('tab-fqa-batch-release');
-            if (batchReleaseSection) {
-                batchReleaseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                batchReleaseSection.style.outline = '3px solid #ffc107';
-                setTimeout(function() {
-                    if (batchReleaseSection) batchReleaseSection.style.outline = '';
-                }, 3000);
-            }
-        }, 500);
-        {% endif %}
-        {% endif %}
     });
 
-    // â”€â”€ Auto-save shift dropdowns and date inputs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Header fields are outside the section forms, so include their current
+    // values in the form submission as well as saving them on change.
+    window.syncBmrPageHeaders = function (form) {
+        form.querySelectorAll('input[data-page-header-sync="true"]').forEach(function (input) {
+            input.remove();
+        });
+        document.querySelectorAll('.bmr-shift-select, .bmr-date-input').forEach(function (field) {
+            if (field.form === form || !field.name) return;
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = field.name;
+            hidden.value = field.value;
+            hidden.setAttribute('data-page-header-sync', 'true');
+            form.appendChild(hidden);
+        });
+    };
+
+    document.addEventListener('submit', function (event) {
+        window.syncBmrPageHeaders(event.target);
+    });
+
+    // ── Auto-save shift dropdowns and date inputs ──────────────────────────
     (function () {
         var SAVE_URL = "{% url 'dashboards:save_page_field' %}";
         var PE_ID    = "{{ phase_execution.id }}";
@@ -20247,17 +20327,8 @@
             .then(function(r){ return r.json(); })
             .then(function(data){
                 if (indicator) {
-                    var isLocked = (data && data.error && String(data.error).toLowerCase().indexOf('not allowed') !== -1);
-                    if (data.status === 'ok') {
-                        indicator.textContent = '\u2713 Saved';
-                        indicator.style.color = 'green';
-                    } else if (isLocked) {
-                        indicator.textContent = '\ud83d\udd12 Locked';
-                        indicator.style.color = '#a16207';
-                    } else {
-                        indicator.textContent = '\u2717 Error';
-                        indicator.style.color = 'red';
-                    }
+                    indicator.textContent = data.status === 'ok' ? '\u2713 Saved' : '\u2717 Error';
+                    indicator.style.color = data.status === 'ok' ? 'green' : 'red';
                     setTimeout(function(){ if(indicator) indicator.textContent = ''; }, 2500);
                 }
             })
@@ -20284,43 +20355,8 @@
                 saveField(el.name, el.value, getOrCreateIndicator(el));
             }
         });
-
-        // Fallback: ensure page header shift/date values are posted on submit.
-        // This avoids data loss when a change event is not fired before submit.
-        document.addEventListener('submit', function(e) {
-            var form = e.target;
-            if (!form || form.tagName !== 'FORM') return;
-
-            document.querySelectorAll('select.bmr-shift-select').forEach(function(sel) {
-                if (!sel.name) return;
-                var existingShift = form.querySelector('input[name="' + sel.name + '"]');
-                if (existingShift) {
-                    existingShift.value = sel.value || '';
-                } else {
-                    var hs = document.createElement('input');
-                    hs.type = 'hidden';
-                    hs.name = sel.name;
-                    hs.value = sel.value || '';
-                    form.appendChild(hs);
-                }
-            });
-
-            document.querySelectorAll('input.bmr-date-input').forEach(function(inp) {
-                if (!inp.name) return;
-                var existing = form.querySelector('input[name="' + inp.name + '"]');
-                if (existing) {
-                    existing.value = inp.value || '';
-                } else {
-                    var h = document.createElement('input');
-                    h.type = 'hidden';
-                    h.name = inp.name;
-                    h.value = inp.value || '';
-                    form.appendChild(h);
-                }
-            });
-        });
     })();
-    // â”€â”€ End auto-save shift/date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── End auto-save shift/date ───────────────────────────────────────────
 </script>
 </div>
 {% endblock %}
@@ -20328,3 +20364,68 @@
 
 
 
+
+<!-- Report Deviation Modal -->
+<div class="modal fade" id="reportDeviationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'bmr:report_deviation' bmr.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Report Deviation for Batch {{ bmr.batch_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+ </div>
+ <div class='modal-body'>
+ <div class='row g-3'>
+ <div class='col-md-6'>
+ <label class='form-label'>Category</label>
+ <select name='category' class='form-control' required>
+ <option value='deviation'>Deviation / OOS Investigation</option>
+ <option value='capa'>CAPA</option>
+ <option value='change_control'>Change Control</option>
+ <option value='complaint'>Complaint / Recall</option>
+ </select>
+ </div>
+ <div class='col-md-6'>
+ <label class='form-label'>Priority</label>
+ <select name='priority' class='form-control'>
+ <option value='medium'>Medium</option>
+ <option value='low'>Low</option>
+ <option value='high'>High</option>
+ <option value='critical'>Critical</option>
+ </select>
+ </div>
+ <div class='col-12'>
+ <label class='form-label'>Title</label>
+ <input type='text' name='title' class='form-control' required placeholder='Brief description of issue'>
+ </div>
+ <div class='col-12'>
+ <label class='form-label'>Description</label>
+ <textarea name='description' class='form-control' rows='4' required placeholder='Detailed description of the deviation, non-conformance, or issue...'></textarea>
+ </div>
+ <div class='col-md-6'>
+ <label class='form-label'>Assign To</label>
+ <select name='assigned_to' class='form-control'>
+ <option value=''>Unassigned</option>
+ {% for user in qms_users %}
+ <option value='{{ user.id }}'>{{ user.get_full_name|default:user.username }}</option>
+ {% endfor %}
+ </select>
+ </div>
+ <div class='col-md-6'>
+ <label class='form-label'>Due Date</label>
+ <input type='date' name='due_date' class='form-control'>
+ </div>
+ </div>
+ </div>
+ <div class='modal-footer'>
+ <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button>
+ <button type='submit' class='btn btn-warning'><i class='fas fa-exclamation-triangle me-1'></i>Create QMS Action</button>
+ </div>
+ </form>
+ </div>
+ </div>
+</div>
+{ %   i f   n o t   i s _ p r i n t i n g   % } { %   i n c l u d e   ' b m r / p a r t i a l s / r e p o r t _ d e v i a t i o n _ m o d a l . h t m l '   % } { %   e n d i f   % } 
+ 
+ 

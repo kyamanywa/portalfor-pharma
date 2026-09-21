@@ -1,0 +1,24 @@
+<div class="hqa-card">
+    <div class="hqa-card-head"><h2>Quality Queries</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'dashboards:qms_reports' %}?type=query">Query Reports</a></div>
+    <p style="padding:0 18px 10px 18px;color:#4f5d7a;font-size:13px;margin:0;">Query stage flow: <strong>New</strong> → <strong>Assigned</strong> → <strong>Response</strong> → <strong>Closed</strong>. Create queries for customer, regulatory, supplier, internal, or recall follow-up and track assignment and deadline directly.</p>
+    <form method="post" class="hqa-form">{% csrf_token %}<input type="hidden" name="action" value="hqa_query_create">
+        <select name="query_type" required>
+            <option value="">Query type</option>
+            <option value="customer">Customer Query</option>
+            <option value="regulatory">Regulatory Query</option>
+            <option value="supplier">Supplier Query</option>
+            <option value="internal">Internal Query</option>
+            <option value="recall">Recall Query</option>
+            <option value="market_complaint">Market Complaint Query</option>
+        </select>
+        <input name="subject" placeholder="Subject" required>
+        <input name="source" placeholder="Source / origin">
+        <select name="product"><option value="">Product</option>{% for product in products %}<option value="{{ product.pk }}">{{ product.product_name }}</option>{% endfor %}</select>
+        <select name="assigned_to"><option value="">Assign to</option>{% for user in qms_users %}<option value="{{ user.pk }}">{{ user.get_full_name|default:user.username }}</option>{% endfor %}</select>
+        <textarea name="question" placeholder="Query details" style="grid-column:span 4;min-height:58px;padding:8px 10px;border:1px solid #cfd7e8;border-radius:7px;font-size:13px"></textarea>
+        <select name="priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+        <input type="date" name="due_date">
+        <div style="display:flex;justify-content:flex-end;align-items:end;"><button class="btn btn-primary btn-sm">Create</button></div>
+    </form>
+    <table class="hqa-mini-table"><tr><th>Query</th><th>Type</th><th>Status</th><th>Assigned</th><th>Due</th></tr>{% for item in qms_enterprise_modules.quality_queries %}<tr><td><a href="{% url 'dashboards:qms_quality_query_detail' item.id %}"><strong>{{ item.query_number }}</strong><br>{{ item.subject|truncatechars:40 }}</a></td><td>{{ item.get_query_type_display }}</td><td>{{ item.get_status_display }}</td><td>{% if item.assigned_to %}{{ item.assigned_to.get_full_name|default:item.assigned_to.username }}{% else %}-{% endif %}</td><td>{{ item.due_date|date:"M d, Y"|default:"-" }}</td></tr>{% empty %}<tr><td colspan="5">No quality queries.</td></tr>{% endfor %}</table>
+</div>

@@ -89,7 +89,6 @@
     <tbody>
         {% if ingredient_table %}
             {% for ingredient in ingredient_table %}
-            {% if not disp_page or disp_page == 1 and forloop.counter0 < 4 or disp_page == 2 and forloop.counter0 >= 4 %}
                 <tr class="ingredient-row" data-ingredient-id="{{ ingredient.ingredient_id }}">
                     <td style="border: 2px solid #000; padding: 8px; text-align: center;">{{ ingredient.sr_no }}</td>
                     
@@ -260,7 +259,6 @@
                     </td>
                     {% endif %}
                 </tr>
-            {% endif %}
             {% endfor %}
         {% else %}
             <tr>
@@ -270,7 +268,7 @@
             </tr>
         {% endif %}
 
-        {% if not disp_page or disp_page == 2 %}
+        {% if is_last_page %}
         <!-- TOTAL ROW -->
         {% if ingredient_table %}
         <tr style="background-color: #f8f9fa; font-weight: bold;">
@@ -317,7 +315,7 @@
     </tbody>
 </table>
 
-{% if not disp_page or disp_page == 2 %}
+{% if is_last_page %}
 <!-- Packing Material Note -->
 <div style="margin-top: 0; padding: 10px; border: 2px solid #000; border-top: none;">
     <p style="margin: 5px 0; font-size: 12px;">

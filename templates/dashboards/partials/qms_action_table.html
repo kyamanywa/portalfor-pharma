@@ -1,0 +1,38 @@
+{% if actions %}
+<table class="qa-table qc-table">
+    <thead>
+        <tr>
+            <th>No.</th>
+            <th>Title</th>
+            <th>Batch</th>
+            <th>Lot</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Assigned</th>
+            <th>Due</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for action in actions %}
+        <tr>
+            <td>{{ action.qms_number }}</td>
+            <td>
+                <strong>{{ action.title }}</strong>
+                <div style="font-size:11px;color:#7e8bb5;">{{ action.description|truncatechars:90 }}</div>
+            </td>
+            <td>{% if action.bmr %}<a href="{% url 'bmr:detail' action.bmr.pk %}" class="batch-link">{{ action.bmr.batch_number }}</a>{% else %}-{% endif %}</td>
+            <td>{% if action.quality_lot %}<a href="{% url 'dashboards:quality_lot_detail' action.quality_lot.pk %}" class="batch-link">{{ action.quality_lot.lot_number }}</a>{% else %}-{% endif %}</td>
+            <td><span class="pill {% if action.priority == 'critical' or action.priority == 'high' %}pill-red{% elif action.priority == 'medium' %}pill-amber{% else %}pill-gray{% endif %}">{{ action.get_priority_display }}</span></td>
+            <td>{{ action.get_status_display }}</td>
+            <td>{% if action.assigned_to %}{{ action.assigned_to.get_full_name|default:action.assigned_to.username }}{% else %}-{% endif %}</td>
+            <td>{{ action.due_date|date:"M d, Y"|default:"-" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="qa-empty qc-empty">
+    <i class="fas fa-clipboard-list"></i>
+    <p>{{ empty_text }}</p>
+</div>
+{% endif %}

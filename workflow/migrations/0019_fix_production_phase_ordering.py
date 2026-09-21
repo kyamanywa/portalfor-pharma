@@ -9,7 +9,7 @@ def fix_production_phase_ordering(apps, schema_editor):
     
     # Delete all existing ProductionPhase records to avoid conflicts
     ProductionPhase.objects.all().delete()
-    print("✓ Cleared all existing ProductionPhase records")
+    print("[OK] Cleared all existing ProductionPhase records")
     
     # Recreate ProductionPhases from WorkflowTemplates
     for template in WorkflowTemplate.objects.filter(is_active=True):
@@ -29,17 +29,17 @@ def fix_production_phase_ordering(apps, schema_editor):
             )
             
             if created:
-                print(f"  ✓ Created {template_phase.phase_order:2d}. {template_phase.phase_name}")
+                print(f"  [OK] Created {template_phase.phase_order:2d}. {template_phase.phase_name}")
             else:
                 print(f"  - Exists {template_phase.phase_order:2d}. {template_phase.phase_name}")
     
-    print("\n✓ ProductionPhase ordering fixed based on templates")
+    print("\n[OK] ProductionPhase ordering fixed based on templates")
 
 def reverse_fix_production_phase_ordering(apps, schema_editor):
     """Reverse operation - just delete all ProductionPhases"""
     ProductionPhase = apps.get_model('workflow', 'ProductionPhase')
     ProductionPhase.objects.all().delete()
-    print("✓ Reversed: Deleted all ProductionPhase records")
+    print("[OK] Reversed: Deleted all ProductionPhase records")
 
 class Migration(migrations.Migration):
 
